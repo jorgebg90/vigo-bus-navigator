@@ -60,9 +60,10 @@ and the actor re-approves.
 
 ## Working Agreements
 
-- Everything is written in English.
+- Everything is written in English (product UI language is a spec-level decision).
 - Clean code and YAGNI: the simplest solution that passes its gate wins.
 - The product stays pure frontend: static hosting on GitHub Pages, user data
-  in `localStorage`, no backend, no accounts.
+  in `localStorage`, no accounts. The sole server-side exception is the
+  Cloudflare Worker edge proxy per `spec_000_architecture.md`.
 - Blog drafts live in `docs/blog/`, one per phase, maintained by the
   Communicator.
