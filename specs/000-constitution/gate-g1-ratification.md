@@ -3,7 +3,8 @@
 - **Phase**: Constitution
 - **Date**: 2026-10-25
 - **Artifact under review**: [.specify/memory/constitution.md](../../.specify/memory/constitution.md)
-- **Reference architecture**: [spec_000_architecture.md](../../spec_000_architecture.md) (APPROVED)
+- **Reference architecture**: [docs/reference/spec-000-architecture-example.md](../../docs/reference/spec-000-architecture-example.md)
+  (external EXAMPLE, non-normative; absorbed into the constitution)
 - **Outcome**: **CLOSED — RATIFIED as v1.1.0**
 
 ## Round 1 — Review of v1.0.0
@@ -205,9 +206,9 @@ actor objections, no artifact migration required — no plans or specs exist yet
   vehicle positions — avoiding a later migration off raster-oriented Leaflet.
 - **Bump rationale**: MINOR — materially expanded guidance on a mandated
   technology choice; no principle removed or redefined incompatibly.
-- **Migration**: none; `spec_000_architecture.md` lists "Leaflet.js / MapLibre
-  GL" as interchangeable options — the constitution now narrows that choice and
-  remains the superseding document per Governance.
+- **Migration**: none; the reference architecture example lists "Leaflet.js /
+  MapLibre GL" as interchangeable options — the constitution now narrows that
+  choice and remains the superseding document per Governance.
 - **Compatibility note**: deck.gl + MapLibre GL JS carry a heavier payload than
   Leaflet; the plan gate MUST set the numeric performance/payload budget
   (mobile-first hard constraint) with this choice accounted for.

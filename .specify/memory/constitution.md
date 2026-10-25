@@ -7,7 +7,8 @@
 All application logic MUST run client-side in the browser as a Progressive Web App
 using JavaScript/TypeScript. Static hosting on GitHub Pages is the only production
 target. The sole sanctioned exception to browser-only execution is the Cloudflare
-Worker edge proxy defined in `spec_000_architecture.md` (REST↔SOAP translation and
+Worker edge proxy derived from the reference architecture example
+(`docs/reference/spec-000-architecture-example.md`, REST↔SOAP translation and
 CORS injection); no other server-side component may be introduced.
 
 **Rationale**: zero-cost, serverless operation with no accounts, no tracking, and
@@ -66,13 +67,13 @@ proxy evolution and makes the integration testable.
 
 ### VI. Zero-Cost Serverless & Privacy by Design
 
-All infrastructure choices MUST remain within permanent free tiers, per
-`spec_000_architecture.md`: GitHub Pages (hosting), Cloudflare Workers ≤100k
-requests/day (edge proxy, 30s edge cache per stop query), CartoDB Positron/Dark
-Matter tiles, MapLibre GL JS with deck.gl overlay layers. All user data —
-favorite stops, recent history, settings — MUST persist exclusively in the
-user's browser `localStorage`. No user accounts, analytics that identify users,
-or user data may leave the device.
+All infrastructure choices MUST remain within permanent free tiers, per the
+reference architecture example (`docs/reference/spec-000-architecture-example.md`):
+GitHub Pages (hosting), Cloudflare Workers ≤100k requests/day (edge proxy, 30s
+edge cache per stop query), CartoDB Positron/Dark Matter tiles, MapLibre GL JS
+with deck.gl overlay layers. All user data — favorite stops, recent history,
+settings — MUST persist exclusively in the user's browser `localStorage`.
+No user accounts, analytics that identify users, or user data may leave the device.
 
 **Rationale**: the project is a public-good open-source tool; zero cost and
 absolute privacy are non-negotiable product properties.
@@ -148,7 +149,9 @@ sections, PATCH for clarifications and non-semantic refinements.
 Compliance review expectations: the Project Lead verifies gate verdicts at every
 phase boundary; the QA Tester flags constitutional violations as defects; the
 Software Architect may veto any plan that violates Principles I, II, V, or VI.
-Use `docs/harness-charter.md` for runtime harness guidance and
-`spec_000_architecture.md` as the normative architecture reference.
+Use `docs/harness-charter.md` for runtime harness guidance. The reference
+architecture example (`docs/reference/spec-000-architecture-example.md`) is
+non-normative background material; where it diverges from this constitution
+(e.g. mapping engine), this constitution supersedes.
 
-**Version**: 1.2.0 | **Ratified**: 2026-10-25 | **Last Amended**: 2026-10-25
+**Version**: 1.2.1 | **Ratified**: 2026-10-25 | **Last Amended**: 2026-10-25

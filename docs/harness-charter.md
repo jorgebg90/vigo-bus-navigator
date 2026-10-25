@@ -64,6 +64,7 @@ and the actor re-approves.
 - Clean code and YAGNI: the simplest solution that passes its gate wins.
 - The product stays pure frontend: static hosting on GitHub Pages, user data
   in `localStorage`, no accounts. The sole server-side exception is the
-  Cloudflare Worker edge proxy per `spec_000_architecture.md`.
+  Cloudflare Worker edge proxy per the reference architecture example
+  (`docs/reference/spec-000-architecture-example.md`, non-normative).
 - Blog drafts live in `docs/blog/`, one per phase, maintained by the
   Communicator.

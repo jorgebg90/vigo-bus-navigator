@@ -1,5 +1,13 @@
 # Spec 000: Base System Architecture & Tech Stack
 
+> **Status in this repository**: EXAMPLE / REFERENCE MATERIAL — NON-NORMATIVE.
+> This document originated outside the Spec-Driven Development workflow as an
+> external example. Its decisions have been absorbed into the project
+> constitution (`.specify/memory/constitution.md`), which is the sole governing
+> document. Where this example and the constitution diverge (e.g. mapping
+> engine), the constitution supersedes it. Kept for provenance and blog
+> narrative purposes.
+
 - **Status**: APPROVED
 - **Author**: Product Owner Agent
 - **Target Component**: System Architecture / Infrastructure
