@@ -191,7 +191,28 @@ resolved):
 | Communicator | APPROVED | Round 1 verdict stands; amendment narrative ready for phase-01 post. |
 | Project Lead | APPROVED | Gate procedure followed; verdicts recorded; constitution ratified. |
 
-**Gate G1: CLOSED.** Constitution v1.1.0 is the governing document.
+## Amendment v1.1.0 → v1.2.0 (MINOR) — Post-ratification
+
+Requested by the project owner immediately after G1 closure; applied by the
+Project Lead under the governance amendment procedure (documented rationale, no
+actor objections, no artifact migration required — no plans or specs exist yet).
+
+- **Changed constraint**: mandated mapping stack is now **MapLibre GL JS +
+  deck.gl** (vector rendering with GPU-accelerated overlay layers), replacing
+  "Leaflet.js / MapLibre GL". CartoDB Positron/Dark Matter base tiles unchanged.
+- **Rationale**: deck.gl overlay layers on MapLibre GL JS provide a single,
+  modern vector-stack for stop markers, line geometries, and future real-time
+  vehicle positions — avoiding a later migration off raster-oriented Leaflet.
+- **Bump rationale**: MINOR — materially expanded guidance on a mandated
+  technology choice; no principle removed or redefined incompatibly.
+- **Migration**: none; `spec_000_architecture.md` lists "Leaflet.js / MapLibre
+  GL" as interchangeable options — the constitution now narrows that choice and
+  remains the superseding document per Governance.
+- **Compatibility note**: deck.gl + MapLibre GL JS carry a heavier payload than
+  Leaflet; the plan gate MUST set the numeric performance/payload budget
+  (mobile-first hard constraint) with this choice accounted for.
+
+**Gate G1: CLOSED.** Constitution **v1.2.0** is the governing document.
 
 ## Follow-ups carried to later phases
 

@@ -69,9 +69,10 @@ proxy evolution and makes the integration testable.
 All infrastructure choices MUST remain within permanent free tiers, per
 `spec_000_architecture.md`: GitHub Pages (hosting), Cloudflare Workers ≤100k
 requests/day (edge proxy, 30s edge cache per stop query), CartoDB Positron/Dark
-Matter tiles, Leaflet.js/MapLibre GL. All user data — favorite stops, recent
-history, settings — MUST persist exclusively in the user's browser `localStorage`.
-No user accounts, analytics that identify users, or user data may leave the device.
+Matter tiles, MapLibre GL JS with deck.gl overlay layers. All user data —
+favorite stops, recent history, settings — MUST persist exclusively in the
+user's browser `localStorage`. No user accounts, analytics that identify users,
+or user data may leave the device.
 
 **Rationale**: the project is a public-good open-source tool; zero cost and
 absolute privacy are non-negotiable product properties.
@@ -96,7 +97,7 @@ product itself must speak the language of its users.
 | Language | JavaScript/TypeScript | Type-safe contracts preferred at port boundaries |
 | Hosting | GitHub Pages | Static PWA only; HTTPS |
 | Edge proxy | Cloudflare Workers | REST↔SOAP translation; CORS `Access-Control-Allow-Origin: *`; 30s cache TTL |
-| Mapping | Leaflet.js / MapLibre GL | CartoDB Positron & Dark Matter base layers |
+| Mapping | MapLibre GL JS + deck.gl | CartoDB Positron & Dark Matter base layers |
 | Client persistence | Browser `localStorage` | Namespaced keys, versioned schema, migrations |
 | CI/CD | Harness + GitHub Actions | Deploy `/worker` → Cloudflare, `/frontend` → Pages on push to `main` |
 
@@ -150,4 +151,4 @@ Software Architect may veto any plan that violates Principles I, II, V, or VI.
 Use `docs/harness-charter.md` for runtime harness guidance and
 `spec_000_architecture.md` as the normative architecture reference.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-25 | **Last Amended**: 2026-10-25
+**Version**: 1.2.0 | **Ratified**: 2026-10-25 | **Last Amended**: 2026-10-25
