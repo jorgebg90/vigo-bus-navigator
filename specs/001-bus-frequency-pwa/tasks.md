@@ -15,7 +15,7 @@
 - [ ] T003 [P] Configure strict TypeScript, ES2022 modules, and shared compiler settings in `tsconfig.json`, `frontend/tsconfig.json`, and `worker/tsconfig.json`
 - [ ] T004 [P] Configure Vite, GitHub Pages base path, local/production profiles, manual map chunking, and PWA integration in `frontend/vite.config.ts`
 - [ ] T005 [P] Configure Vitest node and happy-dom projects, v8 coverage, and test globs in `vitest.config.ts`
-- [ ] T006 [P] Configure Playwright for the single offline smoke test in `playwright.config.ts`
+- [ ] T006 [P] Configure Playwright for the single offline smoke test and pin the target browser matrix (desktop Chromium/Firefox/WebKit plus mobile Chromium) in `playwright.config.ts`
 - [ ] T007 [P] Add repository lint/typecheck/test ignore rules and developer environment defaults in `.gitignore` and `.env.example`
 
 ## Phase 2: Foundational
@@ -25,8 +25,8 @@
 **Checkpoint**: Foundation ready; user stories can be implemented and tested independently.
 
 - [ ] T008 Define pure domain entities and validation types in `frontend/src/domain/types.ts`
-- [ ] T009 Define `ScheduleRepository`, `ArrivalsGateway`, `StoragePort`, `ClockPort`, `VisibilityPort`, and `MapPort` in `frontend/src/application/ports.ts`
-- [ ] T010 [P] Add shared test fixtures for lines, stops, timetables, arrivals, and local profile failures in `frontend/src/infrastructure/fixtures/`
+- [ ] T009 Define `ScheduleRepository`, `ArrivalsGateway`, `StoragePort`, `ClockPort`, `VisibilityPort`, and `MapPort` in `frontend/src/application/ports.ts`; this is the canonical TypeScript import location and `contracts/internal-ports.md` is its specification
+- [ ] T010 [P] Add shared test fixtures for lines, stops, timetables, and arrivals covering live, timeout, upstream, network, unparseable, and empty-arrivals cases in `frontend/src/infrastructure/fixtures/`
 - [ ] T011 [P] Create versioned schedule fixture files in `frontend/public/data/fixtures/` and production snapshot placeholders in `frontend/public/data/`
 - [ ] T012 [P] Implement local and production profile resolution in `frontend/src/infrastructure/config.ts`
 - [ ] T013 [P] Implement deterministic clock and visibility adapters in `frontend/src/infrastructure/system/`
@@ -102,7 +102,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T046 [US3] Implement the lazy MapLibre GL JS and deck.gl `MapPort` adapter with light/dark CartoDB styles in `frontend/src/infrastructure/map/map-port.ts`
+- [ ] T046 [US3] First calibrate treeshaken MapLibre GL JS plus deck.gl against the 350 KB gzip target with a production build, then implement the lazy `MapPort` adapter with light/dark CartoDB styles in `frontend/src/infrastructure/map/map-port.ts`; document that CartoDB XYZ tiles are the constitutional Principle V exception recorded in `contracts/internal-ports.md`
 - [ ] T047 [US3] Implement the lazy map entry point and stable map container layout in `frontend/src/ui/map/map-view.ts`
 - [ ] T048 [US3] Implement stop markers, fit-to-line behavior, accessible popups, and line-serving details in `frontend/src/ui/map/stop-markers.ts`
 - [ ] T049 [US3] Wire map loading from line detail and theme preference changes in `frontend/src/main.ts`
@@ -122,7 +122,7 @@
 ### Implementation for User Story 4
 
 - [ ] T053 [US4] Implement pure favorite validation, ordering, and default preferences in `frontend/src/domain/favorites.ts`
-- [ ] T054 [US4] Implement namespaced versioned localStorage envelopes, migration chain, corruption backup/reset, and quota-safe memory fallback in `frontend/src/infrastructure/storage/local-storage-adapter.ts`
+- [ ] T054 [US4] Implement namespaced versioned localStorage envelopes, migration chain, corruption backup/reset, and quota-safe memory fallback in `frontend/src/infrastructure/storage/local-storage-adapter.ts`; watch: a future `v2` key bump must remove old `vbn:v1:*` keys only after migration completes
 - [ ] T055 [US4] Implement favorite toggle and preference use cases through `StoragePort` in `frontend/src/application/toggle-favorite.ts`
 - [ ] T056 [US4] Implement favorites section, favorite controls, deep links, and session-only notice in `frontend/src/ui/home/favorites.ts`
 - [ ] T057 [US4] Wire storage-backed favorites/preferences into the composition root in `frontend/src/main.ts`
