@@ -35,6 +35,9 @@ Delivers full value on its own as an MVP.
 3. **Given** a line with no service on the current day type, **When** the user
    selects it, **Then** a clear "no service on this day type" message is shown
    alongside a link to the nearest day type with service.
+4. **Given** any line detail view, **When** the frequency table is displayed,
+   **Then** the version/date of the underlying schedule dataset is visible
+   next to it.
 
 ---
 
@@ -167,6 +170,12 @@ change and the choice persists across sessions.
   persist.
 - **Stale schedule data after a timetable change**: the app shows the data
   version/date so users can judge freshness.
+- **App open across midnight**: when the device date changes while the app is
+  open, the day type is re-evaluated and the displayed schedule updates (or the
+  user is prompted to refresh) instead of silently showing yesterday's day type.
+- **Holiday coinciding with a Saturday or Sunday**: the holiday calendar takes
+  precedence over the weekday — a holiday falling on a Saturday or Sunday uses
+  the Sunday/holiday schedule.
 - **Night lines or special-event services**: lines without a regular weekday/
   Saturday/Sunday pattern display their specific calendar notes instead of a
   frequency table.
