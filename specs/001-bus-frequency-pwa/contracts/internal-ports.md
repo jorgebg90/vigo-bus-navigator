@@ -33,7 +33,7 @@ interface ArrivalsGateway {
 }
 
 type ArrivalsResult =
-  | { kind: 'live'; arrivals: Arrival[]; fetchedAt: string }
+  | { kind: 'live'; arrivals: Arrival[]; fetchedAt: string }  // fetchedAt anchored to the response's generatedAt (server time)
   | { kind: 'unavailable'; reason: 'timeout' | 'upstream' | 'network' | 'validation' };
 ```
 
@@ -109,3 +109,7 @@ interface MapPort {
   OpenAPI contract (ArrivalsGateway) and the `Storage` fake (StoragePort).
 - Adding a network call requires declaring it here and, when it crosses the
   device boundary, in an OpenAPI document first (Principle V).
+- **Declared exception**: CartoDB base-map tiles are fetched by the map
+  engine (XYZ tile service, third-party provider); no OpenAPI document is
+  feasible for an external provider we do not own. This is the only
+  third-party network call exempt from the OpenAPI rule (FR-018).

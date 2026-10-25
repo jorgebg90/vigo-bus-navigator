@@ -47,18 +47,21 @@
 
 ## D3. Payload budget (constitution: "numeric budgets set at the plan gate")
 
-- **Decision**: **≤ 400 KB initial JS+CSS gzipped**, structured as
-  **shell ≤ 150 KB** + **lazy map chunk ≤ 250 KB** (dynamic `import()` with
+- **Decision**: **≤ 500 KB initial JS+CSS gzipped**, structured as
+  **shell ≤ 150 KB** + **lazy map chunk ≤ 350 KB** (dynamic `import()` with
   idle-time prefetch). Excluded from the budget: map tiles (network-cached)
   and the bundled JSON snapshot (SW precache, not JS). Enforced per-chunk by
   **size-limit** (`@size-limit/file`) as a hard CI gate on PRs; Lighthouse CI
   (LCP/TBT) as a secondary runtime backstop. `rollup-plugin-visualizer` stays
   a manual diagnostic.
 - **Rationale**: MapLibre (~200–230 KB gz) + treeshaken deck.gl/luma
-  (~100–150 KB gz) physically cannot fit a strict eager budget — the map MUST
-  lazy-load on map-view entry; what the user feels at first paint is the
-  ≤150 KB shell. 400 KB gz all-in is the defensible floor for the mandated
-  stack while keeping SC-002 (<3s interactive, mid-range phone, 4G) credible.
+  (~100–150 KB gz) total ~300–380 KB gz for the mandated map stack — the map
+  MUST lazy-load on map-view entry, and the chunk cap must match reality
+  (350 KB with headroom), or the CI gate would force constant exceptions.
+  What the user feels at first paint is the ≤150 KB shell; 500 KB gz all-in
+  (mostly deferred) keeps SC-002 (<3s interactive, mid-range phone, 4G)
+  credible without unachievable constraints. A size-limit calibration spike is
+  the first map task to validate the deck.gl/luma treeshaken weight.
 - **Alternatives considered**: bundlesize (unmaintained); Lighthouse CI alone
   (lab variance makes it a poor hard gate); flat 250 KB budget (unachievable
   with the mandated stack — would force constant exceptions).
@@ -96,11 +99,12 @@
 
   Boot payload: manifest + stops + line index; timetables lazy-loaded per line
   on demand. Free size reductions: minified output, array-based records, times
-  as seconds-since-midnight, day-type enum codes, coordinate rounding, stop
-  deduplication. Versioning via `datasetVersion` + validity dates; content-
-  hashed filenames for clean SW cache-busting. A documented generation script
-  emits the minified snapshot from a human-readable canonical source kept in
-  the repo (diff-friendly per line).
+  as **minutes-since-midnight integers** (aligned with the data model),
+  day-type enum codes, coordinate rounding, stop deduplication. Versioning via
+  `datasetVersion` + validity dates; content-hashed filenames for clean SW
+  cache-busting. A documented generation script (`scripts/snapshot/`) emits
+  the minified snapshot from a human-readable canonical source kept in the
+  repo (diff-friendly per line).
 - **Rationale**: JSON is browsable in devtools, parseable with zero
   dependencies, compresses ~5–10× over the wire, and works offline via the SW
   cache. `JSON.parse` beats any JS-level binary decoder at this scale.

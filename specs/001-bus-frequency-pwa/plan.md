@@ -37,9 +37,11 @@ on GitHub Pages; Cloudflare Workers for the sole edge proxy
 **Project Type**: web application (PWA frontend + single-purpose edge Worker)
 
 **Performance Goals**: SC-002 <3s interactive on mid-range phone/4G; initial
-JS+CSS ≤ **400 KB gz** (shell ≤ 150 KB + lazy map chunk ≤ 250 KB; tiles and
-JSON snapshot excluded); live arrivals freshness ≤ 60s (SC-008) with 30s edge
-TTL
+JS+CSS ≤ **500 KB gz** (shell ≤ 150 KB + lazy map chunk ≤ 350 KB; tiles and
+JSON snapshot excluded) — sized to the mandated stack's real weights
+(MapLibre ~200–230 KB gz + treeshaken deck.gl/luma ~100–150 KB gz, D3);
+live arrivals freshness ≤ 60s (SC-008): stop view refreshes every **30s,
+visible-only**, edge TTL 30s with deterministic `x-edge-stored-at` stamping
 
 **Constraints**: WCAG 2.2 AA (semantic markup, keyboard, screen reader,
 contrast, ≥44px touch targets); offline-capable (SW precache of shell +
@@ -71,7 +73,7 @@ stories, 1 REST endpoint, 3 UI locales, 2 deploy targets (Pages, Worker)
 | VI. Zero-Cost Serverless & Privacy | PASS | GitHub Pages + Workers free tier (≤100k req/day, 30s edge cache), CartoDB tiles, MapLibre + deck.gl (v1.2.0), localStorage-only user data, no accounts/analytics |
 | VII. Clean Code & English | PASS | YAGNI rulings recorded per research decision (toolchain capped, zero-dep i18n, single-route Worker without framework); all artifacts in English |
 | Hard constraint: WCAG 2.2 AA | PASS | Budgeted into plan (SC-004, MapPort theme contract, `lang` switching); G5 verifies live-region behavior of the auto-refreshing stop view |
-| Hard constraint: mobile-first budget | PASS | **Numeric budget set at this gate**: ≤400 KB gz initial JS+CSS (shell ≤150 KB, map chunk ≤250 KB), size-limit enforced in CI (D3) |
+| Hard constraint: mobile-first budget | PASS | **Numeric budget set at this gate**: ≤500 KB gz initial JS+CSS (shell ≤150 KB, map chunk ≤350 KB — matches D3's cited library weights), size-limit per-chunk in CI (D3) |
 
 **Post-design re-evaluation**: all gates PASS. No violations to justify.
 
@@ -144,6 +146,11 @@ worker/                              # Cloudflare Worker (separate deploy)
 ├── wrangler.toml                    # route/env config (no secrets committed)
 └── test/
     └── contract.test.ts             # miniflare: responses match OpenAPI schema
+
+scripts/snapshot/                    # FR-015 documented update pipeline
+├── source/                          # canonical human-readable data (per-line CSV/JSON)
+├── generate.ts                      # canonical source → minified public/data/** snapshot
+└── README.md                        # regeneration procedure + validity dates policy
 
 .github/workflows/
 ├── ci.yml                           # lint, typecheck, unit/dom/contract tests,

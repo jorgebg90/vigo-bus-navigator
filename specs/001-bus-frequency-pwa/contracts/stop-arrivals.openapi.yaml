@@ -69,6 +69,16 @@ paths:
                 error:
                   code: VALIDATION_ERROR
                   message: stop_id must match ^\d{1,6}$
+        '405':
+          description: Method not allowed — only GET is supported.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: METHOD_NOT_ALLOWED
+                  message: Only GET is supported
         '502':
           description: Upstream legacy endpoint failure (non-200, SOAP Fault, or unparseable XML).
           content:
@@ -138,6 +148,6 @@ components:
           properties:
             code:
               type: string
-              enum: [VALIDATION_ERROR, UPSTREAM_ERROR, UPSTREAM_UNPARSEABLE, UPSTREAM_TIMEOUT]
+              enum: [VALIDATION_ERROR, METHOD_NOT_ALLOWED, UPSTREAM_ERROR, UPSTREAM_UNPARSEABLE, UPSTREAM_TIMEOUT]
             message:
               type: string
