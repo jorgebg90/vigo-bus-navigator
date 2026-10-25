@@ -15,7 +15,7 @@
 - [ ] T003 [P] Configure strict TypeScript, ES2022 modules, and shared compiler settings in `tsconfig.json`, `frontend/tsconfig.json`, and `worker/tsconfig.json`
 - [ ] T004 [P] Configure Vite, GitHub Pages base path, local/production profiles, manual map chunking, and PWA integration in `frontend/vite.config.ts`
 - [ ] T005 [P] Configure Vitest node and happy-dom projects, v8 coverage, and test globs in `vitest.config.ts`
-- [ ] T006 [P] Configure Playwright for the single offline smoke test and pin the target browser matrix (desktop Chromium/Firefox/WebKit plus mobile Chromium) in `playwright.config.ts`
+- [ ] T006 [P] Configure Playwright for the offline smoke test and pin the SC-003 matrix (Chrome Android, Safari iOS, and Chrome desktop) in `playwright.config.ts`
 - [ ] T007 [P] Add repository lint/typecheck/test ignore rules and developer environment defaults in `.gitignore` and `.env.example`
 
 ## Phase 2: Foundational
@@ -115,16 +115,16 @@
 
 ### Tests for User Story 4
 
-- [ ] T050 [P] [US4] Test versioned envelopes, migrations, newer-version defaults, corruption backup/reset, and quota fallback in `frontend/tests/unit/storage-adapter.test.ts`
+- [ ] T050 [P] [US4] Test versioned envelopes, migrations, newer-version defaults, corruption backup/reset, quota fallback, and newest-first five-item recent-view retention in `frontend/tests/unit/storage-adapter.test.ts`
 - [ ] T051 [P] [US4] Test favorite ordering, add/remove behavior, and session-only persistence status in `frontend/tests/unit/toggle-favorite.test.ts`
 - [ ] T052 [P] [US4] Test favorites-first home rendering, deep links, persistence notice, and reload restoration in `frontend/tests/dom/us4-favorites.test.ts`
 
 ### Implementation for User Story 4
 
-- [ ] T053 [US4] Implement pure favorite validation, ordering, and default preferences in `frontend/src/domain/favorites.ts`
+- [ ] T053 [US4] Implement pure favorite validation, ordering, five-item recent-view retention, and default preferences in `frontend/src/domain/favorites.ts`
 - [ ] T054 [US4] Implement namespaced versioned localStorage envelopes, migration chain, corruption backup/reset, and quota-safe memory fallback in `frontend/src/infrastructure/storage/local-storage-adapter.ts`; watch: a future `v2` key bump must remove old `vbn:v1:*` keys only after migration completes
-- [ ] T055 [US4] Implement favorite toggle and preference use cases through `StoragePort` in `frontend/src/application/toggle-favorite.ts`
-- [ ] T056 [US4] Implement favorites section, favorite controls, deep links, and session-only notice in `frontend/src/ui/home/favorites.ts`
+- [ ] T055 [US4] Implement favorite toggle, recent-view recording, and preference use cases through `StoragePort` in `frontend/src/application/toggle-favorite.ts`
+- [ ] T056 [US4] Implement favorites section, recent-views section, favorite controls, deep links, and session-only notice in `frontend/src/ui/home/favorites.ts`
 - [ ] T057 [US4] Wire storage-backed favorites/preferences into the composition root in `frontend/src/main.ts`
 
 ## Phase 7: User Story 5 - Offline access and connection-aware usage (Priority: P5)
@@ -170,11 +170,12 @@
 
 - [ ] T071 [P] Add WCAG 2.2 AA semantic landmarks, focus management, contrast tokens, keyboard navigation, and 44px touch targets in `frontend/src/ui/` and `frontend/src/ui/styles.css`
 - [ ] T072 [P] Add theme preference resolution and accessible light/dark design tokens in `frontend/src/ui/theme.ts` and `frontend/src/ui/styles.css`
-- [ ] T073 [P] Calibrate shell and lazy map gzip budgets, configure `size-limit`, and enforce 150 KB shell / 350 KB map / 500 KB total gates in `package.json` and `.size-limit.json`
+- [ ] T073 [P] Calibrate shell and lazy map gzip budgets, configure `size-limit`, enforce 150 KB shell / 350 KB map / 500 KB total gates, and add Lighthouse CI configuration for the <3s interactive target in `package.json`, `.size-limit.json`, and `lighthouserc.json`
 - [ ] T074 [P] Complete canonical snapshot generation, validation, hashes, validity dates, and update instructions in `scripts/snapshot/generate.ts` and `scripts/snapshot/README.md`
-- [ ] T075 [P] Add browser support matrix and accessibility/performance checks to `docs/quality.md`
+- [ ] T075 [P] Add the Chrome Android/Safari iOS/Chrome desktop acceptance matrix, P1-P4 browser checks, WCAG checks, and static privacy audit to `docs/quality.md`
 - [ ] T076 [P] Run all quickstart scenarios and document exact local commands and expected outputs in `README.md`
 - [ ] T077 Run full CI-equivalent validation: `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:coverage`, `npm run test:e2e`, `npm run lint:openapi`, `npm run test:contract`, and `npm run size`
+- [ ] T078 [P] Add the Communicator G6 phase drafts for constitution, specification, plan, and tasks decisions in `docs/blog/01-constitution.md`, `docs/blog/02-specification.md`, `docs/blog/03-plan.md`, and `docs/blog/04-tasks.md`
 
 ## Dependencies & Execution Order
 

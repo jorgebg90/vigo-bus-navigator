@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-25
 
-**Status**: Draft
+**Status**: Approved
 
 **Input**: Baseline product specification for the Vigo Bus Navigator: a pure-frontend PWA on GitHub Pages to check urban bus frequencies in Vigo, with user state persisted exclusively in the browser's `localStorage`, per constitution v1.2.1 and the reference architecture example.
 

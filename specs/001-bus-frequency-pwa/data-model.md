@@ -99,6 +99,15 @@ with the dataset (spec assumption).
 | theme | `light` \| `dark` \| `system` | map base layer + UI |
 | language | `es` \| `gl` \| `en` | FR-014 |
 | lastLineId | string, optional | resume context |
+| recentViews | RecentView[] | newest-first, maximum five line/stop references |
+
+### RecentView
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| type | `line` \| `stop` | viewed entity type |
+| targetId | string | Line.id or Stop.id |
+| viewedAt | string (ISO datetime) | ordering timestamp |
 
 ## Storage mapping
 

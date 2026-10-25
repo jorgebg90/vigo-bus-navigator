@@ -24,4 +24,15 @@
 - Task format validator: passed, `TASK_COUNT:77`, `G4_TASK_REVIEW_FIXES_VALID`.
 - `git diff --check`: passed.
 - MVP scope: T001-T030 delivers US1 from bundled data without network access.
-- Full delivery scope: T001-T077 covers setup, foundation, US1-US6, cross-cutting quality, and CI-equivalent validation.
+- Full delivery scope: T001-T078 covers setup, foundation, US1-US6, cross-cutting quality, CI-equivalent validation, and G6 documentation.
+
+## Post-analysis Amendments
+
+The interactive remediation review added T078 and the first four Communicator drafts, aligned the specification status to `Approved`, defined five-item recent-view retention, fixed the SC-003 browser matrix to Chrome Android/Safari iOS/Chrome desktop, added Lighthouse CI and privacy-audit coverage, and confirmed `frontend/src/application/ports.ts` as the canonical port source.
+
+### QA Verdict - G4 Re-review - 2026-10-25
+
+- Verdict: APPROVED
+- Coverage: 7/7 prior analysis findings resolved.
+- Findings: none.
+- Required actions: none.

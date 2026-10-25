@@ -116,7 +116,7 @@ frontend/                            # PWA deployed to GitHub Pages (Vite root)
 │   │   ├── get-line-frequency.ts
 │   │   ├── get-stop-arrivals.ts     # live → scheduled fallback (FR-017)
 │   │   ├── toggle-favorite.ts
-│   │   └── ports.ts                 # re-exports contracts/internal-ports.ts
+│   │   └── ports.ts                 # canonical TypeScript port definitions; contracts/internal-ports.md documents them
 │   ├── infrastructure/
 │   │   ├── schedule/                # ScheduleRepository: bundled fetch adapter
 │   │   ├── arrivals/                # ArrivalsGateway: edge-proxy HTTP adapter
