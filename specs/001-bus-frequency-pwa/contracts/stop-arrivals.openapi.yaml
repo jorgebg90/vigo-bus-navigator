@@ -1,0 +1,143 @@
+openapi: 3.1.0
+info:
+  title: Vigo Bus Navigator — Stop Arrivals API
+  version: 1.0.0
+  description: >-
+    Live arrival estimates for a bus stop in Vigo. Implemented by the
+    Cloudflare Worker edge proxy, which translates this REST interface into
+    the legacy SOAP transport endpoint. Contract-first per constitution
+    Principle V: the frontend client and the Worker MUST both conform to this
+    document; breaking changes require a version bump and G3-gate review.
+  contact:
+    name: Vigo Bus Navigator
+servers:
+  - url: https://vigo-bus-proxy.example.workers.dev
+    description: Production edge proxy
+  - url: http://localhost:8787
+    description: Local profile (workerd/miniflare or fixture mock)
+paths:
+  /:
+    get:
+      operationId: getStopArrivals
+      summary: Get live arrival estimates for a stop
+      parameters:
+        - name: stop_id
+          in: query
+          required: true
+          description: Public stop code (Stop.code in the data model).
+          schema:
+            type: string
+            pattern: '^\d{1,6}$'
+          example: '1234'
+      responses:
+        '200':
+          description: >-
+            Arrival estimates. An empty `arrivals` array means no upcoming
+            buses — it is NOT an error.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: 'public, max-age=30 (edge cache TTL)'
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            x-edge-stored-at:
+              schema:
+                type: string
+                format: date-time
+              description: Server-side store timestamp for deterministic TTL checks.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArrivalsResponse'
+              example:
+                stopId: '1234'
+                generatedAt: '2026-10-25T18:30:00Z'
+                arrivals:
+                  - lineCode: L4A
+                    destination: Plaza de América
+                    minutes: 4
+                    eta: '2026-10-25T18:34:00Z'
+        '400':
+          description: Invalid stop_id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: VALIDATION_ERROR
+                  message: stop_id must match ^\d{1,6}$
+        '502':
+          description: Upstream legacy endpoint failure (non-200, SOAP Fault, or unparseable XML).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                upstreamError:
+                  value:
+                    error:
+                      code: UPSTREAM_ERROR
+                      message: Legacy transport endpoint returned an error
+                unparseable:
+                  value:
+                    error:
+                      code: UPSTREAM_UNPARSEABLE
+                      message: Could not parse upstream response
+        '504':
+          description: Upstream timeout (6s).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: UPSTREAM_TIMEOUT
+                  message: Legacy transport endpoint timed out
+components:
+  schemas:
+    ArrivalsResponse:
+      type: object
+      required: [stopId, generatedAt, arrivals]
+      properties:
+        stopId:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        arrivals:
+          type: array
+          items:
+            $ref: '#/components/schemas/Arrival'
+    Arrival:
+      type: object
+      required: [lineCode, destination, minutes, eta]
+      properties:
+        lineCode:
+          type: string
+          example: L4A
+        destination:
+          type: string
+          example: Plaza de América
+        minutes:
+          type: integer
+          minimum: 0
+          example: 4
+        eta:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [VALIDATION_ERROR, UPSTREAM_ERROR, UPSTREAM_UNPARSEABLE, UPSTREAM_TIMEOUT]
+            message:
+              type: string
