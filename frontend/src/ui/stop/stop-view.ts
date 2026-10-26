@@ -1,0 +1,1 @@
+export { renderStopArrivals } from './stop-arrivals-view';

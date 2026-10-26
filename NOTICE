@@ -1,0 +1,25 @@
+Vigo Bus Navigator
+==================
+
+This project includes code based on the code of VigoBusAPI
+(https://github.com/David-Lor/VigoBusAPI).
+
+Copyright 2021-2023 David Lorenzo (https://github.com/David-Lor)
+Licensed under the Apache License, Version 2.0. A copy of the license is
+available in the LICENSE file of this repository and at
+https://www.apache.org/licenses/LICENSE-2.0
+
+Ported components (worker/src/normalize.ts):
+  - vigobusapi/vigobus_getters/http/http_parser.py  → parseEstimaciones
+  - vigobusapi/vigobus_getters/string_fixes.py      → fixBus, fixMojibake
+    (LINE_LETTERS, CHARS_FIXED tables)
+  - vigobusapi/vigobus_getters/helpers.py           → arrival ordering
+  - vigobusapi/vigobus_getters/html/html_parser.py  → duplicate removal
+
+Modifications: ported from Python to TypeScript; typed wire contract; eta
+computed as generatedAt + minutes; drop-rule for empty destinations and
+out-of-range minutes; stop-not-exist surfaced as a contract error code.
+
+Disclaimer: Vigo Bus Navigator is not endorsed by, directly affiliated with,
+maintained by, sponsored by, or officially connected to the public transport
+operator of the city of Vigo (Vitrasa) or to the VigoBusAPI project.

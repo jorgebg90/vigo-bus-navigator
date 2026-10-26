@@ -1,0 +1,167 @@
+{
+  "info": {
+    "name": "Vigo Bus Navigator API",
+    "description": "Final REST Worker endpoints for the Vigo network catalog and stop arrivals. Default baseUrl uses the local fixture Worker at http://localhost:8787. For the local live Worker, set baseUrl to http://localhost:8788. The arrivals request accepts current, stale, or empty results; it does not assume buses are due.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8787",
+      "type": "string"
+    },
+    {
+      "key": "lineCode",
+      "value": "4A",
+      "type": "string"
+    },
+    {
+      "key": "stopId",
+      "value": "1001",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/health"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns Worker liveness', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(pm.response.json().status).to.eql('ok');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Catalog - list lines ordered by code",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/lines"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns lines in natural line-code order', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.datasetVersion).to.be.a('string');",
+              "  pm.expect(body.generatedAt).to.be.a('string');",
+              "  pm.expect(body.lines).to.be.an('array').that.is.not.empty;",
+              "  const codes = body.lines.map(function (line) { return line.code; });",
+              "  const sortedCodes = codes.slice().sort(function (left, right) {",
+              "    return left.localeCompare(right, 'en', { numeric: true, sensitivity: 'base' });",
+              "  });",
+              "  pm.expect(codes).to.eql(sortedCodes);",
+              "  body.lines.forEach(function (line) { pm.expect(line.name).to.be.a('string').and.not.empty; });",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Catalog - get line by code with ordered route stops",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/lines/{{lineCode}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns the requested line and its ordered route stops', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const line = pm.response.json();",
+              "  pm.expect(line.code).to.eql(pm.collectionVariables.get('lineCode'));",
+              "  pm.expect(line.patterns).to.be.an('array').that.is.not.empty;",
+              "  line.patterns.forEach(function (pattern) {",
+              "    pm.expect(pattern.stops.map(function (stop) { return stop.id; })).to.eql(pattern.stopIds);",
+              "  });",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Catalog - list stops",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/stops"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns catalog stops with nullable municipal and Vitrasa IDs', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.datasetVersion).to.be.a('string');",
+              "  pm.expect(body.stops).to.be.an('array').that.is.not.empty;",
+              "  body.stops.forEach(function (stop) {",
+              "    pm.expect(stop.id).to.be.a('string').and.not.empty;",
+              "    pm.expect(stop.municipalCode === null || typeof stop.municipalCode === 'string').to.eql(true);",
+              "    pm.expect(stop.vitrasaId === null || typeof stop.vitrasaId === 'string').to.eql(true);",
+              "  });",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Arrivals - get by stop ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/stops/{{stopId}}/arrivals"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns a valid arrivals response', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.stopId).to.eql(pm.collectionVariables.get('stopId'));",
+              "  pm.expect(Number.isNaN(Date.parse(body.generatedAt))).to.eql(false);",
+              "  pm.expect(['current', 'stale', 'empty']).to.include(body.dataStatus);",
+              "  pm.expect(body.arrivals).to.be.an('array');",
+              "  body.arrivals.forEach(function (arrival) {",
+              "    pm.expect(arrival.lineCode).to.be.a('string').and.not.empty;",
+              "    pm.expect(arrival.destination).to.be.a('string').and.not.empty;",
+              "    pm.expect(arrival.minutes).to.be.a('number');",
+              "    pm.expect(Number.isNaN(Date.parse(arrival.eta))).to.eql(false);",
+              "  });",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

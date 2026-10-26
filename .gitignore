@@ -1,5 +1,15 @@
 # macOS
 .DS_Store
+node_modules/
+dist/
+build/
+coverage/
+*.log
+.env*
+!.env.example
+.wrangler/
+playwright-report/
+test-results/
 
 # Editor
 .vscode/*

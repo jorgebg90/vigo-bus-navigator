@@ -8,6 +8,15 @@
 
 **Input**: Baseline product specification for the Vigo Bus Navigator: a pure-frontend PWA on GitHub Pages to check urban bus frequencies in Vigo, with user state persisted exclusively in the browser's `localStorage`, per constitution v1.2.1 and the reference architecture example.
 
+## Clarifications
+
+### Session 2026-10-25
+
+- Q: When there is no connectivity or the CartoDB provider cannot load, what should the US3 map display? → A: Show an accessible stop fallback with name, code, serving lines, and coordinates, alongside a map-unavailable notice.
+- Q: If `localStorage` is full or unavailable, should the application continue allowing favorite changes during the current session? → A: Allow in-memory favorites during the session and show a persistence-disabled notice.
+- Q: While offline, how long should the application consider the catalog valid and display it without additional confirmation? → A: Display cached data without a time limit while offline, with a possible-stale notice and visible version/date.
+- Q: What should happen if a Galician or English translation is temporarily missing? → A: Use Spanish as the per-key fallback and fail parity tests so the catalog is fixed before release.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Check frequencies for a bus line (Priority: P1)
@@ -90,6 +99,9 @@ frequency logic beyond line selection.
 3. **Given** the user's system prefers dark mode, **When** the map renders,
    **Then** the dark high-contrast base layer is used by default (user can
    override).
+4. **Given** map tiles are unavailable, **When** the map view is shown, **Then**
+  an accessible stop list with name, code, serving lines, and coordinates is
+  displayed with a visible map-unavailable notice.
 
 ---
 
@@ -166,10 +178,13 @@ change and the choice persists across sessions.
 - **Corrupted or schema-mismatched stored data**: the app detects it, recovers
   gracefully (reset affected keys to defaults), and never crashes on launch.
 - **`localStorage` full or unavailable** (private browsing, quota exceeded):
-  the app works in a session-only mode and tells the user favorites won't
-  persist.
+  the app keeps favorites in memory for the current session and tells the user
+  they won't persist after reload or close.
 - **Stale schedule data after a timetable change**: the app shows the data
   version/date so users can judge freshness.
+- **Offline catalog age**: while disconnected, cached catalog and schedule data
+  remain readable without an expiry block, but the UI always indicates that the
+  data may be stale and shows its dataset version/date.
 - **App open across midnight**: when the device date changes while the app is
   open, the day type is re-evaluated and the displayed schedule updates (or the
   user is prompted to refresh) instead of silently showing yesterday's day type.
@@ -184,6 +199,9 @@ change and the choice persists across sessions.
 - **Live arrival data unavailable** (edge proxy down, legacy endpoint timeout,
   or network loss): the stop arrivals view degrades to scheduled times with a
   clear "live data unavailable" notice; the rest of the app is unaffected.
+- **Missing localized message**: the UI uses the Spanish message for that key as
+  a runtime fallback, while locale-parity tests fail so incomplete catalogs
+  cannot pass release validation.
 
 ## Requirements *(mandatory)*
 
@@ -202,13 +220,22 @@ change and the choice persists across sessions.
   interactive map with high-contrast light and dark base layers.
 - **FR-006**: Each stop on the map MUST expose its name, stop code, and the
   lines serving it.
+- **FR-006a**: When map tiles are unavailable, the app MUST expose the selected
+  line's stops in an accessible list containing name, stop code, serving lines,
+  and coordinates, with a visible map-unavailable notice.
 - **FR-007**: Users MUST be able to mark and unmark lines and stops as
   favorites.
 - **FR-008**: Favorites, UI preferences (theme, language), and recent views
   MUST persist exclusively in the user's browser storage — no account, no
   server-side user state.
+- **FR-008a**: If browser storage is unavailable or quota-exceeded, the app MUST
+  retain favorite changes in memory for the current session and visibly state
+  that they will be lost after reload or close.
 - **FR-009**: The app MUST work on repeat visits with zero connectivity after
   a first successful load (app shell, catalog, and favorites readable offline).
+- **FR-009a**: While offline, cached catalog and schedule data MUST remain
+  readable without a time-based expiry block, and the UI MUST show a stale-data
+  notice together with the dataset version/date.
 - **FR-010**: The app MUST pause any background data refreshing while the page
   is not visible, and resume when it becomes visible again.
 - **FR-011**: The app MUST display the version/date of the schedule data it is
@@ -221,6 +248,9 @@ change and the choice persists across sessions.
 - **FR-014**: All UI text MUST be localizable; the app MUST ship at launch
   with Spanish (default), Galician, and English, and let the user switch
   between them at any time.
+- **FR-014a**: A missing Galician or English message MUST fall back to Spanish
+  at runtime, and automated locale-parity validation MUST fail until all
+  catalogs contain the same non-empty keys.
 - **FR-015**: Schedule data for the catalog and frequencies MUST ship as a
   versioned, bundled snapshot inside the app (no network call required to
   browse lines, stops, and frequencies); a documented update pipeline MUST

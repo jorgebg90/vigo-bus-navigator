@@ -15,9 +15,13 @@ servers:
     description: Production edge proxy
   - url: http://localhost:8787
     description: Local profile (workerd/miniflare or fixture mock)
+tags:
+  - name: arrivals
+    description: Live stop arrival estimates
 paths:
   /:
     get:
+      tags: [arrivals]
       operationId: getStopArrivals
       summary: Get live arrival estimates for a stop
       parameters:

@@ -1,5 +1,11 @@
 # Vigo Bus Navigator Constitution
 
+**Document status**: Ratified as v1.3.0 by Gate G1 on 2026-10-26, from the last
+evidenced baseline v1.2.1. The prior v1.2.2 worktree label had no separate
+ratification record; its Worker-scope wording change is incorporated here as
+part of the MINOR amendment. The ratification record is at
+[`specs/000-constitution/gate-g1-ratification.md`](../../specs/000-constitution/gate-g1-ratification.md).
+
 ## Core Principles
 
 ### I. Browser-First Frontend
@@ -7,9 +13,16 @@
 All application logic MUST run client-side in the browser as a Progressive Web App
 using JavaScript/TypeScript. Static hosting on GitHub Pages is the only production
 target. The sole sanctioned exception to browser-only execution is the Cloudflare
-Worker edge proxy derived from the reference architecture example
-(`docs/reference/spec-000-architecture-example.md`, REST↔SOAP translation and
-CORS injection); no other server-side component may be introduced.
+Worker edge proxy. For feature 002 only, that existing Worker may adapt the
+owner-selected public Vitrasa InfoBus page
+`https://infobus.vitrasa.es:8002/Default.aspx?parada={validatedStopId}`, which
+visibly provides line, destination, and wait-minute arrivals but does not permit
+browser cross-origin access. This is a source-specific exception, not general
+permission to scrape other sources. The adapter MUST validate the stop ID,
+construct only this fixed HTTPS origin and path, reject redirects, and MUST NOT be
+a general-purpose proxy. Source-issued cookies and form state may exist only
+during a single lookup; they MUST NOT be logged, persisted, cached, or returned.
+No other server-side component may be introduced.
 
 **Rationale**: zero-cost, serverless operation with no accounts, no tracking, and
 no infrastructure to maintain.
@@ -56,11 +69,13 @@ solution on their machine with zero external setup.
 
 ### V. Contract-First APIs with OpenAPI
 
-Every HTTP interface — starting with the edge proxy endpoint
-`GET /?stop_id={id}` — MUST be specified in an OpenAPI document before
-implementation. Adapters on both sides (frontend API client, Cloudflare Worker)
-MUST conform to the spec, and the spec MUST be versioned with the interface.
-Breaking changes require a version bump and QA/architect review at the plan gate.
+Every HTTP interface MUST be specified in an OpenAPI document before
+implementation. The current canonical v3.0.0 API includes `GET /lines`,
+`GET /lines/{lineCode}`, `GET /stops`, and `GET /stops/{stopCode}/arrivals`.
+Adapters on both sides (frontend API client, Cloudflare Worker) MUST conform to
+the spec, and the spec MUST be versioned with the interface. Breaking changes
+require a version bump and QA/architect review at the plan gate; changing only
+the Worker-internal upstream adapter does not change the public API version.
 
 **Rationale**: a homogenized, machine-readable contract decouples frontend and
 proxy evolution and makes the integration testable.
@@ -71,12 +86,20 @@ All infrastructure choices MUST remain within permanent free tiers, per the
 reference architecture example (`docs/reference/spec-000-architecture-example.md`):
 GitHub Pages (hosting), Cloudflare Workers ≤100k requests/day (edge proxy, 30s
 edge cache per stop query), CartoDB Positron/Dark Matter tiles, MapLibre GL JS
-with deck.gl overlay layers. All user data — favorite stops, recent history,
-settings — MUST persist exclusively in the user's browser `localStorage`.
-No user accounts, analytics that identify users, or user data may leave the device.
+with deck.gl overlay layers. All user profile data — favorite stops, recent
+history, settings — MUST persist exclusively in the user's browser `localStorage`.
+An arrivals lookup sends only the selected public stop ID from the browser to the
+Worker; the Worker sends that ID and source-required transient WebForms state only
+to the fixed Vitrasa source. The project MUST NOT combine the lookup with identity
+or profile data, create user-activity logs, or retain activity data. The existing
+bounded cache of normalized public arrivals is permitted; it MUST NOT contain
+source HTML or session/form state. Cloudflare and source providers may process
+network metadata outside the project's control; the project MUST NOT claim that
+the lookup is anonymous or control provider-side metadata retention.
 
-**Rationale**: the project is a public-good open-source tool; zero cost and
-absolute privacy are non-negotiable product properties.
+**Rationale**: the project is a public-good open-source tool; zero cost and no
+application-level user profiling or activity retention are non-negotiable. A
+user-selected public stop ID is disclosed only to retrieve its public arrivals.
 
 ### VII. Clean Code, Simplicity & English Documentation
 
@@ -97,7 +120,7 @@ product itself must speak the language of its users.
 | --- | --- | --- |
 | Language | JavaScript/TypeScript | Type-safe contracts preferred at port boundaries |
 | Hosting | GitHub Pages | Static PWA only; HTTPS |
-| Edge proxy | Cloudflare Workers | REST↔SOAP translation; CORS `Access-Control-Allow-Origin: *`; 30s cache TTL |
+| Edge proxy | Cloudflare Workers | CORS `Access-Control-Allow-Origin: *`; feature 002 may adapt only the fixed Vitrasa InfoBus HTTPS page using a validated stop ID, no redirects, transient WebForms state, an 8s aggregate deadline, and 128 KiB/page + 1 MiB/lookup body limits; 30s fresh TTL + 300s last-known stale bound |
 | Mapping | MapLibre GL JS + deck.gl | CartoDB Positron & Dark Matter base layers |
 | Client persistence | Browser `localStorage` | Namespaced keys, versioned schema, migrations |
 | CI/CD | Harness + GitHub Actions | Deploy `/worker` → Cloudflare, `/frontend` → Pages on push to `main` |
@@ -154,4 +177,4 @@ architecture example (`docs/reference/spec-000-architecture-example.md`) is
 non-normative background material; where it diverges from this constitution
 (e.g. mapping engine), this constitution supersedes.
 
-**Version**: 1.2.1 | **Ratified**: 2026-10-25 | **Last Amended**: 2026-10-25
+**Version**: 1.3.0 (MINOR) | **Ratified**: 2026-10-26 | **Amended from**: 1.2.1

@@ -1,0 +1,39 @@
+:root {
+  color-scheme: light;
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #edf3f5;
+  color: #17252d;
+}
+
+:root[data-theme='dark'] { color-scheme: dark; background: #17252d; color: #f5f7f8; }
+body { margin: 0; min-width: 320px; }
+button, input, select { min-height: 44px; font: inherit; }
+button { cursor: pointer; }
+.app-shell { display: grid; grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr); min-height: 100vh; }
+.app-shell > aside { padding: 1.5rem 1rem; border-right: 1px solid #c9d8dc; background: #f8fbfb; }
+.app-sidebar > aside, .app-sidebar > section { max-width: none; margin: 0; padding: 0; }
+.app-view { max-width: none; margin: 0; padding: clamp(1rem, 2.5vw, 2rem); }
+.line-view { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+.line-view > .map-panel { order: -1; }
+main, aside, section { max-width: 70rem; margin: 0 auto; padding: 1rem; }
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: .75rem; border-bottom: 1px solid currentColor; text-align: left; }
+ul { padding-left: 1.25rem; }
+.map-panel { max-width: none; margin: 0; padding: 0; }
+.map-container { border: 1px solid #a9c2c8; border-radius: 14px; min-height: min(68vh, 680px); position: relative; overflow: hidden; background: #e8f0f1; box-shadow: 0 16px 38px rgba(23, 64, 76, .16); }
+.map-canvas { position: absolute; inset: 0; }
+.map-stop-controls, .map-stop-details { position: relative; z-index: 2; }
+.map-stop-controls { display: flex; flex-wrap: wrap; gap: .5rem; padding: .8rem; background: rgba(255, 255, 255, .9); border-bottom: 1px solid rgba(54, 91, 101, .2); }
+.map-stop-controls button { border: 1px solid #8eabb3; border-radius: 999px; padding: .35rem .8rem; background: #fff; color: #173a45; box-shadow: 0 2px 6px rgba(23, 64, 76, .14); }
+.map-stop-controls button[data-selected='true'] { background: #06607b; color: #fff; border-color: #06607b; }
+.map-stop-details { margin: .8rem; padding: .75rem 1rem; max-width: 24rem; border: 1px solid #c3d6da; border-radius: 10px; background: rgba(255, 255, 255, .94); color: #173a45; box-shadow: 0 3px 12px rgba(23, 64, 76, .16); }
+.map-stop-marker { width: 22px; height: 22px; min-height: 22px; padding: 0; border: 3px solid #fff; border-radius: 50%; background: #06607b; box-shadow: 0 2px 8px rgba(23, 64, 76, .45); }
+.map-stop-marker[data-selected='true'] { background: #d45b38; transform: scale(1.2); }
+[role='status'] { padding: .75rem; background: #fff3cd; color: #5c4300; }
+:focus-visible { outline: 3px solid #d45b38; outline-offset: 2px; }
+
+@media (max-width: 760px) {
+  .app-shell { display: block; }
+  .app-shell > aside { border-right: 0; border-bottom: 1px solid #c9d8dc; }
+  .map-container { min-height: 58vh; }
+}

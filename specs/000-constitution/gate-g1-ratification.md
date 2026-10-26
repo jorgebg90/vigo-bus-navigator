@@ -5,7 +5,18 @@
 - **Artifact under review**: [.specify/memory/constitution.md](../../.specify/memory/constitution.md)
 - **Reference architecture**: [docs/reference/spec-000-architecture-example.md](../../docs/reference/spec-000-architecture-example.md)
   (external EXAMPLE, non-normative; absorbed into the constitution)
-- **Outcome**: **CLOSED — RATIFIED as v1.1.0**
+- **Historical outcome**: **CLOSED — initially ratified as v1.1.0**. The last
+  evidenced baseline is v1.2.1 (committed constitution footer; also referenced
+  by feature 001).
+- **Current review**: **CLOSED — RATIFIED as v1.3.0 on 2026-10-26**, from the
+  last evidenced baseline v1.2.1.
+- **Gate status**: CLOSED — all five reviewing actors approved and the Project
+  Lead authorized ratification and closure.
+- **Version-history note**: The worktree previously labeled the constitution
+  v1.2.2, and feature 002 task T036 records a Worker-scope wording change, but
+  this record has no separate v1.2.2 amendment/sign-off section. No historical
+  actor approval is inferred; T036's wording change is included in the current
+  v1.2.1 → v1.3.0 proposal.
 
 ## Round 1 — Review of v1.0.0
 
@@ -226,3 +237,59 @@ actor objections, no artifact migration required — no plans or specs exist yet
 4. **Plan gates**: watch Cloudflare 100k req/day free-tier headroom
    (Stakeholder).
 5. **Specify**: decide product UI language(s) for Vigo's riders (Stakeholder).
+
+## Amendment v1.2.1 → v1.3.0 (MINOR) — RATIFIED
+
+**Status**: RATIFIED from the last evidenced baseline v1.2.1 by all six actors;
+Project Lead closed G1 on 2026-10-26.
+
+**Rationale**: The project owner selected the public Vitrasa InfoBus stop page
+for live arrivals because it exposes line, destination, and wait-minute data.
+The page is HTML/WebForms and does not permit browser cross-origin access, so
+the existing Cloudflare Worker must adapt it. This source-specific allowance
+does not authorize a general scraper, another proxy, or any additional backend.
+
+**Proposed changes**:
+
+- Fold in the pending T036 Principle I / stack wording change from
+  "REST↔SOAP translation" to source-specific upstream adaptation, not a
+  general proxy permission.
+- Principle I permits only the existing Worker to adapt
+  `https://infobus.vitrasa.es:8002/Default.aspx?parada={validatedStopId}` for
+  feature 002; require fixed HTTPS origin/path, validated stop IDs, rejected
+  redirects, request-scoped WebForms state, and no source-state retention.
+- Principle VI documents disclosure of the selected public stop ID and
+  source-required transient state to Vitrasa, prohibits identity/profile
+  coupling and activity logging, and limits cache contents to normalized public
+  arrivals. It explicitly avoids an anonymity claim about provider metadata.
+- Principle V names the current canonical v3.0.0 routes and clarifies that an
+  internal Worker source-adapter change does not alter the public contract.
+- The edge-proxy stack constraint records the 8-second aggregate deadline,
+  128 KiB per-page / 1 MiB per-lookup response-size limits, and existing
+  30-second fresh / 300-second last-known bounds.
+
+**Migration plan**: Update feature 002's spec, research, plan, data model,
+quickstart, source description in the OpenAPI contract, tasks, and test fixtures
+to describe the selected source and its failure/privacy boundaries. Preserve
+the v3.0.0 browser-facing routes and response schema. No other feature or
+service is authorized to use this exception. Correct Principle V's historical
+root-route example to the current canonical API, define the unchanged-code
+Vitrasa stop-ID mapping, add parser/body/row bounds, and require production
+fixture rejection. No migration of the public response schema is needed. The
+MINOR bump is from v1.2.1; the undocumented v1.2.2 label is not treated as
+ratified history.
+
+| Actor | Verdict | Notes |
+| --- | --- | --- |
+| Software Architect | APPROVED — final review | Confirms v1.2.1 baseline, v1.3.0 amendment, fixture-first local, live preview/production, liveness-only health, T036 naming, and sanitized three-page fixture evidence; no remaining plan blocker. |
+| Backend Developer | APPROVED — final review | Confirms the Workers-pool setup is sufficiently specified in T045 for this gate; implementation correctly remains blocked until G1–G4 close. |
+| QA Tester | APPROVED — final review | T049 verifies transient WebForms state is absent from responses, cache, logs, and persistent bindings on success/failure; partial-cache failure is covered. |
+| Stakeholder | APPROVED — final review | Confirms user value, bounded source selection, and clear disclosure; no required edits. |
+| Communicator | APPROVED — final review | Confirms the amendment narrative; blog G6 accuracy was separately approved after observed/proposed behavior and G5 state were clarified. |
+| Project Lead | APPROVED — G1 closed | Confirms all five actor approvals are recorded, finds no remaining discrepancy, and authorizes v1.3.0 ratification and G1 closure. |
+
+### Communicator Verdict — G1 amendment narrative — 2026-10-26
+
+- Verdict: APPROVED
+- Findings: The amendment narrative accurately presents v1.3.0 as a proposal from the last evidenced v1.2.1 baseline, does not treat v1.2.2 as ratified, and states the bounded Worker/source and migration changes without implying broader authorization. No Communicator edits remain. The feature 002 G6 blog accuracy review is separately approved.
+- Scope: This verdict approves only the G1 narrative for Communicator accuracy. It does not infer any other actor's approval and does not close G1.

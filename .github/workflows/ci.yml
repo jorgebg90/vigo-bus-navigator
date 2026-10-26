@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test # Node tests: frontend, scripts, and pure worker/unit only
+      - run: npm run test:contract # Cloudflare Workers runtime; fixtures only
+      - run: npm run test:load # 60-second fixture-only Worker load target; no Vitrasa calls
+      - run: npm run test:coverage
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:e2e
+      - run: npm run lint:openapi
+      - run: npm run build # Static production build; no network required
+      - run: npm run size
+      - run: npm run snapshot:generate
