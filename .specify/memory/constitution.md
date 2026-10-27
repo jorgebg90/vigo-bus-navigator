@@ -1,8 +1,9 @@
 # Vigo Bus Navigator Constitution
 
-**Document status**: Ratified as v2.0.0 MAJOR by Gate G1 on 2026-10-27. This
-amendment supersedes v1.3.0 for new work; the previous constitution and its
-ratification remain historical evidence at
+**Document status**: v2.1.0 MINOR amendment ratified at G1 on 2026-10-27.
+This version governs new work. The ratification does not approve production
+release; the production verification blockers below remain in force.
+Earlier constitutions and ratification records remain historical evidence at
 [`specs/000-constitution/gate-g1-ratification.md`](../../specs/000-constitution/gate-g1-ratification.md).
 
 ## Core Principles
@@ -10,17 +11,21 @@ ratification remain historical evidence at
 ### I. Browser-First Frontend
 
 All application logic and transit-data requests MUST run client-side in the
-browser as a Progressive Web App using JavaScript/TypeScript. Static hosting on
-GitHub Pages is the only production target. The application MUST call the fixed
+browser as a Progressive Web App using JavaScript/TypeScript. Static HTTPS
+hosting is the only production target; GitHub Pages is supported but not
+required. The application MUST call the fixed
 public Vigo municipal JSP endpoint directly over HTTPS using GET requests and a
 closed allowlist of documented `tipo` actions. It MUST NOT use a Cloudflare
 Worker, backend server, or other server-side adapter for transit data. Requests
 MUST omit credentials, validate and encode action parameters, reject arbitrary
-hosts/actions, and keep user profile data out of requests. Direct access MUST
-remain disabled for production until CORS and response behavior have been verified
-from the actual GitHub Pages origin for every required action. If any required
-production check fails, deployment MUST be blocked and the architecture MUST
-return to G1; a Worker fallback is not permitted by this principle.
+hosts/actions, and keep user profile data out of requests. Direct production
+access MUST remain disabled until every required action passes a browser fetch
+with credentials omitted and its response CORS policy is recorded. Hosting is
+origin-independent only when every required action returns
+`Access-Control-Allow-Origin: *`; if the source restricts origins, the actual
+configured production origin MUST be verified. If any required production check
+fails, deployment MUST be blocked and the architecture MUST return to G1; a
+Worker fallback is not permitted by this principle.
 
 The initial source allowlist is limited to the public transit actions recorded
 from VigoPlus: line catalogs, line services, line schedules, stop details, lines
@@ -70,12 +75,15 @@ holds; they are the harness QA gate's primary evidence.
 The application MUST run and be fully testable locally without deploying anywhere.
 Environment profiles MUST be provided — at minimum `local` (fixture data),
 `local-live` (explicit opt-in direct calls from localhost), and `production`
-(direct browser calls from GitHub Pages) — selected via build-time or run-time
-configuration. Automated tests MUST use deterministic fixtures by default. No
+(direct browser calls from the configured static HTTPS host) — selected via
+build-time or run-time configuration. Automated tests MUST use deterministic
+fixtures by default. No
 workflow may require credentials, a Cloudflare account, or an external backend.
 Production direct calls MUST remain disabled until a repeatable browser check
-proves CORS and response compatibility from the actual GitHub Pages origin for
-every required action.
+proves CORS and response compatibility for every required action. If each action
+returns `Access-Control-Allow-Origin: *` with credentials omitted, this check is
+independent of the deployment origin. Otherwise the check MUST use the actual
+configured production origin.
 
 **Rationale**: contributors must be able to clone, run, and verify the entire
 solution on their machine with zero external setup.
@@ -97,8 +105,9 @@ testable without deploying a server-side API.
 ### VI. Zero-Cost Client-Only & Privacy by Design
 
 All infrastructure choices MUST remain within permanent zero-cost static hosting
-and public-data usage limits: GitHub Pages, the fixed Vigo municipal data service,
-CartoDB map tiles, and browser-compatible mapping libraries. The application
+and public-data usage limits: static HTTPS hosting (including GitHub Pages as one
+supported option), the fixed Vigo municipal data service, CartoDB map tiles, and
+browser-compatible mapping libraries. The application
 MUST NOT deploy or depend on a Cloudflare Worker, backend server, or server-side
 transit adapter. All user profile data — favorite stops, recent history, and
 settings — MUST persist exclusively in browser `localStorage`. Transit requests
@@ -138,17 +147,17 @@ product itself must speak the language of its users.
 | Component | Mandated technology | Constraint |
 | --- | --- | --- |
 | Language | JavaScript/TypeScript | Type-safe contracts preferred at port boundaries |
-| Hosting | GitHub Pages | Static PWA only; HTTPS |
-| Transit data | Browser `fetch` | Direct GET to fixed `https://datos.vigo.org/vci_api_app/api2.jsp`; allowlisted actions and parameters; omitted credentials; GitHub Pages CORS gate required |
+| Hosting | Static HTTPS hosting | GitHub Pages is supported but not required; no application server |
+| Transit data | Browser `fetch` | Direct GET to fixed `https://datos.vigo.org/vci_api_app/api2.jsp`; allowlisted actions and parameters; omitted credentials; wildcard CORS gate or configured-origin verification |
 | Mapping | MapLibre GL JS + deck.gl | CartoDB Positron & Dark Matter base layers |
 | Client persistence | Browser `localStorage` | Namespaced keys, versioned schema, migrations |
-| CI/CD | Harness + GitHub Actions | Deploy `/frontend` → GitHub Pages on push to `main`; no transit Worker deployment |
+| CI/CD | Harness + GitHub Actions | Deploy `/frontend` to the configured static HTTPS host; no transit Worker deployment |
 
 Hard constraints:
 
 - No backend server, database, Cloudflare Worker, or user-account system for transit data.
 - Production transit requests MUST originate in the browser and target only the fixed municipal HTTPS endpoint with allowlisted GET actions.
-- Direct production access MUST NOT be enabled until CORS is verified from the actual GitHub Pages origin for every required action. Failure blocks deployment; no Worker fallback is permitted.
+- Direct production access MUST NOT be enabled until every required action passes a browser fetch with credentials omitted and its CORS policy is verified. `Access-Control-Allow-Origin: *` for every required action makes the check origin-independent; otherwise verify the configured production origin. Failure blocks deployment; no Worker fallback is permitted.
 - No paid service or dependency that exceeds a 0.00 € recurring cost level.
 - The frontend MUST pause real-time fetching when backgrounded (`visibilitychange`)
   and MUST cache static assets via Service Worker for offline capability.
@@ -204,6 +213,23 @@ weekday, Saturday, and Sunday/holiday coverage and parity are verified. Failure
 of any production gate blocks release and returns the architecture to G1; no
 Worker fallback is allowed.
 
+### v2.1.0 Hosting and CORS Clarification — Ratified 2026-10-27
+
+This MINOR amendment was approved by all eight actors at G1 and ratified by the
+Project Lead on 2026-10-27. The application may use any static HTTPS host; GitHub Pages is
+supported but is not a required production target. The source CORS gate is
+origin-independent only when every required allowlisted action returns
+`Access-Control-Allow-Origin: *` and passes a browser fetch with credentials
+omitted. If an action restricts allowed origins, the configured production
+origin MUST be tested for that action before release. The current header check
+observed wildcard CORS for 13 action/parameter cases; it does not validate
+schedule identity or all response semantics. The `TRANSPORTE_LINEA_HORARIOS_EXTEND`
+line/day identifier mapping remains a production blocker until verified. On
+ratification, this amendment explicitly supersedes v2.0.0 wording that makes
+GitHub Pages the only production target or the mandatory CORS test origin,
+including the v2.0.0 release-gate wording. It does not relax the zero-cost
+constraint: the configured static HTTPS host MUST remain permanently free.
+
 Versioning follows semantic rules: MAJOR for backward-incompatible principle
 removals or redefinitions, MINOR for new principles or materially expanded
 sections, PATCH for clarifications and non-semantic refinements.
@@ -216,4 +242,4 @@ architecture example (`docs/reference/spec-000-architecture-example.md`) is
 non-normative background material; where it diverges from this constitution
 (e.g. mapping engine), this constitution supersedes.
 
-**Version**: 2.0.0 (MAJOR) | **Last Ratified**: 2026-10-27 | **Last Amended**: 2026-10-27
+**Version**: 2.1.0 (MINOR) | **Last Ratified**: v2.1.0 on 2026-10-27 | **Last Amended**: 2026-10-27

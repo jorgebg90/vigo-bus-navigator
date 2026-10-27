@@ -59,20 +59,19 @@ The v2.0.0 direct-JSP amendment was ratified at G1 by all eight actors and the
 Project Lead on 2026-10-27. It governs new work; v1.3.0 and its existing InfoBus
 Worker path are legacy behavior, not approval to add the municipal JSP as a
 Worker upstream. Feature 004 may proceed to planning under v2.0.0.
-  `localStorage`, no accounts. Under v2.0.0, the existing InfoBus Worker path
-  remains legacy behavior only during migration. Feature 004 removes the Worker
-  from the transit flow after successful production verification; no new
-  Worker upstream or fallback is authorized. The reference architecture example
 
-If the amendment is ratified, feature 004's production transit requests MUST go
-directly from the browser to the fixed municipal JSP using its documented,
-allowlisted GET actions. Every required action MUST pass the production-origin
-CORS and response-validation gate before release. A failed gate blocks release
-and reopens architecture review at G1; it MUST NOT trigger a Worker fallback.
-The legacy Worker may remain only until the direct feature is accepted and
-released, then MUST be removed from transit runtime and deployment. Existing
-closed gate records remain unchanged and do not count as approval for this
-transition.
+The v2.1.0 clarification was ratified at G1 on 2026-10-27 and removes GitHub
+Pages as a required production host while retaining permanently zero-cost static
+HTTPS hosting. Feature 004's production transit requests MUST go directly from the browser to
+the fixed municipal JSP using documented, allowlisted GET actions. Every required
+action MUST pass a browser fetch with credentials omitted before release. If all
+actions return `Access-Control-Allow-Origin: *`, CORS validation is independent
+of the production host; otherwise the configured production origin MUST be
+tested. A failed gate blocks release and reopens architecture review at G1; it
+MUST NOT trigger a Worker fallback. The legacy Worker may remain only until the
+direct feature is accepted and released, then MUST be removed from transit
+runtime and deployment. Existing closed gate records remain unchanged and do
+not count as approval for this transition.
 
 ## Design and Implementation Cycle
 
@@ -113,12 +112,12 @@ and the actor re-approves.
 
 - Everything is written in English (product UI language is a spec-level decision).
 - Clean code and YAGNI: the simplest solution that passes its gate wins.
-- The product stays pure frontend: static hosting on GitHub Pages, user data
-  in `localStorage`, no accounts. While v1.3.0 governs, its existing InfoBus
-  Worker exception remains legacy behavior. The proposed feature 004 amendment
-  removes the Worker from the transit flow after G1 ratification and successful
-  production verification; neither direct JSP access nor a new Worker upstream
-  is authorized before that gate. The reference architecture example
+- The product stays pure frontend: static HTTPS hosting, user data in
+  `localStorage`, no accounts. GitHub Pages is supported but not required under
+  ratified v2.1.0. The v1.3.0/v2.0.0 InfoBus Worker path remains legacy
+  behavior only during migration. Feature 004 removes the Worker from the
+  transit flow after successful production verification; no new Worker upstream
+  or fallback is authorized. The reference architecture example
   (`docs/reference/spec-000-architecture-example.md`) is non-normative.
 - Blog drafts live in `docs/blog/`, one per phase, maintained by the
   Communicator.

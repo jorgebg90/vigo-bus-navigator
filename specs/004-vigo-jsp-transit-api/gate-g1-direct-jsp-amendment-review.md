@@ -101,4 +101,84 @@ G1 is not closed. The current constitution remains authoritative. Do not proceed
 
 ### G1 Re-review Decision
 
-All eight actors approved the proposal for conditional ratification. This unanimous review does not itself constitute production validation. The proposed v2.0.0 must remain clearly marked as pending until the Project Lead records the formal ratification decision. The v1.3.0 constitution remains governing until then. Feature 004 MUST NOT enter planning or implementation before formal ratification. Production release remains blocked until all required GitHub Pages-origin CORS, response, route/trip, and schedule checks pass.
+All eight actors approved the v2.0.0 proposal for conditional ratification, and the Project Lead formally ratified it on 2026-10-27. Constitution v2.0.0 governs new work; feature 004 may proceed to planning. Production release remains blocked by semantic source mapping, route/trip and schedule validation. This formal record does not retroactively alter the historical conditional verdicts above.
+
+## Hosting and CORS Clarification Proposal — 2026-10-27
+
+The user clarified that production transit access must not depend on GitHub Pages. The proposed v2.1.0 MINOR amendment allows any static HTTPS host and treats CORS as origin-independent only when every required action returns `Access-Control-Allow-Origin: *` with credentials omitted. Until v2.1.0 passes G1, ratified v2.0.0 remains governing.
+
+### Browser and Header Evidence — 2026-10-27
+
+- Browser `fetch` from `http://localhost:5173`, with credentials omitted, returned HTTP 200 and JSON for both line catalogs, both service catalogs, stop detail, lines-per-stop, arrivals, schedule day codes 1/2/3, line-stop detail, route GeoJSON, and trip stops.
+- A separate HTTP response-header check sent `Origin: https://cors-check.example`; all 13 action/parameter cases returned HTTP 200, JSON, `Access-Control-Allow-Origin: *`, and `Access-Control-Allow-Credentials: true`. Browser requests omitted credentials. This establishes origin-independent CORS for these tested cases; it does not verify untested actions.
+- The schedule probe `TRANSPORTE_LINEA_HORARIOS_EXTEND&id=A&dia=1` returned a first trip associated with C3. The expected line/day identifier mapping is unresolved and remains a production blocker. Response encoding was declared `ISO-8859-1`; correct decoding also remains to be validated.
+
+### G1 Re-review Requirement
+
+At the time this initial v2.1 review was recorded, only the Project Lead's fresh verdict was available; the other seven fresh actor verdicts had not yet been recorded. The Project Lead's later ratification decision is recorded below after all eight approvals.
+
+### Project Lead Verdict — G1 v2.1 Review — 2026-10-27
+- Verdict: APPROVED
+- Findings: The proposed amendment is sufficiently precise for G1 approval. Upon ratification, it explicitly supersedes v2.0.0 wording that makes GitHub Pages the only production target or the mandatory CORS origin, including the v2.0.0 release-gate wording, while retaining permanently zero-cost static HTTPS hosting. The evidence is limited: 13 tested action/parameter cases returned HTTP 200, JSON, `Access-Control-Allow-Origin: *`, and `Access-Control-Allow-Credentials: true` in a separate HTTP header check; browser fetches from localhost succeeded with credentials omitted. This establishes CORS only for those tested cases, not untested operations. This is constitutional approval, not production-release approval.
+- Required actions: Obtain the other seven fresh actor approvals and formal ratification before v2.1.0 governs. Keep production release blocked until the `id=A&dia=1` line/day mapping (which returned a first C3 trip), declared ISO-8859-1 response encoding and mojibake, route/trip payload structures, and weekday/Saturday/Sunday-holiday schedule coverage and parity are semantically verified. Validate every required production action; do not infer production readiness from the limited CORS evidence.
+
+### Project Lead Ratification — G1 v2.1 — 2026-10-27
+
+- Decision: NOT RATIFIED
+- Conditions: The reviewed record contains the eight approvals for v2.0.0, not eight fresh approvals for v2.1.0; the seven fresh v2.1.0 actor verdicts must be recorded before reconsideration. Preserve the permanently zero-cost static HTTPS hosting constraint. Keep release blocked pending resolution of the `id=A&dia=1` first-C3 schedule result, ISO-8859-1 decoding/mojibake, route/trip semantic schemas, full weekday/Saturday/Sunday-holiday coverage and parity, and validation of every other required action. CORS approval is limited to the 13 tested action/parameter cases and is not production approval.
+
+**Historical decision note**: This NOT RATIFIED decision was made before the seven
+fresh v2.1.0 actor verdicts below were recorded. It is preserved as the initial
+decision and is superseded by the subsequent Project Lead ratification.
+
+## Fresh Actor Verdicts — v2.1.0 — 2026-10-27
+
+### Software Architect Verdict — G1 v2.1 Review — 2026-10-27
+- Verdict: APPROVED
+- Findings: The v2.1 proposal explicitly supersedes v2.0's GitHub Pages-only target and mandatory Pages-origin CORS wording while retaining zero-cost static HTTPS hosting. Wildcard CORS supports host independence only for the 13 tested cases. Production remains blocked by the schedule mapping anomaly, encoding, route/trip semantics, and schedule parity.
+- Required actions: Keep v2.0 governing until fresh unanimous G1 approval and Project Lead ratification. Verify all source semantics and required operations before production.
+
+### Backend Developer Verdict — G1 v2.1 Review — 2026-10-27
+- Verdict: APPROVED
+- Findings: The fixed host/action contract, omitted credentials, v5.0.0 normalized contract, locale mapping, and no-Worker policy are sufficient for v2.1 G1 review. CORS evidence covers only 13 cases. The `id=A&dia=1` response, ISO-8859-1 decoding, route/trip schemas, and schedule parity remain unverified.
+- Required actions: Obtain all fresh G1 approvals and ratification. Keep production blocked pending every required action, parameter, decoding, payload, and schedule validation.
+
+### UX Designer Verdict — G1 v2.1 Review — 2026-10-27
+- Verdict: APPROVED
+- Findings: Hosting independence and the privacy constraints are clear for G1; CORS evidence is limited to the tested cases and does not establish semantic or production readiness.
+- Required actions: At G2/G3, specify an accessible, proportionate disclosure for locale observable from catalog actions, public identifiers sent to the municipal provider, and ordinary network metadata. Define the disclosure in the UX baseline; no blocking consent interaction is established by this verdict. Keep semantic and production gates open.
+
+### Frontend Developer Verdict — G1 v2.1 Review — 2026-10-27
+- Verdict: APPROVED
+- Findings: The proposal permits any permanently zero-cost static HTTPS host and supersedes v2.0's Pages-only wording on ratification. The 13 tested cases establish only limited wildcard CORS, not production release readiness. Schedule identity, encoding, route/trip semantics, and parity remain blockers.
+- Required actions: Obtain the other actor approvals and ratification. Validate all required source operations and resolve the semantic blockers before production.
+
+### QA Tester Verdict — G1 v2.1 Review — 2026-10-27
+- Verdict: APPROVED
+- Findings: The proposal is testable for conditional G1 approval and retains the zero-cost constraint. The tested CORS cases do not establish all-operation or semantic correctness. The C3 result, ISO-8859-1 decoding, route/trip payloads, and day-type parity remain unverified.
+- Required actions: Obtain all fresh approvals and ratification. Before release, validate every operation and parameter, decoding, schema, payload bounds, route/trip, and schedule parity.
+
+### Stakeholder Verdict — G1 v2.1 Review — 2026-10-27
+- Verdict: APPROVED
+- Findings: The amendment clearly permits a non-GitHub Pages static host without abandoning zero-cost hosting. The 13 CORS cases do not amount to production approval. Schedule identity, decoding, route/trip semantics, and weekday/Saturday/Sunday-holiday parity remain unresolved.
+- Required actions: Obtain fresh unanimous G1 approval and ratification; verify all semantic and production gates before release.
+
+### Communicator Verdict — G1 v2.1 Review — 2026-10-27
+- Verdict: APPROVED
+- Findings: The documents accurately separate v2.0 history, the pending v2.1 proposal, the limited wildcard CORS evidence, and unresolved production semantics. No untested action or production behavior is claimed as verified.
+- Required actions: Obtain fresh unanimous approval and ratification. Keep production blocked until schedule mapping, encoding, route/trip schemas, and schedule parity are verified.
+
+### Project Lead Ratification — G1 v2.1 — 2026-10-27
+- Decision: RATIFIED
+- Conditions: Constitution v2.1.0 governs effective 2026-10-27, retaining permanently zero-cost static HTTPS hosting and superseding v2.0.0 GitHub Pages-only and mandatory-origin CORS wording. This ratification does not approve production release. Keep release blocked pending resolution of the `id=A&dia=1` first-C3 result, ISO-8859-1 decoding/mojibake, route/trip semantics, full weekday/Saturday/Sunday-holiday schedule coverage and parity, and validation of every required action. CORS approval is limited to the 13 tested action/parameter cases.
+
+### G1 v2.1 Decision
+
+All eight fresh v2.1.0 actor verdicts are APPROVED, and the Project Lead ratified
+the amendment on 2026-10-27. G1 is closed for v2.1.0. The v2.0.0 Pages-only
+hosting and CORS-origin wording is superseded; permanently zero-cost static
+HTTPS hosting remains required. CORS is approved as origin-independent only for
+the 13 tested action/parameter cases that returned `Access-Control-Allow-Origin:
+*`. Production release is NOT approved: the schedule identifier anomaly,
+ISO-8859-1 decoding, route/trip semantics, full schedule parity, and any untested
+required operation remain blockers.

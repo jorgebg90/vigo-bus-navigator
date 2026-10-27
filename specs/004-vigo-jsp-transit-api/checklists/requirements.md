@@ -1,4 +1,3 @@
-- No `[NEEDS CLARIFICATION]` markers remain. G1 ratified constitution v2.0.0 on 2026-10-27; production-origin CORS, payload, route/trip, and schedule-parity gates remain outstanding.
 # Specification Quality Checklist: Vigo Municipal Live Transit API
 
 **Purpose**: Validate that the source replacement, environment behavior, and architectural decision are specified clearly before planning.
@@ -23,7 +22,7 @@
 - [x] Real arrivals, stops, line catalogs, line-service data, route shapes, trip stops, and failure states have acceptance coverage
 - [x] The v4.0.0 Worker contract is identified as legacy and the breaking v5.0.0 normalized contract is specified without implying a new REST server
 - [x] Local fixtures remain default; live local testing is explicit and opt-in
-- [x] The proposed production path is direct browser access only, gated on G1 ratification and a repeatable GitHub Pages-origin CORS/payload check
+- [x] The proposed production path is direct browser access only, with wildcard CORS checks independent of hosting or a configured-origin check when the source restricts origins
 - [x] Worker and alternate-upstream fallback are explicitly prohibited; failed production gates block release and return architecture review to G1
 - [x] The `GA`/`ES` source locale mapping, source action/parameter allowlist, and omitted-credentials rule are explicit
 - [x] Arrival freshness is based on client receipt time, with explicit current/stale/unavailable thresholds and no unsupported source timestamp claim
@@ -43,6 +42,6 @@
 
 ## Notes
 
-- The POC observed CORS success from localhost for stop detail, serving lines, the Spanish line catalog, Spanish line services, and estimates with credentials omitted. GitHub Pages-origin CORS, line-stop details, schedules, geometry, and trip stops remain unverified; FR-009, FR-030, and SC-004 make successful production-origin checks a release gate.
-- No `[NEEDS CLARIFICATION]` markers remain. G1 constitutional ratification is required for the proposed direct-JSP architecture regardless of the path, and planning/implementation remain blocked until it closes.
+- Browser fetches from localhost succeeded for all 13 tested action/parameter cases with credentials omitted; a separate response-header check returned `Access-Control-Allow-Origin: *` for all 13. This supports origin-independent CORS, not semantic schedule mapping or production-release readiness.
+- No `[NEEDS CLARIFICATION]` markers remain. Constitution v2.1.0 was ratified at G1. Wildcard CORS was observed for 13 tested cases; the unexpected line-A/schedule-to-C3 response and other semantic source checks remain release blockers.
 - Checklist items describe spec quality and readiness, not implementation completion.
