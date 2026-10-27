@@ -16,7 +16,7 @@ orchestrates; the constitution is the final arbiter of disagreements.
 | --- | --- | --- |
 | Project Lead | [.github/agents/project-lead.agent.md](../.github/agents/project-lead.agent.md) | Orchestration, delivery, gate discipline |
 | Software Architect | [.github/agents/software-architect.agent.md](../.github/agents/software-architect.agent.md) | Frontend/backend alignment, architecture, boundaries, integration |
-| Backend Developer | [.github/agents/backend-developer.agent.md](../.github/agents/backend-developer.agent.md) | Worker APIs, data acquisition, contracts, `localStorage` adapters |
+| Backend Developer | [.github/agents/backend-developer.agent.md](../.github/agents/backend-developer.agent.md) | Data-source adapters, data acquisition, contracts, browser persistence adapters |
 | UX Designer | [.github/agents/ux-designer.agent.md](../.github/agents/ux-designer.agent.md) | Web/webapp designs, responsive interactions, WCAG 2.2 AA validation |
 | Frontend Developer | [.github/agents/frontend-developer.agent.md](../.github/agents/frontend-developer.agent.md) | Frontend implementation and alignment with approved UX designs |
 | QA Tester | [.github/agents/qa-tester.agent.md](../.github/agents/qa-tester.agent.md) | Testability, coverage, quality gates |
@@ -53,6 +53,27 @@ These participants apply to new gates and reopened reviews. Existing closed gate
 records remain historical evidence; do not add retrospective approvals. G1
 includes all eight actors whenever the constitution is ratified or amended.
 
+### Feature 004 Constitutional Transition
+
+The v2.0.0 direct-JSP amendment was ratified at G1 by all eight actors and the
+Project Lead on 2026-10-27. It governs new work; v1.3.0 and its existing InfoBus
+Worker path are legacy behavior, not approval to add the municipal JSP as a
+Worker upstream. Feature 004 may proceed to planning under v2.0.0.
+  `localStorage`, no accounts. Under v2.0.0, the existing InfoBus Worker path
+  remains legacy behavior only during migration. Feature 004 removes the Worker
+  from the transit flow after successful production verification; no new
+  Worker upstream or fallback is authorized. The reference architecture example
+
+If the amendment is ratified, feature 004's production transit requests MUST go
+directly from the browser to the fixed municipal JSP using its documented,
+allowlisted GET actions. Every required action MUST pass the production-origin
+CORS and response-validation gate before release. A failed gate blocks release
+and reopens architecture review at G1; it MUST NOT trigger a Worker fallback.
+The legacy Worker may remain only until the direct feature is accepted and
+released, then MUST be removed from transit runtime and deployment. Existing
+closed gate records remain unchanged and do not count as approval for this
+transition.
+
 ## Design and Implementation Cycle
 
 - G2: UX Designer defines user journeys and measurable UX/WCAG 2.2 AA criteria;
@@ -60,7 +81,9 @@ includes all eight actors whenever the constitution is ratified or amended.
 - G3: UX Designer provides a reviewable design baseline under `specs/<feature>/`
   covering layouts, tokens, responsive behavior, interactions, and UI states.
   Frontend Developer agrees the baseline; Software Architect aligns frontend
-  data needs and boundaries with Backend Developer and the Worker API contracts.
+  data needs and boundaries with Backend Developer and the approved source and
+  normalized-data contracts. For feature 004, this is the direct JSP action
+  allowlist and versioned OpenAPI contract; it is not a Worker API contract.
 - G4: UX Designer, Frontend Developer, and QA verify that tasks cover the design,
   accessibility requirements, dependencies, and automated/manual checks.
 - Implementation: Frontend Developer builds against the approved designs.
@@ -91,8 +114,11 @@ and the actor re-approves.
 - Everything is written in English (product UI language is a spec-level decision).
 - Clean code and YAGNI: the simplest solution that passes its gate wins.
 - The product stays pure frontend: static hosting on GitHub Pages, user data
-  in `localStorage`, no accounts. The sole server-side exception is the
-  Cloudflare Worker edge proxy per the reference architecture example
-  (`docs/reference/spec-000-architecture-example.md`, non-normative).
+  in `localStorage`, no accounts. While v1.3.0 governs, its existing InfoBus
+  Worker exception remains legacy behavior. The proposed feature 004 amendment
+  removes the Worker from the transit flow after G1 ratification and successful
+  production verification; neither direct JSP access nor a new Worker upstream
+  is authorized before that gate. The reference architecture example
+  (`docs/reference/spec-000-architecture-example.md`) is non-normative.
 - Blog drafts live in `docs/blog/`, one per phase, maintained by the
   Communicator.

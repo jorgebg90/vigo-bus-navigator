@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POC JSP Vigo</title>
+    <style>
+      body { max-width: 900px; margin: 2rem auto; padding: 0 1rem; font: 16px/1.5 system-ui, sans-serif; color: #242424; }
+      label { display: block; margin-bottom: 1rem; }
+      input { min-height: 2.5rem; padding: .25rem .5rem; font: inherit; }
+      button { min-height: 2.75rem; margin: 0 .5rem .5rem 0; padding: 0 .9rem; font: inherit; cursor: pointer; }
+      pre { overflow: auto; max-height: 32rem; padding: 1rem; border: 1px solid #888; background: #f5f5f5; white-space: pre-wrap; overflow-wrap: anywhere; }
+      .note { color: #555; }
+    </style>
+  </head>
+  <body>
+    <h1>POC de consultas al JSP municipal</h1>
+    <p>Solo lectura. Se compara la forma GET usada por la app con POST multipart. No se envían cookies ni credenciales.</p>
+    <label for="stop-id">ID de parada</label>
+    <input id="stop-id" value="90" inputmode="numeric" pattern="[0-9]+">
+    <div>
+      <button data-test="get-stop">GET: detalle de parada</button>
+      <button data-test="get-arrivals">GET: estimaciones</button>
+      <button data-test="post-stop">POST multipart: detalle de parada</button>
+      <button data-test="post-arrivals">POST multipart: estimaciones</button>
+    </div>
+    <p class="note">Origen: <code>https://datos.vigo.org/vci_api_app/api2.jsp</code>. Si el navegador bloquea CORS, la página mostrará el error de red aunque el servidor haya respondido.</p>
+    <pre id="result" role="status" aria-live="polite">Elige una prueba.</pre>
+    <script type="module" src="/poc-vigo-jsp.js"></script>
+  </body>
+</html>

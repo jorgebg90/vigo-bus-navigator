@@ -1,31 +1,40 @@
 # Vigo Bus Navigator Constitution
 
-**Document status**: Ratified as v1.3.0 by Gate G1 on 2026-10-26, from the last
-evidenced baseline v1.2.1. The prior v1.2.2 worktree label had no separate
-ratification record; its Worker-scope wording change is incorporated here as
-part of the MINOR amendment. The ratification record is at
+**Document status**: Ratified as v2.0.0 MAJOR by Gate G1 on 2026-10-27. This
+amendment supersedes v1.3.0 for new work; the previous constitution and its
+ratification remain historical evidence at
 [`specs/000-constitution/gate-g1-ratification.md`](../../specs/000-constitution/gate-g1-ratification.md).
 
 ## Core Principles
 
 ### I. Browser-First Frontend
 
-All application logic MUST run client-side in the browser as a Progressive Web App
-using JavaScript/TypeScript. Static hosting on GitHub Pages is the only production
-target. The sole sanctioned exception to browser-only execution is the Cloudflare
-Worker edge proxy. For feature 002 only, that existing Worker may adapt the
-owner-selected public Vitrasa InfoBus page
-`https://infobus.vitrasa.es:8002/Default.aspx?parada={validatedStopId}`, which
-visibly provides line, destination, and wait-minute arrivals but does not permit
-browser cross-origin access. This is a source-specific exception, not general
-permission to scrape other sources. The adapter MUST validate the stop ID,
-construct only this fixed HTTPS origin and path, reject redirects, and MUST NOT be
-a general-purpose proxy. Source-issued cookies and form state may exist only
-during a single lookup; they MUST NOT be logged, persisted, cached, or returned.
-No other server-side component may be introduced.
+All application logic and transit-data requests MUST run client-side in the
+browser as a Progressive Web App using JavaScript/TypeScript. Static hosting on
+GitHub Pages is the only production target. The application MUST call the fixed
+public Vigo municipal JSP endpoint directly over HTTPS using GET requests and a
+closed allowlist of documented `tipo` actions. It MUST NOT use a Cloudflare
+Worker, backend server, or other server-side adapter for transit data. Requests
+MUST omit credentials, validate and encode action parameters, reject arbitrary
+hosts/actions, and keep user profile data out of requests. Direct access MUST
+remain disabled for production until CORS and response behavior have been verified
+from the actual GitHub Pages origin for every required action. If any required
+production check fails, deployment MUST be blocked and the architecture MUST
+return to G1; a Worker fallback is not permitted by this principle.
 
-**Rationale**: zero-cost, serverless operation with no accounts, no tracking, and
-no infrastructure to maintain.
+The initial source allowlist is limited to the public transit actions recorded
+from VigoPlus: line catalogs, line services, line schedules, stop details, lines
+serving a stop, line-stop details, route GeoJSON, trip stop sequences, and arrival
+estimates. Each action and its permitted parameters MUST be documented in the
+OpenAPI source contract. New actions require contract and security review.
+Language-dependent catalog and service actions MUST use `GA` for Galego UI and
+`ES` for Castellano or English UI. The selected action makes the catalog locale
+observable to the provider; the client MUST NOT send a separate locale field or
+other UI profile data. The English UI uses `ES` because the source has no English
+action.
+
+**Rationale**: static hosting and direct public-data access minimize
+infrastructure while retaining a constrained and auditable source boundary.
 
 ### II. Modular Hexagonal Architecture
 
@@ -36,7 +45,7 @@ separation between:
   framework, DOM, or I/O imports.
 - **Application**: use cases orchestrating domain objects through ports.
 - **Infrastructure**: adapters implementing the ports — `localStorage` persistence,
-  REST API client (via the edge proxy), map engine bindings, Service Worker.
+  direct source API clients and normalizers, map engine bindings, Service Worker.
 
 Dependency direction is strictly inward: infrastructure depends on application and
 domain; the domain depends on nothing. Every port MUST have an explicit interface
@@ -59,47 +68,57 @@ holds; they are the harness QA gate's primary evidence.
 ### IV. Local Testability & Environment Profiles
 
 The application MUST run and be fully testable locally without deploying anywhere.
-Environment profiles MUST be provided — at minimum `local` (mocked transport API /
-fixture data) and `production` (edge proxy endpoint) — selected via build-time or
-run-time configuration. No local workflow may require credentials, a Cloudflare
-account, or any external deployment.
+Environment profiles MUST be provided — at minimum `local` (fixture data),
+`local-live` (explicit opt-in direct calls from localhost), and `production`
+(direct browser calls from GitHub Pages) — selected via build-time or run-time
+configuration. Automated tests MUST use deterministic fixtures by default. No
+workflow may require credentials, a Cloudflare account, or an external backend.
+Production direct calls MUST remain disabled until a repeatable browser check
+proves CORS and response compatibility from the actual GitHub Pages origin for
+every required action.
 
 **Rationale**: contributors must be able to clone, run, and verify the entire
 solution on their machine with zero external setup.
 
 ### V. Contract-First APIs with OpenAPI
 
-Every HTTP interface MUST be specified in an OpenAPI document before
-implementation. The current canonical v3.0.0 API includes `GET /lines`,
-`GET /lines/{lineCode}`, `GET /stops`, and `GET /stops/{stopCode}/arrivals`.
-Adapters on both sides (frontend API client, Cloudflare Worker) MUST conform to
-the spec, and the spec MUST be versioned with the interface. Breaking changes
-require a version bump and QA/architect review at the plan gate; changing only
-the Worker-internal upstream adapter does not change the public API version.
+Every HTTP interface used by the browser MUST be specified in an OpenAPI document
+before implementation. OpenAPI MUST describe the fixed municipal JSP host,
+allowlisted GET actions and parameters, source response schemas, and normalized
+application data models. Source-specific field names and envelopes MUST be mapped
+to stable frontend/domain fields. Breaking changes to the normalized contract
+require a version bump and QA/architect review at the plan gate. The PWA does not
+expose a server-side API and no Worker adapter is deployed.
 
-**Rationale**: a homogenized, machine-readable contract decouples frontend and
-proxy evolution and makes the integration testable.
+**Rationale**: a machine-readable source and normalized-data contract decouples
+frontend models from volatile JSP response fields and makes the integration
+testable without deploying a server-side API.
 
-### VI. Zero-Cost Serverless & Privacy by Design
+### VI. Zero-Cost Client-Only & Privacy by Design
 
-All infrastructure choices MUST remain within permanent free tiers, per the
-reference architecture example (`docs/reference/spec-000-architecture-example.md`):
-GitHub Pages (hosting), Cloudflare Workers ≤100k requests/day (edge proxy, 30s
-edge cache per stop query), CartoDB Positron/Dark Matter tiles, MapLibre GL JS
-with deck.gl overlay layers. All user profile data — favorite stops, recent
-history, settings — MUST persist exclusively in the user's browser `localStorage`.
-An arrivals lookup sends only the selected public stop ID from the browser to the
-Worker; the Worker sends that ID and source-required transient WebForms state only
-to the fixed Vitrasa source. The project MUST NOT combine the lookup with identity
-or profile data, create user-activity logs, or retain activity data. The existing
-bounded cache of normalized public arrivals is permitted; it MUST NOT contain
-source HTML or session/form state. Cloudflare and source providers may process
-network metadata outside the project's control; the project MUST NOT claim that
-the lookup is anonymous or control provider-side metadata retention.
+All infrastructure choices MUST remain within permanent zero-cost static hosting
+and public-data usage limits: GitHub Pages, the fixed Vigo municipal data service,
+CartoDB map tiles, and browser-compatible mapping libraries. The application
+MUST NOT deploy or depend on a Cloudflare Worker, backend server, or server-side
+transit adapter. All user profile data — favorite stops, recent history, and
+settings — MUST persist exclusively in browser `localStorage`. Transit requests
+MUST use only public identifiers and allowlisted actions, MUST omit credentials,
+and MUST NOT include profile data. Catalog and service actions MAY follow the UI
+locale only through the fixed `ES`/`GA` mapping in Principle I; this makes the
+selected catalog locale observable to the provider. No separate locale or other
+UI profile data may be sent. The project MUST NOT create user-activity logs or
+retain user activity. Any client-side cache of public data MUST be bounded and
+preserve client-receipt age; arrival status MUST describe time since receipt and
+MUST NOT imply an unverified provider generation time. The cache MUST NOT contain
+credentials or session state. The municipal service and network
+intermediaries may process ordinary connection metadata; the project MUST NOT
+claim that direct requests are anonymous or control provider-side metadata
+retention.
 
 **Rationale**: the project is a public-good open-source tool; zero cost and no
-application-level user profiling or activity retention are non-negotiable. A
-user-selected public stop ID is disclosed only to retrieve its public arrivals.
+application-level user profiling or activity retention are non-negotiable. Transit
+requests contain only allowlisted source actions, the selected catalog locale as
+encoded by that action, and public identifiers needed to retrieve transit data.
 
 ### VII. Clean Code, Simplicity & English Documentation
 
@@ -120,14 +139,16 @@ product itself must speak the language of its users.
 | --- | --- | --- |
 | Language | JavaScript/TypeScript | Type-safe contracts preferred at port boundaries |
 | Hosting | GitHub Pages | Static PWA only; HTTPS |
-| Edge proxy | Cloudflare Workers | CORS `Access-Control-Allow-Origin: *`; feature 002 may adapt only the fixed Vitrasa InfoBus HTTPS page using a validated stop ID, no redirects, transient WebForms state, an 8s aggregate deadline, and 128 KiB/page + 1 MiB/lookup body limits; 30s fresh TTL + 300s last-known stale bound |
+| Transit data | Browser `fetch` | Direct GET to fixed `https://datos.vigo.org/vci_api_app/api2.jsp`; allowlisted actions and parameters; omitted credentials; GitHub Pages CORS gate required |
 | Mapping | MapLibre GL JS + deck.gl | CartoDB Positron & Dark Matter base layers |
 | Client persistence | Browser `localStorage` | Namespaced keys, versioned schema, migrations |
-| CI/CD | Harness + GitHub Actions | Deploy `/worker` → Cloudflare, `/frontend` → Pages on push to `main` |
+| CI/CD | Harness + GitHub Actions | Deploy `/frontend` → GitHub Pages on push to `main`; no transit Worker deployment |
 
 Hard constraints:
 
-- No backend server, database, or user-account system beyond the single edge proxy.
+- No backend server, database, Cloudflare Worker, or user-account system for transit data.
+- Production transit requests MUST originate in the browser and target only the fixed municipal HTTPS endpoint with allowlisted GET actions.
+- Direct production access MUST NOT be enabled until CORS is verified from the actual GitHub Pages origin for every required action. Failure blocks deployment; no Worker fallback is permitted.
 - No paid service or dependency that exceeds a 0.00 € recurring cost level.
 - The frontend MUST pause real-time fetching when backgrounded (`visibilitychange`)
   and MUST cache static assets via Service Worker for offline capability.
@@ -165,6 +186,24 @@ Amendments require: (1) a documented proposal with rationale, (2) Project Lead
 approval after consulting the accountable harness actors, (3) a migration plan
 for any principle that invalidates existing artifacts or code.
 
+### v2.0.0 Migration
+
+This MAJOR amendment redefines the v1.3.0 Worker exception and was ratified by
+all eight actors at G1 and the Project Lead on 2026-10-27. It governs new work.
+The existing v1.3.0 application may remain available only as a legacy release
+while feature 004 is implemented; no new feature or deployment may add to the
+Worker-based transit path. Before feature 004 production release, its direct
+browser calls must pass the GitHub Pages-origin CORS and payload gate for every
+required allowlisted action, its normalized OpenAPI contract and migration must
+be approved, and the transit Worker must be removed from application runtime and
+deployment. During migration, an uncovered line/day timetable MAY use the
+matching bundled snapshot only when its source and trustworthy date are
+identified; otherwise that timetable is unavailable. Snapshot data MUST NOT be
+represented as JSP or live data, and the snapshot MUST be retained until
+weekday, Saturday, and Sunday/holiday coverage and parity are verified. Failure
+of any production gate blocks release and returns the architecture to G1; no
+Worker fallback is allowed.
+
 Versioning follows semantic rules: MAJOR for backward-incompatible principle
 removals or redefinitions, MINOR for new principles or materially expanded
 sections, PATCH for clarifications and non-semantic refinements.
@@ -177,4 +216,4 @@ architecture example (`docs/reference/spec-000-architecture-example.md`) is
 non-normative background material; where it diverges from this constitution
 (e.g. mapping engine), this constitution supersedes.
 
-**Version**: 1.3.0 (MINOR) | **Ratified**: 2026-10-26 | **Amended from**: 1.2.1
+**Version**: 2.0.0 (MAJOR) | **Last Ratified**: 2026-10-27 | **Last Amended**: 2026-10-27
