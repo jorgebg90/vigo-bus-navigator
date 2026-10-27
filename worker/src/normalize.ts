@@ -1,25 +1,7 @@
-/**
- * This module is based on the code of VigoBusAPI
- * (https://github.com/David-Lor/VigoBusAPI), Copyright 2021-2023 David Lorenzo,
- * licensed under the Apache License 2.0.
- *
- * Ported to TypeScript for the Vigo Bus Navigator Cloudflare Worker:
- *  - vigobus_getters/string_fixes.py      → fixMojibake (CHARS_FIXED)
- *  - vigobus_getters/helpers.py           → deterministic arrival ordering
- *  - vigobus_getters/html/html_parser.py  → exact duplicate removal
- *
- * Modifications: typed wire contract (Arrival), eta computed as generatedAt + minutes,
- * drop-rule for empty destinations / out-of-range minutes, StopNotExist surfaced via
- * the STOP_NOT_EXIST error instead of an exception hierarchy.
- */
+/** Normalize extracted source rows into the public arrivals wire contract. */
 
 import type { Arrival } from './types';
 import type { VitrasaSourceRow } from './source-html';
-
-const CHARS_FIXED: Record<string, string> = {
-  'Ã': 'Á', 'Ã¡': 'á', 'Ã‰': 'É', 'Ã©': 'é', 'Ã': 'Í', 'Ã­': 'í',
-  'Ã“': 'Ó', 'Ã³': 'ó', 'Ãš': 'Ú', 'Ãº': 'ú', 'Ã‘': 'Ñ', 'Ã±': 'ñ', 'Â¿': '¿'
-};
 
 export class StopNotExistError extends Error {
   constructor() {
@@ -28,13 +10,48 @@ export class StopNotExistError extends Error {
   }
 }
 
-/** Repair UTF-8-as-Latin-1 mojibake returned by the upstream source. */
-export function fixMojibake(text: string): string {
-  let fixed = text;
-  for (const [broken, repaired] of Object.entries(CHARS_FIXED)) {
-    fixed = fixed.split(broken).join(repaired);
+function continuationByte(character: string): number | undefined {
+  const codePoint = character.codePointAt(0);
+  if (codePoint === undefined) return undefined;
+  if (codePoint >= 0x80 && codePoint <= 0xbf) return codePoint;
+  if (codePoint >= 0xa0 && codePoint <= 0xff) {
+    const encoded = new TextEncoder().encode(character);
+    return encoded[encoded.length - 1];
   }
-  return fixed;
+  for (let byte = 0x80; byte <= 0x9f; byte += 1) {
+    const decoded = new TextDecoder('windows-1252').decode(Uint8Array.of(byte));
+    if (decoded === character) return byte;
+  }
+  return undefined;
+}
+
+/** Recover two-byte UTF-8 characters that the source decoded as legacy text. */
+export function fixMojibake(text: string): string {
+  const characters = [...text];
+  const repaired: string[] = [];
+  const decoder = new TextDecoder('utf-8', { fatal: true });
+  for (let index = 0; index < characters.length; index += 1) {
+    const prefix = characters[index].codePointAt(0);
+    const next = characters[index + 1];
+    if ((prefix === 0xc2 || prefix === 0xc3) && next) {
+      const continuation = continuationByte(next);
+      if (continuation !== undefined) {
+        try {
+          const value = decoder.decode(Uint8Array.of(prefix, continuation));
+          repaired.push(value);
+          index += 1;
+          continue;
+        } catch { /* Keep source text that is not a valid UTF-8 pair. */ }
+      }
+    }
+    repaired.push(characters[index]);
+  }
+  return repaired.join('');
+}
+
+function normalizeSourceText(text: string, removeAsterisks = false): string {
+  const normalized = fixMojibake(text).replace(/"/g, "'");
+  return (removeAsterisks ? normalized.replace(/\*/g, '') : normalized).trim();
 }
 
 const MAX_MINUTES = 1440;
@@ -47,8 +64,8 @@ export function normalizeSourceRows(rows: readonly VitrasaSourceRow[], generated
   const normalized: Arrival[] = [];
   const seen = new Set<string>();
   for (const row of rows) {
-    const lineCode = fixMojibake(row.lineCode).replace(/"/g, "'").trim();
-    const destination = fixMojibake(row.destination).replace(/"/g, "'").replace(/\*/g, '').trim();
+    const lineCode = normalizeSourceText(row.lineCode);
+    const destination = normalizeSourceText(row.destination, true);
     const minutesText = row.minutesText.trim();
     if (!lineCode || lineCode.length > 32) throw new Error('Invalid arrival line code');
     if (!destination || destination.length > 256) throw new Error('Invalid arrival destination');

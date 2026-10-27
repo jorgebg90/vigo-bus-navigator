@@ -15,8 +15,10 @@ orchestrates; the constitution is the final arbiter of disagreements.
 | Actor | Agent file | Dimension owned |
 | --- | --- | --- |
 | Project Lead | [.github/agents/project-lead.agent.md](../.github/agents/project-lead.agent.md) | Orchestration, delivery, gate discipline |
-| Software Architect | [.github/agents/software-architect.agent.md](../.github/agents/software-architect.agent.md) | Design, boundaries, pure-frontend architecture |
-| Backend Developer | [.github/agents/backend-developer.agent.md](../.github/agents/backend-developer.agent.md) | Data contracts, `localStorage` persistence |
+| Software Architect | [.github/agents/software-architect.agent.md](../.github/agents/software-architect.agent.md) | Frontend/backend alignment, architecture, boundaries, integration |
+| Backend Developer | [.github/agents/backend-developer.agent.md](../.github/agents/backend-developer.agent.md) | Worker APIs, data acquisition, contracts, `localStorage` adapters |
+| UX Designer | [.github/agents/ux-designer.agent.md](../.github/agents/ux-designer.agent.md) | Web/webapp designs, responsive interactions, WCAG 2.2 AA validation |
+| Frontend Developer | [.github/agents/frontend-developer.agent.md](../.github/agents/frontend-developer.agent.md) | Frontend implementation and alignment with approved UX designs |
 | QA Tester | [.github/agents/qa-tester.agent.md](../.github/agents/qa-tester.agent.md) | Testability, coverage, quality gates |
 | Stakeholder | [.github/agents/stakeholder.agent.md](../.github/agents/stakeholder.agent.md) | User value, scope, acceptance sign-off |
 | Communicator | [.github/agents/communicator.agent.md](../.github/agents/communicator.agent.md) | Blog-ready documentation of the process |
@@ -29,21 +31,47 @@ artifacts under `specs/` using each actor's verdict format.
 ```mermaid
 flowchart LR
     A[Constitution] -->|G1: all actors ratify| B[Specify]
-    B -->|G2: Stakeholder + QA| C[Clarify]
-    C -->|G3: Architect + Backend Dev| D[Plan]
-    D -->|G4: QA testability review| E[Tasks]
-    E -->|G5: QA quality + Stakeholder acceptance| F[Implement]
-    F -->|G6: Communicator story gate| G[Converge]
+    B -->|G2: Stakeholder + QA + UX + Frontend| C[Clarify]
+    C --> D[Plan]
+    D -->|G3: Architect + Backend + UX + Frontend| E[Tasks]
+    E -->|G4: QA + UX + Frontend| F[Analyze]
+    F --> H[Implement]
+    H -->|G5: QA + Stakeholder + UX + Frontend + Architect| G[Converge]
+    I[Each phase output] -->|G6: Communicator story gate| J[Phase documented]
 ```
 
 | Gate | Phase | Required verdicts |
 | --- | --- | --- |
 | G1 | Constitution | All actors |
-| G2 | Specify | Stakeholder, QA Tester |
-| G3 | Plan | Software Architect, Backend Developer |
-| G4 | Tasks | QA Tester |
-| G5 | Implement | QA Tester, Stakeholder |
+| G2 | Specify | Stakeholder, QA Tester, UX Designer, Frontend Developer |
+| G3 | Plan | Software Architect, Backend Developer, UX Designer, Frontend Developer |
+| G4 | Tasks | QA Tester, UX Designer, Frontend Developer |
+| G5 | Implement | QA Tester, Stakeholder, UX Designer, Frontend Developer, Software Architect |
 | G6 | Each phase | Communicator (blog draft exists and is accurate) |
+
+These participants apply to new gates and reopened reviews. Existing closed gate
+records remain historical evidence; do not add retrospective approvals. G1
+includes all eight actors whenever the constitution is ratified or amended.
+
+## Design and Implementation Cycle
+
+- G2: UX Designer defines user journeys and measurable UX/WCAG 2.2 AA criteria;
+  Frontend Developer reviews feasibility alongside Stakeholder and QA.
+- G3: UX Designer provides a reviewable design baseline under `specs/<feature>/`
+  covering layouts, tokens, responsive behavior, interactions, and UI states.
+  Frontend Developer agrees the baseline; Software Architect aligns frontend
+  data needs and boundaries with Backend Developer and the Worker API contracts.
+- G4: UX Designer, Frontend Developer, and QA verify that tasks cover the design,
+  accessibility requirements, dependencies, and automated/manual checks.
+- Implementation: Frontend Developer builds against the approved designs.
+  Design deviations return to UX Designer; frontend/backend contract conflicts
+  go to Software Architect with both developers. Record decisions and re-review
+  affected gate artifacts before proceeding.
+- G5: UX Designer validates design fidelity and WCAG 2.2 AA with automated and
+  manual evidence; Frontend Developer demonstrates implementation alignment;
+  Software Architect validates frontend/backend integration. QA quality and
+  Stakeholder acceptance remain independent required verdicts. Missing evidence
+  or unresolved accessibility findings block approval, not just failing scans.
 
 ## Verdict Format
 

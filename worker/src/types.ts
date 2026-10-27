@@ -12,6 +12,23 @@ export interface Arrival {
   eta: string;
 }
 
+export interface NetworkStop {
+  id: string;
+  code: string;
+  municipalCode: string | null;
+  vitrasaId: string | null;
+  name: string;
+  lat: number | null;
+  lon: number | null;
+  lineIds: string[];
+}
+
+export interface StopsResponse {
+  datasetVersion: string;
+  generatedAt: string;
+  stops: NetworkStop[];
+}
+
 export interface ArrivalsResponse {
   stopId: string;
   generatedAt: string;

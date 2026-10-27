@@ -200,9 +200,3 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-
----
-Portions of this project are based on the code of VigoBusAPI
-(https://github.com/David-Lor/VigoBusAPI)
-Copyright 2021-2023 David Lorenzo
-Licensed under the Apache License, Version 2.0 — see NOTICE.

@@ -1,6 +1,6 @@
 import type { Favorite, RecentView, UserPreferences } from './types';
 
-export const defaultPreferences = (): UserPreferences => ({ theme: 'system', language: 'es', recentViews: [] });
+export const defaultPreferences = (): UserPreferences => ({ theme: 'light', language: 'es', recentViews: [] });
 
 export function toggleFavorite(favorites: Favorite[], favorite: Omit<Favorite, 'order'>): Favorite[] {
   const exists = favorites.some((item) => item.type === favorite.type && item.targetId === favorite.targetId);

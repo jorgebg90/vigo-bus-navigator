@@ -111,6 +111,9 @@ describe('Vitrasa WebForms upstream protocol', () => {
     expect(pageTwoBody.get('__VIEWSTATEGENERATOR')).toBe('generator-1');
     expect(pageTwoBody.get('__EVENTTARGET')).toBe('GridView1');
     expect(pageTwoBody.get('__EVENTARGUMENT')).toBe('Page$2');
+    expect([...pageTwoBody.keys()].sort()).toEqual([
+      '__EVENTARGUMENT', '__EVENTTARGET', '__EVENTVALIDATION', '__VIEWSTATE', '__VIEWSTATEGENERATOR'
+    ]);
     expect(new Headers(pageTwo.headers).get('cookie')).toBe('ASP.NET_SessionId=session-1');
 
     const pageThree = requests[2].init;
@@ -120,6 +123,9 @@ describe('Vitrasa WebForms upstream protocol', () => {
     expect(pageThreeBody.get('__VIEWSTATEGENERATOR')).toBe('generator-2');
     expect(pageThreeBody.get('__EVENTTARGET')).toBe('GridView1');
     expect(pageThreeBody.get('__EVENTARGUMENT')).toBe('Page$3');
+    expect([...pageThreeBody.keys()].sort()).toEqual([
+      '__EVENTARGUMENT', '__EVENTTARGET', '__EVENTVALIDATION', '__VIEWSTATE', '__VIEWSTATEGENERATOR'
+    ]);
     expect(new Headers(pageThree.headers).get('cookie')).toBe('ASP.NET_SessionId=session-2');
 
     for (const { init } of requests) {

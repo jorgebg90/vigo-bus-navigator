@@ -136,3 +136,5 @@ LICENSE                                # Apache-2.0 text incl. retained VigoBusA
 ## Complexity Tracking
 
 No constitution violations — table intentionally empty.
+
+> Superseding correction (2026-10-26): Feature 003 uses the fixed public Vitrasa InfoBus source and Vigo municipal/GTFS catalog data. The planned dependency was not adopted. Current normalization is independently authored from the source contract and observed outputs; this artifact records the earlier feature-002 plan only.

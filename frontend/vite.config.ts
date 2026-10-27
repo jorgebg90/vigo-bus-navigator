@@ -13,12 +13,12 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: resolve(__dirname, '../dist'),
     emptyOutDir: true,
+    manifest: true,
     rollupOptions: {
       input: resolve(__dirname, 'index.html'),
       output: {
         manualChunks(id) {
           if (id.includes('maplibre-gl')) return 'maplibre';
-          if (id.includes('@deck.gl') || id.includes('luma.gl')) return 'deck';
           return undefined;
         }
       }

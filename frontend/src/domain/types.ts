@@ -1,5 +1,5 @@
 export type DayType = 'weekday' | 'saturday' | 'sunday_holiday';
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light';
 export type Language = 'es' | 'gl' | 'en';
 
 export interface Line {
@@ -15,8 +15,8 @@ export interface Stop {
   code: string;
   vitrasaId: string | null;
   name: string;
-  lat: number;
-  lon: number;
+  lat: number | null;
+  lon: number | null;
   lineIds: string[];
 }
 
@@ -38,6 +38,18 @@ export interface Timetable {
   byDayType: Partial<Record<DayType, DayService>>;
 }
 
+export interface LineRoutePattern {
+  id: string;
+  headsign: string;
+  stopIds: string[];
+  stops: Stop[];
+}
+
+export interface LineDetails {
+  timetable?: Timetable;
+  patterns: LineRoutePattern[];
+}
+
 export interface Arrival {
   lineCode: string;
   destination: string;
@@ -46,7 +58,7 @@ export interface Arrival {
 }
 
 export interface Favorite {
-  type: 'line' | 'stop';
+  type: 'stop';
   targetId: string;
   order: number;
 }

@@ -1,5 +1,5 @@
 import type { ScheduleRepository } from '../../application/ports';
-import type { DatasetManifest, Line, Stop, Timetable } from '../../domain/types';
+import type { DatasetManifest, Line, LineDetails, Stop } from '../../domain/types';
 
 type JsonFetcher = (input: string) => Promise<Response>;
 
@@ -13,13 +13,14 @@ interface StopsResponse {
 }
 
 interface LineDetailResponse {
-  timetable?: Timetable;
+  timetable?: LineDetails['timetable'];
+  patterns?: LineDetails['patterns'];
 }
 
 export class ApiScheduleRepository implements ScheduleRepository {
   private catalogRequest?: Promise<CatalogResponse>;
   private stopsRequest?: Promise<Stop[]>;
-  private readonly timetableRequests = new Map<string, Promise<Timetable | undefined>>();
+  private readonly lineDetailRequests = new Map<string, Promise<LineDetails>>();
 
   constructor(
     private readonly apiBaseUrl: string,
@@ -40,11 +41,11 @@ export class ApiScheduleRepository implements ScheduleRepository {
     return this.stopsRequest;
   }
 
-  getTimetable(lineId: string): Promise<Timetable | undefined> {
-    let request = this.timetableRequests.get(lineId);
+  getLineDetails(lineId: string): Promise<LineDetails> {
+    let request = this.lineDetailRequests.get(lineId);
     if (!request) {
-      request = this.fetchTimetable(lineId);
-      this.timetableRequests.set(lineId, request);
+      request = this.fetchLineDetails(lineId);
+      this.lineDetailRequests.set(lineId, request);
     }
     return request;
   }
@@ -54,13 +55,14 @@ export class ApiScheduleRepository implements ScheduleRepository {
     return this.catalogRequest;
   }
 
-  private async fetchTimetable(lineId: string): Promise<Timetable | undefined> {
+  private async fetchLineDetails(lineId: string): Promise<LineDetails> {
     const line = (await this.listLines()).find((candidate) => candidate.id === lineId);
     if (!line) throw new Error(`Unknown line: ${lineId}`);
     const response = await this.fetcher(this.url(`/lines/${encodeURIComponent(line.code)}`));
-    if (response.status === 404) return undefined;
+    if (response.status === 404) return { patterns: [] };
     if (!response.ok) throw new Error(`Schedule request failed: ${response.status}`);
-    return (await response.json() as LineDetailResponse).timetable;
+    const details = await response.json() as LineDetailResponse;
+    return { timetable: details.timetable, patterns: details.patterns ?? [] };
   }
 
   private async fetchJson<T>(path: string): Promise<T> {

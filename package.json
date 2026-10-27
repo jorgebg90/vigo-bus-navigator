@@ -19,7 +19,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "lint": "tsc --noEmit",
-    "lint:openapi": "spectral lint specs/002-realtime-bus-api/contracts/realtime-arrivals.openapi.yaml",
+    "lint:openapi": "spectral lint specs/002-realtime-bus-api/contracts/realtime-arrivals.openapi.yaml specs/003-improve-frontend-design/contracts/realtime-api-v4.openapi.yaml",
     "test:contract": "vitest run --config worker/vitest.config.ts",
     "test:load": "vitest run --config worker/vitest.load.config.ts",
     "size": "size-limit && tsx scripts/check-payload-budget.ts",
@@ -27,9 +27,6 @@
     "catalog:generate": "tsx scripts/catalog/generate.ts"
   },
   "dependencies": {
-    "@deck.gl/core": "^9.1.0",
-    "@deck.gl/layers": "^9.1.0",
-    "@deck.gl/mapbox": "^9.1.0",
     "fast-xml-parser": "^5.2.5",
     "maplibre-gl": "^5.6.2"
   },

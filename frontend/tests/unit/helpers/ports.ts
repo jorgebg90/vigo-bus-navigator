@@ -1,5 +1,5 @@
 import type { ArrivalsGateway, ClockPort, ScheduleRepository, StoragePort, VisibilityPort } from '../../../src/application/ports';
-import type { DatasetManifest, Favorite, Line, Stop, Timetable, UserPreferences } from '../../../src/domain/types';
+import type { DatasetManifest, Favorite, Line, LineDetails, Stop, Timetable, UserPreferences } from '../../../src/domain/types';
 
 export class FakeScheduleRepository implements ScheduleRepository {
   constructor(
@@ -12,7 +12,7 @@ export class FakeScheduleRepository implements ScheduleRepository {
   getManifest(): Promise<DatasetManifest> { return Promise.resolve(this.manifest); }
   listLines(): Promise<Line[]> { return Promise.resolve(this.lines); }
   listStops(): Promise<Stop[]> { return Promise.resolve(this.stops); }
-  getTimetable(lineId: string): Promise<Timetable> { return Promise.resolve(this.timetables[lineId]); }
+  getLineDetails(lineId: string): Promise<LineDetails> { return Promise.resolve({ timetable: this.timetables[lineId], patterns: [] }); }
 }
 
 export class FakeVisibility implements VisibilityPort {
@@ -38,7 +38,7 @@ export class FakeClock implements ClockPort {
 export class MemoryStorage implements StoragePort {
   persisted = true;
   favorites: Favorite[] = [];
-  preferences: UserPreferences = { theme: 'system', language: 'es', recentViews: [] };
+  preferences: UserPreferences = { theme: 'light', language: 'es', recentViews: [] };
   loadFavorites(): Favorite[] { return this.favorites; }
   saveFavorites(value: Favorite[]): void { this.favorites = value; }
   loadPreferences(): UserPreferences { return this.preferences; }

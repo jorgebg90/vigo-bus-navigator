@@ -288,3 +288,5 @@ Task: "Implement worker/src/cache.ts"
 - Write tests first; verify they fail before implementing (Principle III)
 - The v1 contract specs/001-bus-frequency-pwa/contracts/stop-arrivals.openapi.yaml stays as historical record; API v3.0.0 remains current (research D5)
 - Contract-test runtime is @cloudflare/vitest-pool-workers; pure modules (normalize.ts) also get plain-node unit tests
+
+> Superseding correction (2026-10-26): Feature 003 uses the fixed public Vitrasa InfoBus source and Vigo municipal/GTFS catalog data. The planned dependency was not adopted. Current normalization is independently authored from the source contract and observed outputs; this artifact records the earlier feature-002 plan only.

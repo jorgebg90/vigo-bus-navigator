@@ -212,3 +212,5 @@ As a frontend or API consumer, I want to list bus lines and retrieve each line's
 - Historical analytics, fleet tracking beyond the upstream arrival information, or route planning.
 - Copying the entire VigoBusAPI repository into this project instead of implementing only the required adapted integration.
 - Direct browser-side fetching of the Vitrasa page while it does not permit cross-origin requests; this may be reconsidered if the source adds CORS support.
+
+> Superseding correction (2026-10-26): Feature 003 uses the fixed public Vitrasa InfoBus source and Vigo municipal/GTFS catalog data. The planned dependency was not adopted. Current normalization is independently authored from the source contract and observed outputs; this artifact records the earlier feature-002 plan only.

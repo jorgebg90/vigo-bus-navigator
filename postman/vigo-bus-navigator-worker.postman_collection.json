@@ -95,6 +95,9 @@
               "  pm.expect(line.patterns).to.be.an('array').that.is.not.empty;",
               "  line.patterns.forEach(function (pattern) {",
               "    pm.expect(pattern.stops.map(function (stop) { return stop.id; })).to.eql(pattern.stopIds);",
+              "    pattern.stops.forEach(function (stop) {",
+              "      pm.expect((stop.lat === null && stop.lon === null) || (typeof stop.lat === 'number' && typeof stop.lon === 'number')).to.eql(true);",
+              "    });",
               "  });",
               "});"
             ]
@@ -124,6 +127,7 @@
               "    pm.expect(stop.id).to.be.a('string').and.not.empty;",
               "    pm.expect(stop.municipalCode === null || typeof stop.municipalCode === 'string').to.eql(true);",
               "    pm.expect(stop.vitrasaId === null || typeof stop.vitrasaId === 'string').to.eql(true);",
+              "    pm.expect((stop.lat === null && stop.lon === null) || (typeof stop.lat === 'number' && typeof stop.lon === 'number')).to.eql(true);",
               "  });",
               "});"
             ]

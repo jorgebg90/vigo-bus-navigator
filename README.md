@@ -85,12 +85,11 @@ existing per-file caps and aggregate gzip limits.
 
 ## Real-time arrivals service (Worker)
 
-Live stop arrivals are served by a Cloudflare Worker (feature
-`002-realtime-bus-api`) based on the code of
-[VigoBusAPI](https://github.com/David-Lor/VigoBusAPI) (Apache-2.0), calling the
-fixed Vitrasa InfoBus stop page and normalizing its paginated HTML. The page
-contains the line, destination, and estimated wait minutes; the Worker follows
-its WebForms pagination and keeps session fields/cookies private to one lookup.
+Live stop arrivals are served by a Cloudflare Worker that reads the fixed public
+Vitrasa InfoBus stop page and normalizes its paginated HTML according to the
+source response contract. The page contains the line, destination, and estimated
+wait minutes; the Worker follows its WebForms pagination and keeps transient
+session fields/cookies private to one lookup.
 
 ```bash
 # Fixture mode: deterministic responses, no network needed (CI-friendly)
@@ -175,16 +174,11 @@ Troubleshooting: if the frontend shows arrivals unavailable locally, check that
 the Worker is running on port 8787; if production shows configuration errors,
 verify `VITE_ARRIVALS_BASE_URL` is set for the Pages build.
 
-## Provenance and license
+## License and service status
 
-The real-time arrivals integration is **based on the code of
-[VigoBusAPI](https://github.com/David-Lor/VigoBusAPI)** (Copyright 2021-2023
-David Lorenzo), licensed under the [Apache License 2.0](LICENSE). See
-[NOTICE](NOTICE) for the ported components and modifications.
-
-**Disclaimer**: Vigo Bus Navigator is not endorsed by, directly affiliated
-with, maintained by, sponsored by, or officially connected to the public
-transport operator of the city of Vigo (Vitrasa) or to the VigoBusAPI project.
+This community open-source project is licensed under Apache-2.0; see
+[LICENSE](LICENSE). It is not an official service of the public transport
+operator of the city of Vigo (Vitrasa).
 
 ## Status
 

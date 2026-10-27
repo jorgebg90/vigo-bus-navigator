@@ -1,59 +1,51 @@
 import { expect, test } from '@playwright/test';
 
-test('P1 frequency flow shows API lines and available schedule metadata', async ({ page }) => {
+test('Map opens the shared stop-arrivals panel from the accessible chooser', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('main ul[aria-label] li')).toHaveCount(50);
-  await page.getByRole('button', { name: /^4A -/ }).click();
-  await expect(page.getByRole('heading', { name: '4A' })).toBeVisible();
-  await expect(page.locator('table')).toBeVisible();
-  await expect(page.getByText(/fixture-2026\.10/)).toBeVisible();
+  await page.getByRole('button', { name: /Stops in view|Paradas en el mapa/ }).click();
+  await page.getByRole('dialog').locator('ul button').first().click();
+  const panel = page.locator('aside[aria-label="Details"]');
+  await expect(panel.locator('h2')).toBeFocused();
+  await expect(panel.locator('[data-arrivals-status]')).toBeVisible();
+  await expect(panel.locator('.favorite-toggle')).toBeVisible();
 });
 
-test('P2 stop flow exposes arrivals status', async ({ page }) => {
+test('Saved opens and removes persisted favorites', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /^4A -/ }).click();
-  await page.getByRole('button', { name: /Parada|Stop/ }).first().click();
-  await expect(page.getByRole('heading', { name: /Rúa do Porriño|Praza do Cristo da Vitoria/ })).toBeVisible();
-  await expect(page.getByText(/Tempo real|Tiempo real|Live|Chegadas non dispoñibles|Llegadas no disponibles|Arrivals unavailable/)).toBeVisible();
+  await page.getByRole('button', { name: /Stops in view|Paradas en el mapa/ }).click();
+  await page.locator('.stop-chooser ul button').first().click();
+  await page.locator('aside[aria-label="Details"] .favorite-toggle').click();
+  await page.getByRole('button', { name: /Saved|Guardado|Gardado/ }).click();
+  await expect(page.getByRole('tab', { name: /Favorites|Favoritos/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('[role="tabpanel"] button[data-action="remove"]')).toBeVisible();
 });
 
-test('P3 map flow exposes accessible stop details', async ({ page }) => {
+test('Search selects an unlocated stop over the persistent map', async ({ page }) => {
+  await page.addInitScript(() => {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (new URL(url, location.href).pathname.endsWith('/stops')) {
+        return new Response(JSON.stringify({ datasetVersion: 'fixture', generatedAt: '2026-10-26T12:00:00Z', stops: [
+          { id: 'stop-fixture', code: '1001', municipalCode: 'm-1', vitrasaId: '1001', name: 'Fixture stop', lat: null, lon: null, lineIds: ['line-4a'] }
+        ] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      return originalFetch(input, init);
+    };
+  });
   await page.goto('/');
-  await page.getByRole('button', { name: /^4A -/ }).click();
-  const map = page.getByRole('region', { name: /Mapa|Map/ });
-  await expect(map).toBeVisible();
-  const stopButton = map.getByRole('button').first();
-  const stopName = (await stopButton.getAttribute('aria-label'))?.split(' (')[0];
-  expect(stopName).toBeTruthy();
-  await stopButton.click();
-  await expect(map.getByRole('status')).toContainText(stopName!);
+  await page.getByRole('button', { name: /Search|Buscar/ }).click();
+  await page.getByRole('searchbox', { name: /Search stops|Buscar paradas/ }).fill('Fixture stop');
+  await page.getByRole('button', { name: 'Fixture stop', exact: true }).click();
+  await expect(page.locator('aside[aria-label="Details"] h2')).toBeFocused();
+  await expect(page.locator('.map-base [data-engine="maplibre-clustered-geojson"]')).toHaveCount(1);
 });
 
-test('P4 favorite flow updates the favorites section', async ({ page }) => {
+test('Lines opens a published frequency table over the persistent map', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /^4A -/ }).click();
-  await page.getByRole('button', { name: /favorito|favorite/i }).click();
-  const lineName = (await page.getByRole('heading', { name: '4A' }).textContent())?.trim();
-  expect(lineName).toBe('4A');
-  await expect(
-    page.getByRole('heading', { name: /Favoritos|Favorites/ }).locator('..').locator('ul').first()
-      .getByText(/^line: /)
-  ).toBeVisible();
-});
-
-test('P2 freshness states transition with retry on failure', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: /^4A -/ }).click();
-  await page.getByRole('button', { name: /Parada|Stop/ }).first().click();
-  const status = page.getByRole('status');
-  // Offline forces the gateway to fail: the view must show the unavailable state and a retry action.
-  await page.context().setOffline(true);
-  await page.getByRole('button', { name: /Reintentar|Retry/ }).click().catch(() => undefined);
-  await page.reload().catch(() => undefined);
-  await page.context().setOffline(false);
-  await page.goto('/');
-  await page.getByRole('button', { name: /^4A -/ }).click();
-  await page.getByRole('button', { name: /Parada|Stop/ }).first().click();
-  await expect(page.getByRole('status')).toBeVisible();
-  await expect(status.or(page.getByRole('status'))).toContainText(/Tiempo real|Tempo real|Live|no disponibles|unavailable/i);
+  await page.getByRole('button', { name: /Lines|Líneas|Liñas/ }).click();
+  await page.getByRole('searchbox', { name: /Search lines|Buscar líneas|Buscar liñas/ }).fill('4A');
+  await page.locator('[data-line-row] button').first().click();
+  await expect(page.getByRole('table')).toBeVisible();
+  await expect(page.locator('.map-base [data-engine="maplibre-clustered-geojson"]')).toHaveCount(1);
 });

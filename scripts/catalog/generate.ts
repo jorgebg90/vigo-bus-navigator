@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parse } from 'csv-parse/sync';
 import { unzipSync } from 'fflate';
+import { addCatalogStop, type CatalogStopRecord } from './stop-coordinates';
 
 const root = resolve(import.meta.dirname, '../..');
 const target = resolve(root, 'worker/src/catalog-data.json');
@@ -19,8 +20,8 @@ type CatalogStop = {
 	municipalCode: string | null;
 	vitrasaId: string | null;
 	name: string;
-	lat: number;
-	lon: number;
+	lat: number | null;
+	lon: number | null;
 	lineIds: string[];
 };
 type CatalogPattern = { id: string; headsign: string; stopIds: string[] };
@@ -83,17 +84,8 @@ for (const feature of lineGeoJson?.features ?? []) {
 	if (code && /^#[0-9a-f]{6}$/i.test(color)) colors.set(code, color);
 }
 
-const stopsByMunicipalCode = new Map<string, {
-	id: string;
-	code: string;
-	municipalCode: string | null;
-	vitrasaId: string | null;
-	name: string;
-	lat: number;
-	lon: number;
-	lineCodes: Set<string>;
-}>();
-const stopsByVitrasaId = new Map<string, typeof stopsByMunicipalCode extends Map<string, infer T> ? T : never>();
+const stopsByMunicipalCode = new Map<string, CatalogStopRecord>();
+const stopsByVitrasaId = new Map<string, CatalogStopRecord>();
 const lines = new Map<string, {
 	id: string;
 	code: string;
@@ -125,30 +117,9 @@ function addStop(input: {
 }) {
 	const municipalCode = String(input.municipalCode ?? '').trim() || null;
 	const vitrasaId = String(input.vitrasaId ?? '').trim() || null;
-	const key = municipalCode ? `m:${municipalCode}` : vitrasaId ? `v:${vitrasaId}` : '';
-	if (!key) return undefined;
-	const lat = Number(input.lat);
-	const lon = Number(input.lon);
-	if (!Number.isFinite(lat) || !Number.isFinite(lon)) return undefined;
 	const stops = municipalCode ? stopsByMunicipalCode : stopsByVitrasaId;
-	const existing = stops.get(municipalCode ?? vitrasaId!);
-	const id = `stop-${municipalCode ?? vitrasaId}`;
-	const stop = existing ?? {
-		id,
-		code: vitrasaId ?? municipalCode!,
-		municipalCode,
-		vitrasaId,
-		name: '',
-		lat,
-		lon,
-		lineCodes: new Set<string>()
-	};
-	stop.name ||= String(input.name ?? '').trim();
-	if (!stop.name) stop.name = id;
-	if (!existing || stop.lat === 0 || stop.lon === 0) {
-		stop.lat = lat;
-		stop.lon = lon;
-	}
+	const stop = addCatalogStop(stops, input);
+	if (!stop) return undefined;
 	for (const code of input.lineCodes ?? []) {
 		const normalized = normalizeCode(code);
 		if (normalized) {
@@ -156,7 +127,6 @@ function addStop(input: {
 			ensureLine(normalized)?.stopIds.add(stop.id);
 		}
 	}
-	stops.set(municipalCode ?? vitrasaId!, stop);
 	return stop;
 }
 

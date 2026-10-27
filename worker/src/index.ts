@@ -4,7 +4,7 @@ import type { WorkerEnv } from './env';
 import { fixtureVitrasaFetcher } from './fixtures';
 import { normalizeSourceRows, StopNotExistError } from './normalize';
 import { fetchVitrasaArrivals, UpstreamError, UpstreamNetworkError, UpstreamRateLimitError, UpstreamTimeoutError, type Fetcher } from './upstream';
-import type { ArrivalsResponse, ErrorCode } from './types';
+import type { ArrivalsResponse, ErrorCode, StopsResponse } from './types';
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -60,7 +60,8 @@ export async function handleRequest(
       : error('NOT_FOUND', 'Unknown line', 404);
   }
   if (url.pathname === '/stops') {
-    return json({ ...catalogMetadata, stops: listStops() }, 200, {
+    const response: StopsResponse = { ...catalogMetadata, stops: listStops() };
+    return json(response, 200, {
       'cache-control': 'public, max-age=86400'
     });
   }

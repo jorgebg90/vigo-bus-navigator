@@ -18,9 +18,27 @@ export class LocalStorageAdapter implements StoragePort {
 
   get persisted(): boolean { return this._persisted; }
 
-  loadFavorites(): Favorite[] { return this.read<Favorite[]>('favorites') ?? []; }
+  loadFavorites(): Favorite[] {
+    const stored = this.read<unknown>('favorites');
+    if (!Array.isArray(stored)) return [];
+    const favorites = stored.filter((item): item is Favorite =>
+      typeof item === 'object' && item !== null && 'type' in item && item.type === 'stop'
+      && 'targetId' in item && typeof item.targetId === 'string'
+      && 'order' in item && typeof item.order === 'number'
+    );
+    if (favorites.length !== stored.length) this.write('favorites', favorites);
+    return favorites;
+  }
   saveFavorites(favorites: Favorite[]): void { this.write('favorites', favorites); }
-  loadPreferences(): UserPreferences { return this.read<UserPreferences>('preferences') ?? defaultPreferences(); }
+  loadPreferences(): UserPreferences {
+    const preferences = this.read<UserPreferences>('preferences') ?? defaultPreferences();
+    if (preferences.theme !== 'light') {
+      const lightPreferences = { ...preferences, theme: 'light' as const };
+      this.write('preferences', lightPreferences);
+      return lightPreferences;
+    }
+    return preferences;
+  }
   savePreferences(preferences: UserPreferences): void { this.write('preferences', preferences); }
 
   private read<T>(key: string): T | undefined {

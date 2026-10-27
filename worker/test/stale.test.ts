@@ -122,6 +122,19 @@ describe('stale-on-failure behavior', () => {
   });
 
   it('serves last-known at age 299 seconds but rejects it at exactly 300 seconds', async () => {
+    const atAge30 = new Date(NOW.getTime() - 30_000).toISOString();
+    await primeCache(cache, '1234', atAge30);
+    const staleAt30 = await handleRequest(
+      new Request('https://worker.test/stops/1234/arrivals'),
+      { ...base, UPSTREAM_FIXTURE_FAULT: 'error' },
+      cache,
+      undefined,
+      NOW
+    );
+    expect(staleAt30.status).toBe(200);
+    expect(staleAt30.headers.get('age')).toBe('30');
+    expect((await staleAt30.json() as { dataStatus: string }).dataStatus).toBe('stale');
+
     const atAge299 = new Date(NOW.getTime() - 299_000).toISOString();
     await primeCache(cache, '1234', atAge299);
     const stale = await handleRequest(

@@ -323,3 +323,5 @@ real 30 s and 300 s TTLs; local tests cover exact boundary clocks.
 cache eviction/retention semantics. The remote smoke isolates that platform
 question without contacting Vitrasa or weakening preview/production fixture
 prohibitions.
+
+> Superseding correction (2026-10-26): Feature 003 uses the fixed public Vitrasa InfoBus source and Vigo municipal/GTFS catalog data. The planned dependency was not adopted. Current normalization is independently authored from the source contract and observed outputs; this artifact records the earlier feature-002 plan only.

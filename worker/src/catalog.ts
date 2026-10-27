@@ -2,6 +2,7 @@ import catalogData from './catalog-data.json';
 import scheduleManifest from './schedule-data/manifest.json';
 import l4aTimetable from './schedule-data/lines/l4a.json';
 import l7Timetable from './schedule-data/lines/l7.json';
+import type { NetworkStop } from './types';
 
 interface ScheduleTimetable {
   lineId: string;
@@ -58,7 +59,7 @@ export function getLineByCode(code: string) {
   const line = catalogData.lines.find((candidate) => candidate.code === normalizedCode);
   if (!line) return undefined;
 
-  const catalogStopsById = new Map(catalogData.stops.map((stop) => [stop.id, stop]));
+  const catalogStopsById = new Map<string, NetworkStop>(catalogData.stops.map((stop) => [stop.id, stop]));
   return {
     ...line,
     timetable: timetableForLine(line.code, line.id),
@@ -73,6 +74,6 @@ export function getLineByCode(code: string) {
   };
 }
 
-export function listStops() {
+export function listStops(): NetworkStop[] {
   return catalogData.stops;
 }

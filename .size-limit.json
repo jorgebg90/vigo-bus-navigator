@@ -1,6 +1,5 @@
 [
   { "path": "dist/assets/index-*.js", "limit": "150 KB" },
   { "path": "dist/assets/maplibre-*.js", "limit": "350 KB" },
-  { "path": "dist/assets/deck-*.js", "limit": "350 KB" },
   { "path": "dist/assets/index-*.css", "limit": "150 KB" }
 ]

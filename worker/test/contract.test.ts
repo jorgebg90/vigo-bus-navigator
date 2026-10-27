@@ -1,7 +1,9 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { handleRequest } from '../src';
 import { MemoryCache } from '../src/cache';
+import catalogData from '../src/catalog-data.json';
 import type { WorkerEnv } from '../src/env';
+import type { NetworkStop } from '../src/types';
 
 const env: WorkerEnv = { DEPLOYMENT_ENV: 'development', UPSTREAM_FIXTURES: 'true' };
 
@@ -49,6 +51,38 @@ describe('official catalog and arrivals worker contract v3 (fixture mode)', () =
     expect(line.patterns.every((pattern) => pattern.stops.every((stop) => stop.vitrasaId !== null))).toBe(true);
     expect(line.timetable.lineId).toBe('line-4a');
     expect(line.timetable.byDayType.weekday.stopIds).toEqual(line.patterns[0].stopIds);
+  });
+
+  it('serves an unlocated stop as a null pair in stop lists and nested line stops', async () => {
+    const mutableCatalog = catalogData as unknown as {
+      stops: NetworkStop[];
+      lines: Array<{ code: string; patterns: Array<{ stopIds: string[] }> }>;
+    };
+    const line = mutableCatalog.lines.find((candidate) => candidate.code === '4A');
+    const stopId = line?.patterns[0]?.stopIds[0];
+    const stop = mutableCatalog.stops.find((candidate) => candidate.id === stopId);
+    expect(stop).toBeTruthy();
+    const previousCoordinates = { lat: stop!.lat, lon: stop!.lon };
+
+    try {
+      stop!.lat = null;
+      stop!.lon = null;
+
+      const stopsResponse = await handleRequest(new Request('https://worker.test/stops'), env, cache);
+      const stopsBody = await stopsResponse.json() as { stops: NetworkStop[] };
+      expect(stopsBody.stops.find((candidate) => candidate.id === stopId)).toMatchObject({ lat: null, lon: null });
+      expect(stopsBody.stops.every((candidate) => (candidate.lat === null) === (candidate.lon === null))).toBe(true);
+
+      const lineResponse = await handleRequest(new Request('https://worker.test/lines/4A'), env, cache);
+      const lineBody = await lineResponse.json() as { patterns: Array<{ stops: NetworkStop[] }> };
+      const nestedStop = lineBody.patterns.flatMap((pattern) => pattern.stops).find((candidate) => candidate.id === stopId);
+      expect(nestedStop).toMatchObject({ lat: null, lon: null });
+      expect(lineBody.patterns.flatMap((pattern) => pattern.stops)
+        .every((candidate) => (candidate.lat === null) === (candidate.lon === null))).toBe(true);
+    } finally {
+      stop!.lat = previousCoordinates.lat;
+      stop!.lon = previousCoordinates.lon;
+    }
   });
 
   it('rejects unknown official lines', async () => {

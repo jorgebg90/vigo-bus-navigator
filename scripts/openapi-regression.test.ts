@@ -90,3 +90,44 @@ describe('OpenAPI compatibility invariants', () => {
     expect(stop.properties.lon).toMatchObject({ minimum: -8.85, maximum: -8.6 });
   });
 });
+const v4Path = new URL('../specs/003-improve-frontend-design/contracts/realtime-api-v4.openapi.yaml', import.meta.url);
+
+async function loadV4() {
+  const document = parseDocument(await readFile(v4Path, 'utf8'));
+  expect(document.errors).toEqual([]);
+  return document.toJSON() as Record<string, any>;
+}
+
+describe('v4 contract (nullable coordinate pair)', () => {
+  it('keeps every v3 path and operation ID', async () => {
+    const [v3, v4] = [await loadContract(), await loadV4()];
+
+    expect(v4.info.version).toBe('4.0.0');
+    for (const [path, item] of Object.entries<Record<string, any>>(v3.paths)) {
+      for (const method of ['get', 'options']) {
+        if (item[method]) expect(v4.paths[path]?.[method]?.operationId).toBe(item[method].operationId);
+      }
+    }
+  });
+
+  it('keeps the v3 coordinate bounds and enforces the strict pair rule', async () => {
+    const { default: Ajv2020 } = await import('ajv/dist/2020.js');
+    const v4 = await loadV4();
+    const stop = v4.components.schemas.NetworkStop;
+    expect(stop.properties.lat).toMatchObject({ minimum: 42.1, maximum: 42.32 });
+    expect(stop.properties.lon).toMatchObject({ minimum: -8.85, maximum: -8.6 });
+
+    const validate = new Ajv2020({ strict: false }).compile(stop);
+    const base = { id: '1', code: '1', municipalCode: null, vitrasaId: null, name: 'A', lineIds: [] };
+    const valid = (lat: unknown, lon: unknown) => validate({ ...base, lat, lon });
+
+    expect(valid(42.2, -8.7)).toBe(true);
+    expect(valid(null, null)).toBe(true);
+    expect(valid(42.2, null)).toBe(false);
+    expect(valid(null, -8.7)).toBe(false);
+    expect(valid(0, 0)).toBe(false);
+    expect(valid(42.2, 0)).toBe(false);
+    expect(valid(50, -8.7)).toBe(false);
+  });
+
+});

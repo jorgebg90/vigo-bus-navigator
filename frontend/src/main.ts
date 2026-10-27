@@ -1,15 +1,16 @@
 import { getLineFrequency } from './application/get-line-frequency';
-import { renderLineCatalog } from './ui/home/line-catalog';
+import { createStopSelection, type StopSelection } from './application/select-stop';
 import { renderLineFrequency } from './ui/line/frequency-view';
+import { renderLinesList } from './ui/line/lines-list';
+import { renderStopSearch } from './ui/search/stop-search';
 import { ApiScheduleRepository } from './infrastructure/schedule/api-schedule-repository';
 import { SystemClock } from './infrastructure/system/clock';
 import { DocumentVisibility } from './infrastructure/system/visibility';
 import { HttpArrivalsGateway } from './infrastructure/arrivals/http-arrivals-gateway';
-import { getStopArrivals, pendingStopArrivals, startStopArrivalsRefresh } from './application/get-stop-arrivals';
 import { renderStopArrivals } from './ui/stop/stop-view';
 import { getAppConfig } from './infrastructure/config';
 import { LocalStorageAdapter } from './infrastructure/storage/local-storage-adapter';
-import { renderLanguageSettings } from './ui/settings/language-settings';
+import { createSettingsMenu } from './ui/settings/settings-menu';
 import { mountOfflineStatus } from './ui/offline-status';
 import { BrowserMapPort } from './infrastructure/map/map-port';
 import { renderMap } from './ui/map/map-view';
@@ -18,8 +19,14 @@ import { applyTheme } from './ui/theme';
 import { renderFavorites } from './ui/home/favorites';
 import { toggleFavoriteForTarget } from './application/toggle-favorite';
 import { recordRecentView } from './domain/favorites';
-import type { DayType, Line } from './domain/types';
-import { onLanguageChange } from './i18n';
+import type { DayType, Favorite, Line, RecentView, Stop } from './domain/types';
+import { onLanguageChange, setDocumentLanguage } from './i18n';
+import { createShell, type Destination } from './ui/shell';
+import { createStopChooser } from './ui/map/stop-chooser';
+import { renderMapToolbar } from './ui/map/map-toolbar';
+import type { StopMapPort } from './application/ports';
+import { showStorageNotice } from './ui/settings/storage-notice';
+import { renderMapAttribution } from './ui/privacy/privacy-view';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing app root');
@@ -27,30 +34,55 @@ if (!app) throw new Error('Missing app root');
 const clock = new SystemClock();
 const visibility = new DocumentVisibility();
 const storage = new LocalStorageAdapter();
-let stopRefreshCleanup: (() => void) | undefined;
-let activeStopId: string | undefined;
-applyTheme(storage.loadPreferences().theme);
-const shell = document.createElement('div');
-shell.className = 'app-shell';
-const view = document.createElement('main');
-view.className = 'app-view';
-const settings = document.createElement('aside');
-const favorites = document.createElement('section');
-const sidebar = document.createElement('aside');
-sidebar.className = 'app-sidebar';
-sidebar.append(settings, favorites);
-shell.append(sidebar, view);
-app.replaceChildren(shell);
-mountOfflineStatus(shell);
+applyTheme();
+setDocumentLanguage(storage.loadPreferences().language);
+const shell = createShell(app);
+const view = shell.main;
+let mapCleanup: (() => void) | undefined;
+let unsubscribeSelection: (() => void) | undefined;
+let panelCloseListener: (() => void) | undefined;
+let currentDestination: Destination = 'map';
+let activePanelStopId: string | undefined;
+let activePanelContent: HTMLElement | undefined;
+let activeMap: StopMapPort | undefined;
+let selection: StopSelection | undefined;
+let lines: Line[] = [];
+let stops: Stop[] = [];
+let schedule: ApiScheduleRepository | undefined;
+let renderCurrentDestination: (() => void) | undefined;
+const settingsHost = document.createElement('div');
+settingsHost.className = 'settings-host';
+shell.header.querySelector('.settings-trigger')?.replaceWith(settingsHost);
+createSettingsMenu(settingsHost, storage);
+shell.onDestinationChange((destination) => {
+  currentDestination = destination;
+  renderCurrentDestination?.();
+});
+const shellRoot = app.querySelector<HTMLElement>('.app-shell');
+if (!shellRoot) throw new Error('Missing app shell');
+mountOfflineStatus(shellRoot);
+let remountMap: (() => void) | undefined;
+let mountedMapTheme: 'light' | 'dark' | undefined;
+new MutationObserver(() => {
+  const theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+  if (activeMap && theme !== mountedMapTheme) remountMap?.();
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 void bootstrap();
 onLanguageChange(() => { void bootstrap(); });
 
 async function bootstrap(): Promise<void> {
-  stopRefreshCleanup?.();
-  stopRefreshCleanup = undefined;
-  activeStopId = undefined;
+  unsubscribeSelection?.();
+  selection?.dispose();
+  selection = undefined;
+  mapCleanup?.();
+  mapCleanup = undefined;
+  activeMap = undefined;
+  shell.base.replaceChildren();
+  panelCloseListener?.();
+  panelCloseListener = undefined;
+
   const config = getAppConfig();
-  if (config.profile === 'production' && 'serviceWorker' in navigator) {
+  if (config.profile === 'production' && navigator.serviceWorker) {
     const { registerSW } = await import('virtual:pwa-register');
     registerSW({ immediate: true });
     const serviceWorker = navigator.serviceWorker;
@@ -61,77 +93,174 @@ async function bootstrap(): Promise<void> {
       });
     }
   }
-  const schedule = new ApiScheduleRepository(config.arrivalsBaseUrl);
-  const [lines, stops] = await Promise.all([schedule.listLines(), schedule.listStops()]);
+
+  schedule = new ApiScheduleRepository(config.arrivalsBaseUrl);
   const arrivals = new HttpArrivalsGateway(config.arrivalsBaseUrl);
-
-  const refreshFavorites = () => renderFavorites(
-    favorites,
-    storage.loadFavorites(),
-    lines,
-    stops,
-    openFavorite,
-    { recentViews: storage.loadPreferences().recentViews, persisted: storage.persisted }
-  );
-  const remember = (type: 'line' | 'stop', targetId: string) => {
-    const preferences = storage.loadPreferences();
-    storage.savePreferences({ ...preferences, recentViews: recordRecentView(preferences.recentViews, { type, targetId }, clock.now()) });
-    refreshFavorites();
-  };
-  const showStop = async (stopId: string): Promise<void> => {
-    const stop = stops.find((candidate) => candidate.id === stopId);
-    if (!stop) return;
-    stopRefreshCleanup?.();
-    stopRefreshCleanup = undefined;
-    activeStopId = stop.id;
-    remember('stop', stop.id);
-    const load = async () => {
-      renderStopArrivals(view, pendingStopArrivals(stop));
-      const result = await getStopArrivals(stop, arrivals, clock);
-      if (activeStopId === stop.id) renderStopArrivals(view, result, () => { void load(); });
-      return result;
-    };
-    await load();
-    stopRefreshCleanup = startStopArrivalsRefresh(load, visibility);
-  };
-  function openFavorite(favorite: { type: 'line' | 'stop'; targetId: string }): void {
-    if (favorite.type === 'line') {
-      const line = lines.find((candidate) => candidate.id === favorite.targetId);
-      if (line) void showLine(line);
-    } else {
-      void showStop(favorite.targetId);
+  [lines, stops] = await Promise.all([schedule.listLines(), schedule.listStops()]);
+  selection = createStopSelection({ stops, arrivals, clock, visibility });
+  unsubscribeSelection = selection.subscribe((model) => {
+    if (model.selectedStopId) activeMap?.setSelectedStop(model.selectedStopId);
+    else activeMap?.setSelectedStop(null);
+    if (model.stop && model.arrivals && model.stop.id === activePanelStopId && activePanelContent) {
+      const currentSelection = selection;
+      renderStopArrivals(activePanelContent, model.arrivals, () => { void currentSelection?.refresh(); }, {
+        saved: storage.loadFavorites().some((favorite) => favorite.type === 'stop' && favorite.targetId === model.stop?.id),
+        onToggle: () => {
+          toggleFavoriteForTarget(storage, { type: 'stop', targetId: model.stop!.id });
+          notifyStorageFailure();
+          refreshFavorites();
+        }
+      }, lines, new Map(lines.map((line) => [line.code, line.color])));
     }
-  }
-
-  renderLanguageSettings(settings, storage);
-  refreshFavorites();
-  renderLineCatalog(view, {
-    lines,
-    onSelect: (line) => { void showLine(line); }
   });
 
-  async function showLine(line: Line, requestedDayType?: DayType): Promise<void> {
-      stopRefreshCleanup?.();
-      stopRefreshCleanup = undefined;
-      activeStopId = undefined;
-      remember('line', line.id);
-      const result = await getLineFrequency(line.id, schedule, clock, requestedDayType);
-      renderLineFrequency(view, {
-        lineCode: result.line.code,
-        timetable: result.timetable,
-        dayType: result.dayType,
-        datasetVersion: result.datasetVersion,
-        onDayTypeChange: (dayType) => { void showLine(line, dayType); },
-        onFavoriteToggle: () => {
-          toggleFavoriteForTarget(storage, { type: 'line', targetId: line.id });
-          refreshFavorites();
-        },
-        onStopSelect: showStop
+  const refreshFavorites = () => {
+    if (currentDestination === 'saved') renderDestination();
+  };
+  const remember = (type: 'line' | 'stop', targetId: string) => {
+    const preferences = storage.loadPreferences();
+    storage.savePreferences({
+      ...preferences,
+      recentViews: recordRecentView(preferences.recentViews, { type, targetId }, clock.now())
+    });
+    refreshFavorites();
+  };
+  const notifyStorageFailure = () => {
+    if (!storage.persisted) showStorageNotice(shellRoot!);
+  };
+
+  const selectStop = (stopId: string): void => {
+    const stop = stops.find((candidate) => candidate.id === stopId);
+    if (!stop || !selection) return;
+    remember('stop', stop.id);
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
+    const content = document.createElement('div');
+    activePanelStopId = stop.id;
+    activePanelContent = content;
+    shell.openPanel(stop.name, content, opener);
+    void selection.selectStop(stop.id);
+  };
+
+  const showStopOnMap = (stopId: string): void => {
+    const stop = stops.find((candidate) => candidate.id === stopId);
+    if (!stop) return;
+    if (stop.lat === null || stop.lon === null) {
+      selectStop(stopId);
+      return;
+    }
+    shell.navigate('map');
+    activeMap?.focusStop(stopId);
+    selectStop(stopId);
+  };
+
+  const openSavedItem = (item: Favorite | RecentView): void => {
+    if (item.type === 'line') {
+      const line = lines.find((candidate) => candidate.id === item.targetId);
+      if (line) void showLine(line);
+      return;
+    }
+    showStopOnMap(item.targetId);
+  };
+
+  function mountBaseMap(): void {
+    const mapRoot = document.createElement('section');
+    shell.base.append(mapRoot);
+    const map = new BrowserMapPort();
+    activeMap = map;
+    mountedMapTheme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+    mapCleanup = renderMap(mapRoot, map, stops, mountedMapTheme);
+    map.onStopSelected(selectStop);
+    const chooser = createStopChooser(mapRoot, { onSelect: selectStop, lines });
+    renderMapToolbar(mapRoot, {
+      map,
+      stops,
+      onStopsInView: (visibleStops, center, opener) => chooser.open(visibleStops, center, opener)
+    });
+    renderMapAttribution(mapRoot);
+    const stopsInViewButton = mapRoot.querySelector<HTMLButtonElement>('[data-stops-in-view]');
+    map.onChooserRequested((stopIds) => {
+      if (stopsInViewButton) chooser.open(stops.filter((stop) => stopIds.includes(stop.id)), map.getMapCenter(), stopsInViewButton);
+    });
+    const unmount = mapCleanup;
+    mapCleanup = () => { chooser.destroy(); unmount?.(); };
+  }
+
+  function renderDestination(): void {
+    view.dataset.destination = currentDestination;
+    if (!schedule || !selection) return;
+    selection.clearSelection();
+    activePanelStopId = undefined;
+    activePanelContent = undefined;
+    activeMap?.setSelectedStop(null);
+    if (!activeMap) mountBaseMap();
+
+    if (currentDestination === 'saved') {
+      renderFavorites(view, storage.loadFavorites(), lines, stops, openSavedItem, {
+        recentViews: storage.loadPreferences().recentViews,
+        persisted: storage.persisted,
+        onRemove: (favorite) => {
+          toggleFavoriteForTarget(storage, { type: favorite.type, targetId: favorite.targetId });
+          renderDestination();
+        }
       });
-      if (!result.timetable) return;
-      const mapRoot = document.createElement('section');
-      view.append(mapRoot);
-      const stopIds = result.timetable.byDayType[result.dayType]?.stopIds ?? [];
-      renderMap(mapRoot, new BrowserMapPort(), stops.filter((stop) => stopIds.includes(stop.id)), 'light');
+      return;
+    }
+    if (currentDestination === 'map') return;
+    if (currentDestination === 'search') {
+      renderStopSearch(view, {
+        stops,
+        favoriteStopIds: storage.loadFavorites().filter((favorite) => favorite.type === 'stop').map((favorite) => favorite.targetId),
+        onSelect: showStopOnMap,
+        onFavoriteToggle: (stopId) => {
+          toggleFavoriteForTarget(storage, { type: 'stop', targetId: stopId });
+          notifyStorageFailure();
+          refreshFavorites();
+        }
+      });
+      return;
+    }
+    renderLinesList(view, lines, (line) => { void showLine(line); });
+  }
+
+  const clearSelectionOnPanelClose = () => {
+    activePanelStopId = undefined;
+    activePanelContent = undefined;
+    selection?.clearSelection();
+    activeMap?.setSelectedStop(null);
+  };
+  window.addEventListener('vbn:panel-close', clearSelectionOnPanelClose);
+  panelCloseListener = () => window.removeEventListener('vbn:panel-close', clearSelectionOnPanelClose);
+
+  renderCurrentDestination = renderDestination;
+  remountMap = () => {
+    mapCleanup?.();
+    mapCleanup = undefined;
+    activeMap = undefined;
+    shell.base.replaceChildren();
+    mountBaseMap();
+  };
+  renderDestination();
+
+  async function showLine(line: Line, requestedDayType?: DayType): Promise<void> {
+    if (!schedule) return;
+    shell.navigate('lines');
+    remember('line', line.id);
+    const result = await getLineFrequency(line.id, schedule, clock, requestedDayType);
+    renderLineFrequency(view, {
+      lineCode: result.line.code,
+      lineColor: result.line.color,
+      timetable: result.timetable,
+      patterns: result.patterns,
+      lines,
+      favoriteStopIds: storage.loadFavorites().filter((favorite) => favorite.type === 'stop').map((favorite) => favorite.targetId),
+      dayType: result.dayType,
+      onDayTypeChange: (dayType) => { void showLine(line, dayType); },
+      onStopSelect: showStopOnMap,
+      onStopFavoriteToggle: (stopId) => {
+        toggleFavoriteForTarget(storage, { type: 'stop', targetId: stopId });
+        notifyStorageFailure();
+        refreshFavorites();
+      }
+    });
   }
 }

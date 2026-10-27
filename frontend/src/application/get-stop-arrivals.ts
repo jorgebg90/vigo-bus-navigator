@@ -5,7 +5,7 @@ export interface StopArrivalsResult {
   stop: Stop;
   arrivals: Arrival[];
   source: 'live' | 'cached' | 'unavailable';
-  dataStatus: 'loading' | 'current' | 'stale' | 'empty' | 'unavailable';
+  dataStatus: 'loading' | 'current' | 'stale' | 'empty' | 'unavailable' | 'offline';
   fetchedAt: string;
   error?: string;
 }
@@ -49,8 +49,21 @@ export async function getStopArrivals(
 
   try {
     const response = await arrivalsPort.getArrivals(stop.vitrasaId);
-    if (response.kind !== 'live') throw new Error(response.reason);
-    const fetchedAt = response.dataStatus === 'stale' ? response.fetchedAt : clock.now().toISOString();
+    if (response.kind !== 'live') {
+      if (response.reason === 'offline') {
+        const cached = cache?.get(stop.id);
+        return {
+          stop,
+          arrivals: cached?.arrivals ?? [],
+          source: cached ? 'cached' : 'unavailable',
+          dataStatus: 'offline',
+          fetchedAt: cached?.fetchedAt ?? clock.now().toISOString(),
+          error: 'Offline'
+        };
+      }
+      throw new Error(response.reason);
+    }
+    const fetchedAt = response.fetchedAt;
     cache?.set(stop.id, { arrivals: response.arrivals, fetchedAt: response.fetchedAt });
     return { stop, arrivals: response.arrivals, source: 'live', dataStatus: response.dataStatus, fetchedAt };
   } catch (error) {

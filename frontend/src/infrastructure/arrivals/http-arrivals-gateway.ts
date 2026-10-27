@@ -14,9 +14,17 @@ export class HttpArrivalsGateway implements ArrivalsGateway {
   constructor(private readonly baseUrl: string, private readonly fetcher: typeof fetch = fetch) {}
 
   async getArrivals(stopCode: string): Promise<ArrivalsResult> {
-    const response = await this.fetcher(`${this.baseUrl.replace(/\/$/, '')}/stops/${encodeURIComponent(stopCode)}/arrivals`);
+    let response: Response;
+    try {
+      response = await this.fetcher(`${this.baseUrl.replace(/\/$/, '')}/stops/${encodeURIComponent(stopCode)}/arrivals`);
+    } catch {
+      return { kind: 'unavailable', reason: typeof window !== 'undefined' && !navigator.onLine ? 'offline' : 'upstream' };
+    }
     const payload = await response.json().catch(() => ({})) as ArrivalsPayload;
     if (!response.ok) {
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        return { kind: 'unavailable', reason: 'offline' };
+      }
       const reason = payload.error?.code === 'STOP_NOT_EXIST' ? 'stop-not-exist'
         : response.status === 400 || response.status === 405 ? 'unknown'
         : 'upstream';

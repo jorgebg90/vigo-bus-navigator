@@ -170,3 +170,5 @@ substitute preview or production for this verification.
   VigoBusAPI with its copyright and Apache-2.0 license.
 - Ported Worker files carry the attribution header.
 - README contains the provenance section and non-affiliation disclaimer.
+
+> Superseding correction (2026-10-26): Feature 003 uses the fixed public Vitrasa InfoBus source and Vigo municipal/GTFS catalog data. The planned dependency was not adopted. Current normalization is independently authored from the source contract and observed outputs; this artifact records the earlier feature-002 plan only.

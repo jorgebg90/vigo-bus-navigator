@@ -15,13 +15,16 @@ const timetable = {
   lineId: 'line-4a',
   byDayType: { weekday: { firstDeparture: 360, lastDeparture: 1380, bands: [], stopIds: ['stop-1'] } }
 };
+const patterns = [{
+  id: 'pattern-outbound', headsign: 'Praza de América', stopIds: ['stop-1'], stops: [stop]
+}];
 
 describe('ApiScheduleRepository', () => {
   it('loads catalog, stops, schedule metadata, and line timetable through Worker endpoints', async () => {
     const responses: Record<string, unknown> = {
       '/lines': { scheduleMetadata: manifest, lines: [line] },
       '/stops': { stops: [stop] },
-      '/lines/4A': { ...line, patterns: [], timetable }
+      '/lines/4A': { ...line, patterns, timetable }
     };
     const fetcher = vi.fn(async (url: string) => {
       const body = responses[new URL(url).pathname];
@@ -32,7 +35,7 @@ describe('ApiScheduleRepository', () => {
     expect(await repository.listLines()).toEqual([{ ...line, color: '#666666' }]);
     expect(await repository.listStops()).toEqual([stop]);
     expect(await repository.getManifest()).toEqual(manifest);
-    expect(await repository.getTimetable('line-4a')).toEqual(timetable);
+    expect(await repository.getLineDetails('line-4a')).toEqual({ timetable, patterns });
     expect(fetcher.mock.calls.map(([url]) => new URL(url).pathname)).toEqual(['/lines', '/stops', '/lines/4A']);
   });
 
@@ -46,6 +49,6 @@ describe('ApiScheduleRepository', () => {
     });
     const repository = new ApiScheduleRepository('http://worker.test', fetcher);
 
-    await expect(repository.getTimetable('line-4a')).resolves.toBeUndefined();
+    await expect(repository.getLineDetails('line-4a')).resolves.toEqual({ patterns: [] });
   });
 });

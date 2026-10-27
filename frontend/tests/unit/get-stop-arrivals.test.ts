@@ -30,6 +30,14 @@ describe('getStopArrivals', () => {
     expect(result.arrivals).toEqual([]);
   });
 
+  it('keeps network loss distinct from an upstream failure', async () => {
+    const result = await getStopArrivals(stop, {
+      getArrivals: async () => ({ kind: 'unavailable', reason: 'offline' })
+    }, clock);
+    expect(result.dataStatus).toBe('offline');
+    expect(result.arrivals).toEqual([]);
+  });
+
   it('falls back to cached arrivals on gateway failure', async () => {
     const result = await getStopArrivals(stop, { getArrivals: async () => ({ kind: 'unavailable', reason: 'upstream' }) }, clock, { get: () => ({ arrivals: [], fetchedAt: 'cached' }), set: () => undefined });
     expect(result.source).toBe('cached');

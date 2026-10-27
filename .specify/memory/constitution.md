@@ -147,10 +147,10 @@ close its harness validation gate as defined in `docs/harness-charter.md`:
 | Gate | Phase | Required verdicts |
 | --- | --- | --- |
 | G1 | Constitution | All actors |
-| G2 | Specify | Stakeholder, QA Tester |
-| G3 | Plan | Software Architect, Backend Developer |
-| G4 | Tasks | QA Tester |
-| G5 | Implement | QA Tester, Stakeholder |
+| G2 | Specify | Stakeholder, QA Tester, UX Designer, Frontend Developer |
+| G3 | Plan | Software Architect, Backend Developer, UX Designer, Frontend Developer |
+| G4 | Tasks | QA Tester, UX Designer, Frontend Developer |
+| G5 | Implement | QA Tester, Stakeholder, UX Designer, Frontend Developer, Software Architect |
 | G6 | Each phase | Communicator (blog draft exists and is accurate) |
 
 A `CHANGES REQUESTED` verdict blocks the phase until resolved and re-approved.

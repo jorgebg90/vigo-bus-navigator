@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { renderStopArrivals } from '../../src/ui/stop/stop-arrivals-view';
-import { setDocumentLanguage, translate } from '../../src/i18n';
+import { setDocumentLanguage } from '../../src/i18n';
 import type { StopArrivalsResult } from '../../src/application/get-stop-arrivals';
-import type { Language } from '../../src/domain/types';
+import type { Line } from '../../src/domain/types';
 
 const stop = {
   id: 'stop-1001',
@@ -25,29 +25,68 @@ function result(dataStatus: StopArrivalsResult['dataStatus']): StopArrivalsResul
   };
 }
 
-describe('arrivals privacy disclosure', () => {
+describe('stop panel presentation', () => {
   beforeEach(() => setDocumentLanguage('en'));
 
-  it.each(['es', 'gl', 'en'] as const)('renders localized disclosure in %s', (language: Language) => {
-    setDocumentLanguage(language);
+  it('does not expose network implementation details or a privacy link', () => {
     const root = document.createElement('main');
     renderStopArrivals(root, result('loading'));
-    const notice = root.querySelector('[data-arrivals-privacy]');
+    expect(root.querySelector('[data-arrivals-privacy]')).toBeNull();
+    expect(root.querySelector('[data-privacy-entry]')).toBeNull();
+    expect(root.textContent).not.toMatch(/Cloudflare|Vitrasa|metadatos|perfil/i);
+  });
 
-    expect(notice).toBeTruthy();
-    expect(notice?.textContent).toBe(translate(language, 'arrivalsPrivacyNotice'));
-    expect(notice?.textContent).toContain('Cloudflare');
-    expect(notice?.textContent).toContain('Vitrasa');
+  it('shows the selected stop serving lines with their catalog colors', () => {
+    const root = document.createElement('main');
+    const lines: Line[] = [
+      { id: 'line-4a', code: '4A', name: 'Bouzas', color: '#009900' },
+      { id: 'line-7', code: '7', name: 'Coia', color: '#14532D' }
+    ];
+    const favorite = { saved: true, onToggle: () => undefined };
+    renderStopArrivals(root, {
+      ...result('current'), stop: { ...stop, lineIds: ['line-4a', 'line-7'] }
+    }, undefined, favorite, lines);
+
+    const badges = [...root.querySelectorAll('.stop-arrivals-summary [data-line-code-badge]')];
+    expect(badges.map((badge) => badge.textContent)).toEqual(['4A', '7']);
+    expect((badges[0] as HTMLElement).style.backgroundColor).toBe('#009900');
+    expect(root.querySelector('.stop-arrivals-summary .favorite-toggle')?.getAttribute('aria-pressed')).toBe('true');
   });
 });
 
-describe('privacy disclosure content', () => {
-  it.each([
-    ['es', ['identificador', 'metadatos de conexión', 'cuenta', 'perfil', 'anónima']],
-    ['gl', ['identificador', 'metadatos da conexión', 'conta', 'perfil', 'anónima']],
-    ['en', ['public ID', 'connection metadata', 'account', 'profile', 'anonymous']]
-  ] as const)('covers all required facts in %s', (language, requiredPhrases) => {
-    const notice = translate(language, 'arrivalsPrivacyNotice').toLowerCase();
-    for (const phrase of requiredPhrases) expect(notice).toContain(phrase.toLowerCase());
+describe('stop panel states and next actions', () => {
+  beforeEach(() => setDocumentLanguage('en'));
+
+  it('offers a retry for stale and unavailable arrivals', () => {
+    for (const dataStatus of ['stale', 'unavailable'] as const) {
+      const root = document.createElement('main');
+      renderStopArrivals(root, result(dataStatus), () => undefined);
+      expect(root.querySelector('[data-next-action="retry"]')).toBeTruthy();
+    }
+  });
+
+  it('links empty results to lines serving the selected stop', () => {
+    const root = document.createElement('main');
+    renderStopArrivals(root, { ...result('empty'), stop: { ...stop, lineIds: ['line-4a'] } });
+    expect(root.querySelector('[data-next-action="serving-lines"]')).toBeTruthy();
+  });
+
+  it('shows no-live-id and missing-coordinate states without printing coordinates', () => {
+    const noLiveId = document.createElement('main');
+    renderStopArrivals(noLiveId, { ...result('unavailable'), stop: { ...stop, vitrasaId: null } });
+    expect(noLiveId.querySelector('[data-stop-state="no-live-id"]')).toBeTruthy();
+
+    const unlocated = document.createElement('main');
+    renderStopArrivals(unlocated, { ...result('current'), stop: { ...stop, lat: null, lon: null } });
+    expect(unlocated.textContent).toContain('No map position');
+    expect(unlocated.textContent).not.toContain('42.2');
+    expect(unlocated.textContent).not.toContain('-8.7');
+  });
+
+  it('uses the offline state without removing the selected stop', () => {
+    const root = document.createElement('main');
+    renderStopArrivals(root, { ...result('unavailable'), dataStatus: 'offline' });
+    expect(root.querySelector('[data-freshness="offline"]')).toBeTruthy();
+    expect(root.textContent).toContain('Offline');
   });
 });

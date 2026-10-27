@@ -1,5 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import { assertPayloadBudget, MAX_CSS_GZIP_BYTES, MAX_JS_GZIP_BYTES } from './check-payload-budget';
+import { assertPayloadBudget, firstMapGraphFiles, MAX_CSS_GZIP_BYTES, MAX_FIRST_MAP_GZIP_BYTES, MAX_JS_GZIP_BYTES, type ViteManifest } from './check-payload-budget';
+
+describe('first-map-ready graph', () => {
+  const manifest: ViteManifest = {
+    'index.html': { file: 'assets/index-a.js', isEntry: true, imports: ['_shared.js'], dynamicImports: ['map.ts', 'lines.ts'], css: ['assets/index-a.css'] },
+    '_shared.js': { file: 'assets/shared-b.js', css: ['assets/shared-b.css'] },
+    'map.ts': { file: 'assets/maplibre-c.js', name: 'maplibre', imports: ['_shared.js'] },
+    'deck.ts': { file: 'assets/deck-d.js', name: 'deck' },
+    'lines.ts': { file: 'assets/lines-e.js', name: 'lines' }
+  };
+
+  it('includes the entry, its static imports, the map chunk, and CSS once each', () => {
+    const files = firstMapGraphFiles(manifest);
+    expect([...files.js].sort()).toEqual(['assets/index-a.js', 'assets/maplibre-c.js', 'assets/shared-b.js']);
+    expect([...files.css].sort()).toEqual(['assets/index-a.css', 'assets/shared-b.css']);
+  });
+
+  it('counts deck.gl only while the entry still loads it', () => {
+    const withDeck: ViteManifest = { ...manifest, 'index.html': { ...manifest['index.html'], dynamicImports: ['map.ts', 'deck.ts'] } };
+    expect(firstMapGraphFiles(withDeck).js.has('assets/deck-d.js')).toBe(true);
+    expect(firstMapGraphFiles(manifest).js.has('assets/deck-d.js')).toBe(false);
+  });
+
+  it('exposes the 500 KiB limit', () => {
+    expect(MAX_FIRST_MAP_GZIP_BYTES).toBe(500 * 1024);
+  });
+});
 
 describe('aggregate gzip payload budget', () => {
   it('accepts aggregate JavaScript and CSS exactly at their limits', () => {
@@ -19,7 +45,6 @@ describe('aggregate gzip payload budget', () => {
     expect(config).toEqual([
       { path: 'dist/assets/index-*.js', limit: '150 KB' },
       { path: 'dist/assets/maplibre-*.js', limit: '350 KB' },
-      { path: 'dist/assets/deck-*.js', limit: '350 KB' },
       { path: 'dist/assets/index-*.css', limit: '150 KB' }
     ]);
   });

@@ -35,3 +35,5 @@
 - The exact upstream endpoint and current response format must be verified during planning against the selected VigoBusAPI revision before implementation.
 - The reference repository identifies itself as Apache-2.0; the implementation phase must verify and preserve the exact license and copyright notices, and state that this project is based on its code.
 - Stop and line geographic placement on the map is an explicit correctness requirement with measurable tolerances (FR-019 to FR-021, SC-008).
+
+> Superseding correction (2026-10-26): Feature 003 uses the fixed public Vitrasa InfoBus source and Vigo municipal/GTFS catalog data. The planned dependency was not adopted. Current normalization is independently authored from the source contract and observed outputs; this artifact records the earlier feature-002 plan only.

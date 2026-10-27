@@ -265,3 +265,5 @@ by QA and Stakeholder G5 review and a fresh Communicator G6 accuracy review.
 *Blog status: draft, pending fresh Communicator review after the source-change
 G2–G4 updates; source-change G1–G4 are closed.
 The WebForms migration has not started.*
+
+> Superseding correction (2026-10-26): Feature 003 uses the fixed public Vitrasa InfoBus source and Vigo municipal/GTFS catalog data. The planned dependency was not adopted. Current normalization is independently authored from the source contract and observed outputs; this artifact records the earlier feature-002 plan only.

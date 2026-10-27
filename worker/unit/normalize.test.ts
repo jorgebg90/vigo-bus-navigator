@@ -23,6 +23,14 @@ describe('normalizeSourceRows', () => {
     ], generatedAt)[0].destination).toBe('PRAZA DE AMÉRICA');
   });
 
+  it('replaces double quotes and removes asterisks from source text', () => {
+    expect(normalizeSourceRows([
+      { lineCode: '"4A"', destination: '"PRAZA *DE* AMÉRICA"', minutesText: '4' }
+    ], generatedAt)).toMatchObject([
+      { lineCode: "'4A'", destination: "'PRAZA DE AMÉRICA'", minutes: 4 }
+    ]);
+  });
+
   it('sorts by minutes then destination and removes exact duplicates stably', () => {
     expect(normalizeSourceRows([
       { lineCode: '4A', destination: 'ZARAGOZA', minutesText: '8' },

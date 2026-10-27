@@ -2,24 +2,26 @@ import type {
   Arrival,
   DatasetManifest,
   Favorite,
+  LineDetails,
   Line,
   Stop,
   Timetable,
   UserPreferences
 } from '../domain/types';
+import type { MapStop } from '../domain/map-stops';
 
 export interface ScheduleRepository {
   getManifest(): Promise<DatasetManifest>;
   listLines(): Promise<Line[]>;
   listStops(): Promise<Stop[]>;
-  getTimetable(lineId: string): Promise<Timetable | undefined>;
+  getLineDetails(lineId: string): Promise<LineDetails>;
 }
 
 export type DataStatus = 'current' | 'stale' | 'empty';
 
 export type ArrivalsResult =
   | { kind: 'live'; arrivals: Arrival[]; fetchedAt: string; dataStatus: DataStatus }
-  | { kind: 'unavailable'; reason: 'stop-not-exist' | 'upstream' | 'unknown' };
+  | { kind: 'unavailable'; reason: 'stop-not-exist' | 'upstream' | 'unknown' | 'offline' };
 
 export interface ArrivalsGateway {
   getArrivals(stopCode: string): Promise<ArrivalsResult>;
@@ -48,11 +50,18 @@ export interface VisibilityPort {
   onVisibilityChange(listener: (visible: boolean) => void): () => void;
 }
 
-export interface MapPort {
+export interface StopMapPort {
   mount(container: HTMLElement, options: { theme: 'light' | 'dark' }): void;
-  showStops(stops: Stop[], selection: { selectedId?: string }): void;
-  fitTo(stopIds: string[]): void;
-  onStopSelected(listener: (stopId: string) => void): () => void;
   setTheme(theme: 'light' | 'dark'): void;
   unmount(): void;
+  setStops(stops: MapStop[]): void;
+  setSelectedStop(stopId: string | null): void;
+  onStopSelected(listener: (stopId: string) => void): () => void;
+  onChooserRequested(listener: (stopIds: string[]) => void): () => void;
+  fitToStops(): void;
+  focusStop(stopId: string): void;
+  zoomIn(): void;
+  zoomOut(): void;
+  getMapCenter(): [number, number];
+  getStopsInView(stops: Stop[]): Stop[];
 }
