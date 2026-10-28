@@ -65,10 +65,15 @@ No setup tasks.
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 
-**Purpose**: Verify implementation against both stories, privacy requirements, and the design quickstart.
+**Purpose**: Verify implementation against all stories, privacy requirements, and the design quickstart.
 
 - [X] T017 Update the location and map-control contract and quickstart with any verified behavior changes in `specs/006-mobile-location/contracts/mobile-location-map.md` and `specs/006-mobile-location/quickstart.md`
 - [X] T018 Run all quickstart scenarios, the full test suite, typecheck, production build, and `git diff --check` from the `package.json` project root
+- [X] T019 [P] Add acceptance coverage for mobile search, stop-detail, and line-detail layouts that preserve a visible map area in `frontend/tests/e2e/responsive.spec.ts`
+- [X] T020 [P] Add map-port and end-to-end coverage for selected-line stop filtering, shared stops, and restoring all stops after leaving the line view in `frontend/tests/unit/map-view.test.ts` and `frontend/tests/e2e/responsive.spec.ts`
+- [X] T021 [P] Add DOM coverage for the initially collapsed, localized line schedule disclosure and stable heading in `frontend/tests/dom/us1-line-frequency.test.ts`
+- [X] T022 Implement the mobile map/content split, expandable stop panel, line stop filtering, and compact schedule disclosure in `frontend/src/ui/styles.css`, `frontend/src/ui/panel/sheet.ts`, `frontend/src/infrastructure/map/map-port.ts`, and `frontend/src/ui/line/frequency-view.ts`
+- [X] T023 Update the feature specification, design contract, and quickstart with the verified mobile layout, line-filtering, and schedule behavior in `specs/006-mobile-location/spec.md`, `specs/006-mobile-location/plan.md`, `specs/006-mobile-location/contracts/mobile-location-map.md`, and `specs/006-mobile-location/quickstart.md`
 
 ## Dependencies & Execution Order
 
@@ -76,13 +81,14 @@ No setup tasks.
 
 - **Setup (Phase 1)**: No work required.
 - **Foundational (Phase 2)**: Establishes transient location types and ports; blocks both user stories.
-- **User Stories (Phase 3+)**: US1 is the P1 user benefit and can be implemented/tested independently after Phase 2. US2 is an independent P2 toolbar simplification.
+- **User Stories (Phase 3+)**: US1 is the P1 user benefit and can be implemented/tested independently after Phase 2. US2 is an independent P2 toolbar simplification. The delivered mobile layout, line filtering, and schedule disclosure refinements are recorded in completed tasks T019–T023.
 - **Polish (Phase 5)**: Depends on the desired user stories being complete.
 
 ### User Story Dependencies
 
 - **US1 (P1)**: Starts after Phase 2; delivers mobile location discovery and safe fallback.
 - **US2 (P2)**: Starts after Phase 2; does not depend on US1 and can be implemented independently.
+- **Mobile layout, selected-line stop filtering, and schedule disclosure (T019–T023)**: Delivered as follow-up refinements; their test and implementation dependencies are recorded in the task descriptions.
 
 ### Within Each User Story
 

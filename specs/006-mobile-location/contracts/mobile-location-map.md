@@ -53,6 +53,38 @@ endpoint or municipal data action is added.
 - Location outcome messages use semantic status announcements and localized
   wording. No status includes raw coordinates.
 
+## Selected Line Stops
+
+- When a line is selected, the map stop source contains only eligible stops
+  served by that line; stops shared with other lines remain included.
+- Stop markers and cluster counts are derived from that filtered set, not from
+  all stops in the visible area.
+- When the person leaves the line view, restore the complete stop set.
+- A selected line with no eligible mapped stops must not display unrelated
+  stops as if they were served by that line.
+
+## Mobile Content Layout
+
+- At the existing mobile breakpoint (`max-width: 599px`), stop search results,
+  selected-stop details, and selected-line details occupy a lower content
+  region while a map region remains visible above.
+- Search results and line details scroll within their content region.
+- The selected-stop panel can expand; its growth reduces the map region rather
+  than covering it.
+- Closing the active panel or leaving its view returns the map to the
+  available screen area.
+
+## Line Schedule Disclosure
+
+- Published or bundled departure/frequency content starts collapsed.
+- The compact localized disclosure heading is “Departures and arrivals” in
+  English, “Salidas y llegadas” in Spanish, and “Saídas e chegadas” in
+  Galician.
+- Activating the heading toggles schedule visibility without changing the
+  heading text.
+- When route geometry is displayed, do not add a redundant textual message
+  listing route directions alongside it.
+
 ## Privacy
 
 - The application does not persist current location or permission-attempt

@@ -10,8 +10,10 @@ Remove the map's stops-in-view toolbar action while preserving zoom and recenter
 On the mobile map, request one current position through a browser permission
 prompt, use it only in memory to center the map and draw a location marker, and
 leave the Vigo overview as the fallback for denied, failed, invalid, or
-out-of-coverage positions. Reuse the existing stop coverage bounds and map
-adapter; do not persist or transmit the location.
+out-of-coverage positions. Keep mobile stop search, stop details, and line
+details visible alongside the map; filter map stops to the selected line and
+collapse line schedule details until requested. Reuse the existing stop
+coverage bounds and map adapter; do not persist or transmit the location.
 
 ## Technical Context
 
@@ -29,7 +31,7 @@ adapter; do not persist or transmit the location.
 
 **Performance Goals**: Center and show the location indicator within 3 seconds after a valid position is received; request geolocation at most once per app visit
 
-**Constraints**: Request location only for the existing mobile viewport experience; require explicit browser permission; use one-shot acquisition only; retain map usability on errors; do not store or transmit location; preserve reduced-motion and WCAG 2.2 AA behavior
+**Constraints**: Request location only for the existing mobile viewport experience; require explicit browser permission; use one-shot acquisition only; retain map usability on errors; do not store or transmit location; preserve reduced-motion and WCAG 2.2 AA behavior; mobile content panels must not cover the map
 
 **Scale/Scope**: One transient user location and one location marker; no continuous tracking, route planning, user-location history, or proximity-based data requests
 
@@ -125,9 +127,14 @@ frontend/tests/
 **Structure Decision**: Keep the existing single frontend application and
 hexagonal boundaries. The application requests a location through a typed
 browser-geolocation port; the map port accepts a validated transient position
-and renders it. `main.ts` owns the one-request-per-visit policy. Stop controls
-and stop chooser behavior remain independent; cluster overlap selection uses
-the retained recenter control as its focus-return opener.
+and renders it. `main.ts` owns the one-request-per-visit policy. The map
+adapter filters stops by the selected line and restores the complete set when
+that selection ends. Mobile search, stop, and line content use a lower panel
+that leaves the map visible; the stop panel can expand by reducing map space.
+Line schedule content uses a compact, initially collapsed disclosure, while
+the route itself remains the primary route-direction presentation. Stop
+controls and stop chooser behavior remain independent; cluster overlap
+selection uses the retained recenter control as its focus-return opener.
 
 ## Complexity Tracking
 

@@ -26,7 +26,8 @@ Expected outcomes:
 - Unit and DOM tests pass with injected browser location results.
 - Playwright journeys cover one-shot mobile permission, desktop no-prompt,
   denial, outside-coverage fallback, location privacy, and the removed toolbar
-  action.
+  action, mobile map/content layout, selected-line stop filtering, and the
+  schedule disclosure.
 - TypeScript and production static build complete without a new dependency or
   server-side transit service.
 
@@ -54,6 +55,20 @@ Expected outcomes:
    requests.
 10. **Reduced motion**: emulate reduced motion and verify location centering
     does not animate.
+11. **Mobile search results**: open stop search at a mobile viewport and verify
+    results scroll in the lower panel while the map remains visible above.
+12. **Mobile stop details**: select and expand a stop; verify the details
+    scroll and the map area shrinks instead of being covered.
+13. **Mobile line details**: open a line and verify its details scroll in the
+    lower panel without obscuring the route map.
+14. **Selected-line stops**: select a line and verify its map markers and
+    cluster counts include only stops served by that line, including shared
+    stops; leave the line and verify all stops return.
+15. **Schedule disclosure**: open a line with schedule data and verify it is
+    collapsed under the localized “Departures and arrivals” heading; activate
+    the heading to reveal and hide the schedule without changing its label.
+16. **Route direction presentation**: verify no redundant direction-message
+    list accompanies a displayed route.
 
 See the [internal contract](./contracts/mobile-location-map.md) and
 [data model](./data-model.md) for precise behavior.
