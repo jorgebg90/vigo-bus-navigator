@@ -21,7 +21,7 @@ export function shouldAnnounceLoading(elapsedMs: number, alreadyAnnounced: boole
 export function firstArrivalChanged(previous: Arrival[], next: Arrival[]): boolean {
   const first = (arrivals: Arrival[]) => {
     const arrival = arrivals[0];
-    return arrival && `${arrival.lineCode}\u0000${arrival.destination}\u0000${arrival.minutes}\u0000${arrival.eta}`;
+    return arrival && `${arrival.lineCode}\u0000${arrival.destination}\u0000${arrival.minutes}`;
   };
   return first(previous) !== first(next);
 }

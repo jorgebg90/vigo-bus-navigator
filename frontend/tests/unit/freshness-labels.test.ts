@@ -3,7 +3,7 @@ import { firstArrivalChanged, getFreshnessState, shouldAnnounceLoading } from '.
 import type { Arrival } from '../../src/domain/types';
 
 const arrival = (minutes: number): Arrival => ({
-  lineCode: '4A', destination: 'Bouzas', minutes, eta: `2026-10-26T12:${String(minutes).padStart(2, '0')}:00Z`
+  lineCode: '4A', destination: 'Bouzas', minutes
 });
 
 describe('arrival freshness and announcements', () => {

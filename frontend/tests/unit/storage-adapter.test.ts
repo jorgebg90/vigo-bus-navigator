@@ -25,17 +25,112 @@ describe('LocalStorageAdapter', () => {
     expect(storage.loadFavorites()).toHaveLength(1);
   });
 
-  it('migrates away legacy line favorites and retains stop favorites', () => {
+  it('migrates valid stop and legacy line favorites without changing the v1 source bytes', () => {
     const browserStorage = new FakeStorage();
-    browserStorage.setItem('vbn:v1:favorites', JSON.stringify({ v: 1, data: [
+    const legacy = JSON.stringify({ v: 1, data: [
       { type: 'line', targetId: 'line-4a', order: 0 },
       { type: 'stop', targetId: 'stop-1', order: 1 }
-    ] }));
+    ] });
+    browserStorage.setItem('vbn:v1:favorites', legacy);
     const storage = new LocalStorageAdapter(browserStorage);
 
-    expect(storage.loadFavorites()).toEqual([{ type: 'stop', targetId: 'stop-1', order: 1 }]);
-    expect(browserStorage.getItem('vbn:v1:favorites')).toContain('stop-1');
-    expect(browserStorage.getItem('vbn:v1:favorites')).not.toContain('line-4a');
+    expect(storage.loadFavorites()).toEqual([
+      { type: 'line', targetId: 'line-4a', order: 0 },
+      { type: 'stop', targetId: 'stop-1', order: 1 }
+    ]);
+    expect(browserStorage.getItem('vbn:v1:favorites')).toBe(legacy);
+    expect(JSON.parse(browserStorage.getItem('vbn:v2:favorites') ?? '{}')).toEqual({
+      v: 2,
+      data: [
+        { type: 'line', targetId: 'line-4a', order: 0 },
+        { type: 'stop', targetId: 'stop-1', order: 1 }
+      ]
+    });
+  });
+
+  it('prefers a valid v2 favorite record over the legacy v1 record', () => {
+    const browserStorage = new FakeStorage();
+    browserStorage.setItem('vbn:v1:favorites', JSON.stringify({ v: 1, data: [{ type: 'stop', targetId: 'old', order: 0 }] }));
+    browserStorage.setItem('vbn:v2:favorites', JSON.stringify({ v: 2, data: [{ type: 'stop', targetId: 'new', order: 0 }] }));
+    const storage = new LocalStorageAdapter(browserStorage);
+
+    expect(storage.loadFavorites()).toEqual([{ type: 'stop', targetId: 'new', order: 0 }]);
+  });
+
+  it('does not migrate a partially invalid v1 record and preserves its bytes while recovering recognized entries in memory', () => {
+    const browserStorage = new FakeStorage();
+    const legacy = JSON.stringify({ v: 1, data: [
+      { type: 'line', targetId: 'line-4a', order: 0 },
+      { type: 'stop', targetId: '', order: 1 }
+    ] });
+    browserStorage.setItem('vbn:v1:favorites', legacy);
+    const storage = new LocalStorageAdapter(browserStorage);
+
+    expect(storage.loadFavorites()).toEqual([{ type: 'line', targetId: 'line-4a', order: 0 }]);
+    expect(browserStorage.getItem('vbn:v1:favorites')).toBe(legacy);
+    expect(browserStorage.getItem('vbn:v2:favorites')).toBeNull();
+  });
+
+  it('does not migrate an unsupported v1 envelope even when records can be recovered', () => {
+    const browserStorage = new FakeStorage();
+    const legacy = JSON.stringify({ v: 99, data: [{ type: 'line', targetId: 'legacy-line', order: 0 }] });
+    browserStorage.setItem('vbn:v1:favorites', legacy);
+    const storage = new LocalStorageAdapter(browserStorage);
+
+    expect(storage.loadFavorites()).toEqual([{ type: 'line', targetId: 'legacy-line', order: 0 }]);
+    expect(browserStorage.getItem('vbn:v1:favorites')).toBe(legacy);
+    expect(browserStorage.getItem('vbn:v2:favorites')).toBeNull();
+  });
+
+  it('does not fall back to v1 or overwrite an unsupported v2 envelope', () => {
+    const browserStorage = new FakeStorage();
+    const legacy = JSON.stringify({ v: 1, data: [{ type: 'stop', targetId: 'legacy', order: 0 }] });
+    const unsupported = JSON.stringify({ v: 99, data: [{ type: 'stop', targetId: 'future', order: 0 }] });
+    browserStorage.setItem('vbn:v1:favorites', legacy);
+    browserStorage.setItem('vbn:v2:favorites', unsupported);
+    const storage = new LocalStorageAdapter(browserStorage);
+
+    expect(storage.loadFavorites()).toEqual([{ type: 'stop', targetId: 'future', order: 0 }]);
+    expect(browserStorage.getItem('vbn:v1:favorites')).toBe(legacy);
+    expect(browserStorage.getItem('vbn:v2:favorites')).toBe(unsupported);
+  });
+
+  it('keeps a removed migrated favorite removed after reopening', () => {
+    const browserStorage = new FakeStorage();
+    browserStorage.setItem('vbn:v1:favorites', JSON.stringify({ v: 1, data: [{ type: 'stop', targetId: 'stop-1', order: 0 }] }));
+    const first = new LocalStorageAdapter(browserStorage);
+    expect(first.loadFavorites()).toHaveLength(1);
+    first.saveFavorites([]);
+
+    const reopened = new LocalStorageAdapter(browserStorage);
+    expect(reopened.loadFavorites()).toEqual([]);
+    expect(JSON.parse(browserStorage.getItem('vbn:v2:favorites') ?? '{}').data).toEqual([]);
+  });
+
+  it('preserves malformed v2 bytes and recovers recognized records without falling back to v1', () => {
+    const browserStorage = new FakeStorage();
+    const legacy = JSON.stringify({ v: 1, data: [{ type: 'stop', targetId: 'legacy', order: 0 }] });
+    const malformedV2 = JSON.stringify({ v: 2, data: [{ type: 'stop', targetId: 'recoverable', order: 0 }, null] });
+    browserStorage.setItem('vbn:v1:favorites', legacy);
+    browserStorage.setItem('vbn:v2:favorites', malformedV2);
+    const storage = new LocalStorageAdapter(browserStorage);
+
+    expect(storage.loadFavorites()).toEqual([{ type: 'stop', targetId: 'recoverable', order: 0 }]);
+    expect(browserStorage.getItem('vbn:v1:favorites')).toBe(legacy);
+    expect(browserStorage.getItem('vbn:v2:favorites')).toBe(malformedV2);
+  });
+
+  it('preserves unparseable v2 bytes and never falls back to legacy data', () => {
+    const browserStorage = new FakeStorage();
+    const legacy = JSON.stringify({ v: 1, data: [{ type: 'stop', targetId: 'legacy', order: 0 }] });
+    const malformedV2 = '{broken';
+    browserStorage.setItem('vbn:v1:favorites', legacy);
+    browserStorage.setItem('vbn:v2:favorites', malformedV2);
+    const storage = new LocalStorageAdapter(browserStorage);
+
+    expect(storage.loadFavorites()).toEqual([]);
+    expect(browserStorage.getItem('vbn:v1:favorites')).toBe(legacy);
+    expect(browserStorage.getItem('vbn:v2:favorites')).toBe(malformedV2);
   });
 
   it('migrates a previously saved dark theme to light', () => {
@@ -58,7 +153,7 @@ describe('LocalStorageAdapter', () => {
     };
     const storage = new LocalStorageAdapter(fullStorage);
     const favorites = [
-      { type: 'stop' as const, targetId: 'stop-b', order: 0 },
+      { type: 'line' as const, targetId: 'line-b', order: 0 },
       { type: 'stop' as const, targetId: 'stop-a', order: 1 }
     ];
     storage.saveFavorites(favorites);

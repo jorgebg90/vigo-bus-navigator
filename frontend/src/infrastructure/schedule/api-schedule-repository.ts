@@ -1,5 +1,5 @@
 import type { ScheduleRepository } from '../../application/ports';
-import type { DatasetManifest, Line, LineDetails, Stop } from '../../domain/types';
+import type { DatasetManifest, Line, LineDetails, NetworkStop, Stop } from '../../domain/types';
 
 type JsonFetcher = (input: string) => Promise<Response>;
 
@@ -9,7 +9,7 @@ interface CatalogResponse {
 }
 
 interface StopsResponse {
-  stops: Stop[];
+  stops: NetworkStop[];
 }
 
 interface LineDetailResponse {
@@ -19,7 +19,7 @@ interface LineDetailResponse {
 
 export class ApiScheduleRepository implements ScheduleRepository {
   private catalogRequest?: Promise<CatalogResponse>;
-  private stopsRequest?: Promise<Stop[]>;
+  private stopsRequest?: Promise<NetworkStop[]>;
   private readonly lineDetailRequests = new Map<string, Promise<LineDetails>>();
 
   constructor(
@@ -36,7 +36,7 @@ export class ApiScheduleRepository implements ScheduleRepository {
     return lines.map((line) => ({ ...line, color: line.color ?? '#666666' }));
   }
 
-  async listStops(): Promise<Stop[]> {
+  async listStops(): Promise<NetworkStop[]> {
     this.stopsRequest ??= this.fetchJson<StopsResponse>('/stops').then(({ stops }) => stops);
     return this.stopsRequest;
   }

@@ -1,16 +1,23 @@
-import type { Arrival, Stop } from '../domain/types';
-import type { ArrivalsCachePort, ArrivalsGateway, ClockPort, VisibilityPort } from './ports';
+import type { Arrival, ArrivalReceipt, NetworkStop, Provenance } from '../domain/types';
+import type {
+  ClockPort,
+  MunicipalArrivalCachePort,
+  MunicipalArrivalsGateway,
+  VisibilityPort
+} from './ports';
 
 export interface StopArrivalsResult {
-  stop: Stop;
+  stop: NetworkStop;
   arrivals: Arrival[];
   source: 'live' | 'cached' | 'unavailable';
   dataStatus: 'loading' | 'current' | 'stale' | 'empty' | 'unavailable' | 'offline';
   fetchedAt: string;
+  retryPending?: boolean;
+  provenance?: Provenance;
   error?: string;
 }
 
-export function pendingStopArrivals(stop: Stop): StopArrivalsResult {
+export function pendingStopArrivals(stop: NetworkStop): StopArrivalsResult {
   return { stop, arrivals: [], source: 'live', dataStatus: 'loading', fetchedAt: '' };
 }
 
@@ -31,10 +38,10 @@ export function startStopArrivalsRefresh(
 }
 
 export async function getStopArrivals(
-  stop: Stop,
-  arrivalsPort: ArrivalsGateway,
+  stop: NetworkStop,
+  arrivalsPort: MunicipalArrivalsGateway,
   clock: ClockPort,
-  cache?: ArrivalsCachePort
+  cache?: MunicipalArrivalCachePort
 ): Promise<StopArrivalsResult> {
   if (!stop.vitrasaId) {
     return {
@@ -47,28 +54,56 @@ export async function getStopArrivals(
     };
   }
 
-  try {
-    const response = await arrivalsPort.getArrivals(stop.vitrasaId);
-    if (response.kind !== 'live') {
-      if (response.reason === 'offline') {
-        const cached = cache?.get(stop.id);
-        return {
-          stop,
-          arrivals: cached?.arrivals ?? [],
-          source: cached ? 'cached' : 'unavailable',
-          dataStatus: 'offline',
-          fetchedAt: cached?.fetchedAt ?? clock.now().toISOString(),
-          error: 'Offline'
-        };
-      }
-      throw new Error(response.reason);
+  const response = await arrivalsPort.getArrivals(stop);
+  if (response.kind === 'success') {
+    const receipt = response.value;
+    if (receipt.stopId !== stop.id || receipt.vitrasaId !== stop.vitrasaId) {
+      return unavailable(stop, clock, 'Arrival identity could not be verified');
     }
-    const fetchedAt = response.fetchedAt;
-    cache?.set(stop.id, { arrivals: response.arrivals, fetchedAt: response.fetchedAt });
-    return { stop, arrivals: response.arrivals, source: 'live', dataStatus: response.dataStatus, fetchedAt };
-  } catch (error) {
-    const cached = cache?.get(stop.id);
-    if (cached) return { stop, arrivals: cached.arrivals, source: 'cached', dataStatus: 'stale', fetchedAt: cached.fetchedAt, error: 'Live arrivals unavailable' };
-    return { stop, arrivals: [], source: 'unavailable', dataStatus: 'unavailable', fetchedAt: clock.now().toISOString(), error: 'Live arrivals unavailable' };
+    cache?.set(receipt);
+    return {
+      stop,
+      arrivals: receipt.arrivals,
+      source: 'live',
+      dataStatus: receipt.arrivals.length ? 'current' : 'empty',
+      fetchedAt: receipt.fetchedAt,
+      provenance: receipt.provenance
+    };
   }
+
+  const cached = cache?.get(stop.id);
+  if (response.reason === 'offline') {
+    return {
+      stop,
+      arrivals: cached?.arrivals ?? [],
+      source: cached ? 'cached' : 'unavailable',
+      dataStatus: 'offline',
+      fetchedAt: cached?.fetchedAt ?? clock.now().toISOString(),
+      provenance: cached?.provenance,
+      error: 'Offline'
+    };
+  }
+  if (cached) {
+    return {
+      stop,
+      arrivals: cached.arrivals,
+      source: 'cached',
+      dataStatus: 'stale',
+      fetchedAt: cached.fetchedAt,
+      provenance: cached.provenance,
+      error: 'Live arrivals unavailable'
+    };
+  }
+  return unavailable(stop, clock, 'Live arrivals unavailable');
+}
+
+function unavailable(stop: NetworkStop, clock: ClockPort, error: string): StopArrivalsResult {
+  return {
+    stop,
+    arrivals: [],
+    source: 'unavailable',
+    dataStatus: 'unavailable',
+    fetchedAt: clock.now().toISOString(),
+    error
+  };
 }

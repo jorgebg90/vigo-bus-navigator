@@ -55,12 +55,15 @@ export function renderFavorites(root: HTMLElement, favorites: Favorite[], lines:
         panel.append(empty);
       }
       for (const favorite of favorites) {
-        const entity = stops.find((stop) => stop.id === favorite.targetId);
+        const line = favorite.type === 'line' ? lines.find((candidate) => candidate.id === favorite.targetId) : undefined;
+        const stop = favorite.type === 'stop' ? stops.find((candidate) => candidate.id === favorite.targetId) : undefined;
+        const entity = line ?? stop;
         const name = entity?.name ?? translateCurrent('unavailableFavorite', { name: favorite.targetId });
         const item = document.createElement('li');
         const open = document.createElement('button');
         open.type = 'button';
         open.className = 'stop-open';
+        if (line) open.append(createLineBadge(line));
         open.append(name);
         open.addEventListener('click', () => { if (entity) onSelect(favorite); });
         const remove = document.createElement('button');

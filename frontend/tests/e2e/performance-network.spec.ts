@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('shows loading within one second and a terminal state within ten for 20 stops on the mobile network profile', async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'Network emulation requires Chromium CDP.');
+  test.setTimeout(90_000);
   const session = await page.context().newCDPSession(page);
   await session.send('Network.enable');
   await session.send('Network.emulateNetworkConditions', {

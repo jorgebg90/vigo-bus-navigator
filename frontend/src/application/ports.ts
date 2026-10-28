@@ -4,10 +4,23 @@ import type {
   Favorite,
   LineDetails,
   Line,
+  NetworkStop,
+  ArrivalReceipt,
+  BundledScheduleSnapshot,
+  DayType,
+  Language,
+  LineRoutePattern,
+  NetworkLineSummary,
+  PublishedLineSchedule,
+  RouteShapeReceipt,
+  TripStopSequence,
+  LineStopDetail,
+  Provenance,
   Stop,
   Timetable,
   UserPreferences
 } from '../domain/types';
+import type { MunicipalFailureReason } from '../domain/municipal-failures';
 import type { MapStop } from '../domain/map-stops';
 
 export interface ScheduleRepository {
@@ -17,19 +30,75 @@ export interface ScheduleRepository {
   getLineDetails(lineId: string): Promise<LineDetails>;
 }
 
-export type DataStatus = 'current' | 'stale' | 'empty';
+export type MunicipalOperationResult<T> =
+  | { kind: 'success'; value: T }
+  | { kind: 'unavailable'; reason: MunicipalFailureReason };
 
-export type ArrivalsResult =
-  | { kind: 'live'; arrivals: Arrival[]; fetchedAt: string; dataStatus: DataStatus }
-  | { kind: 'unavailable'; reason: 'stop-not-exist' | 'upstream' | 'unknown' | 'offline' };
-
-export interface ArrivalsGateway {
-  getArrivals(stopCode: string): Promise<ArrivalsResult>;
+export interface StopDiscoveryCatalog {
+  lines: NetworkLineSummary[];
+  stops: NetworkStop[];
+  patternsByLine: Readonly<Record<string, BundledRoutePattern[]>>;
+  completeness: 'bundled-seed' | 'municipal-online';
+  provenance: Provenance;
 }
 
-export interface ArrivalsCachePort {
-  get(stopId: string): { arrivals: Arrival[]; fetchedAt: string } | undefined;
-  set(stopId: string, value: { arrivals: Arrival[]; fetchedAt: string }): void;
+export interface BundledRoutePattern {
+  id: string;
+  headsign: string;
+  stopIds: string[];
+}
+
+export interface MunicipalLineCatalogReceipt {
+  lines: NetworkLineSummary[];
+  provenance: Provenance;
+  serviceMetadata:
+    | { kind: 'available'; provenance: Provenance }
+    | { kind: 'unavailable'; reason: MunicipalFailureReason };
+}
+
+export interface MunicipalServingLinesReceipt {
+  lines: NetworkLineSummary[];
+  provenance: Provenance;
+}
+
+export interface ScheduleRepositoryV5 {
+  getMunicipalLineCatalog(language: Language): Promise<MunicipalOperationResult<MunicipalLineCatalogReceipt>>;
+  getStopDiscoveryCatalog(): Promise<StopDiscoveryCatalog>;
+  getRoutePatterns(lineId: string): Promise<LineRoutePattern[]>;
+  getMunicipalStopDetail(stop: NetworkStop): Promise<MunicipalOperationResult<NetworkStop>>;
+  getMunicipalServingLines(stop: NetworkStop): Promise<MunicipalOperationResult<MunicipalServingLinesReceipt>>;
+  getPublishedLineSchedule(
+    lineCode: string,
+    dayType: DayType
+  ): Promise<MunicipalOperationResult<PublishedLineSchedule>>;
+  getBundledScheduleSnapshot(
+    lineId: string,
+    lineCode: string,
+    directionId: string,
+    dayType: DayType
+  ): Promise<MunicipalOperationResult<BundledScheduleSnapshot>>;
+  getRouteShape(lineCode: string): Promise<MunicipalOperationResult<RouteShapeReceipt>>;
+  getTripStops(lineCode: string, dayType: DayType): Promise<MunicipalOperationResult<TripStopSequence>>;
+  getLineStopDetail(
+    stop: NetworkStop,
+    lineCode: string
+  ): Promise<MunicipalOperationResult<LineStopDetail>>;
+}
+
+export interface MunicipalArrivalsGateway {
+  getArrivals(stop: NetworkStop, signal?: AbortSignal): Promise<MunicipalOperationResult<ArrivalReceipt>>;
+}
+
+export interface LineScheduleGateway {
+  getLineSchedule(
+    lineCode: string,
+    dayType: DayType
+  ): Promise<MunicipalOperationResult<PublishedLineSchedule>>;
+}
+
+export interface MunicipalArrivalCachePort {
+  get(stopId: string): ArrivalReceipt | undefined;
+  set(receipt: ArrivalReceipt): boolean;
 }
 
 export interface StoragePort {

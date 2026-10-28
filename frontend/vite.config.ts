@@ -2,11 +2,6 @@ import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-const isProduction = process.env.NODE_ENV === 'production';
-const apiOrigin = process.env.VITE_ARRIVALS_BASE_URL ?? 'http://localhost:8787';
-const escapedApiOrigin = apiOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const apiCatalogPattern = new RegExp(`^${escapedApiOrigin}/(?:lines(?:/[^/]+)?|stops)$`);
-
 export default defineConfig(({ mode }) => ({
   root: resolve(__dirname),
   base: mode === 'production' ? '/vigo-bus-navigator/' : '/',
@@ -34,16 +29,7 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         clientsClaim: true,
         navigateFallback: `${mode === 'production' ? '/vigo-bus-navigator/' : '/'}index.html`,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        runtimeCaching: [{
-          urlPattern: apiCatalogPattern,
-          handler: 'NetworkFirst',
-          options: {
-            cacheName: 'vbn-api-catalog',
-            networkTimeoutSeconds: 3,
-            expiration: { maxEntries: 120, maxAgeSeconds: 86400 }
-          }
-        }]
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
       }
     })
   ],

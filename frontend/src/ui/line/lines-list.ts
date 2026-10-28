@@ -2,8 +2,20 @@ import type { Line } from '../../domain/types';
 import { translateCurrent } from '../../i18n';
 import { createLineBadge } from '../line-badge';
 
-export function renderLinesList(root: HTMLElement, lines: Line[], onSelect: (line: Line) => void): void {
+export function renderLinesList(
+  root: HTMLElement,
+  lines: Line[],
+  onSelect: (line: Line) => void,
+  options: { unavailable?: boolean } = {}
+): void {
   root.replaceChildren();
+  if (options.unavailable) {
+    const status = document.createElement('p');
+    status.dataset.lineCatalogStatus = 'unavailable';
+    status.setAttribute('role', 'status');
+    status.textContent = translateCurrent('lineCatalogUnavailable');
+    root.append(status);
+  }
   const search = document.createElement('form');
   search.setAttribute('role', 'search');
   const input = document.createElement('input');

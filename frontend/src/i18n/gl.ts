@@ -34,12 +34,26 @@ export const messages = {
 	cached: 'Datos gardados',
 	unavailable: 'Chegadas non dispoñibles',
 	statusCurrent: 'Tempo real',
+	syntheticData: 'Datos de mostra sintéticos',
+	lineDepartures: 'Saídas',
+	scheduleSource: 'Horario · {source} · recibido {time}',
+	provisionalScheduleSource: 'Avaliación provisional de mostra · {source} · recibida {time}',
+	sourceLabel: 'Fonte: {source}',
+	provisionalSourceLabel: 'Orixe provisional de mostra: {source}',
+	routeShapeTextAlternative: 'Este trazado é unha vista provisional; non hai unha descrición verificada parada a parada dispoñible.',
+	provisionalDataWarning: 'Datos provisionais: inferidos e non verificados polo provedor.',
+	routeShapePreview: 'Vista provisional do trazado',
+	routeShape: 'Trazado do percorrido',
+	routeShapeStopsAlternative: 'As listas de paradas de cada sentido describen este trazado.',
+	tripStopSequence: 'Paradas provisionais da viaxe, en orde',
+	lineStopDepartures: 'Saídas provisionais da liña {line}',
 	statusStale: 'Datos desactualizados',
 	statusEmpty: 'Sen chegadas próximas',
 	statusUnavailable: 'Chegadas non dispoñibles',
 	statusLoading: 'Cargando chegadas…',
 	retry: 'Reintentar',
-	updated: 'Actualizado {time}',
+	updated: 'Actualizado: {time}',
+	refreshArrivals: 'Actualizar chegadas',
 	arrivalsTo: '{line} cara a {destination}: {minutes} min',
 	navMap: 'Mapa',
 	navSearch: 'Buscar',
@@ -83,5 +97,11 @@ export const messages = {
 	,firstDeparture: 'Primeira saída'
 	,lastDeparture: 'Última saída'
 	,frequencyCaption: 'Frecuencias de {line} · {dayType}'
-	,noPublishedService: 'Non hai servizo publicado para este tipo de día'
+	,	noPublishedService: 'Non hai servizo publicado para este tipo de día',
+	servingLinesTitle: 'Liñas',
+	bundledScheduleSnapshotSource: 'Horario sen conexión empaquetado · {source} · data de {dateKind} {date} · {line} / {direction} · {dayType}',
+	snapshotScheduleUnavailable: 'Non hai un horario empaquetado fiable para esta liña, dirección e tipo de día.',
+	publicationDate: 'publicación',
+	effectiveDate: 'vixencia',
+	captureDate: 'captura'
 } as const;

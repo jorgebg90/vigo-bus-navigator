@@ -9,12 +9,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'npm run dev:worker -- --port 8791',
-      url: 'http://127.0.0.1:8791/health',
-      reuseExistingServer: false
-    },
-    {
-      command: 'VITE_PROFILE=production VITE_ARRIVALS_BASE_URL=http://127.0.0.1:8791 vite build --config frontend/vite.config.ts --mode test && vite preview --host 127.0.0.1',
+      command: 'VITE_PROFILE=production VITE_MUNICIPAL_PROFILE=fixture vite build --config frontend/vite.config.ts --mode test && vite preview --host 127.0.0.1',
       url: 'http://127.0.0.1:4173',
       reuseExistingServer: false
     }

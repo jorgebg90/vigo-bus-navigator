@@ -20,6 +20,118 @@ export interface Stop {
   lineIds: string[];
 }
 
+export interface NetworkLineSummary {
+  id: string;
+  code: string;
+  name: string;
+  color: string;
+  textColor?: string;
+  displayOrder?: number;
+  serviceType?: string;
+  serviceSubtype?: string;
+}
+
+export interface NetworkStop {
+  id: string;
+  code: string;
+  municipalCode: string;
+  vitrasaId: string | null;
+  name: string;
+  lat: number | null;
+  lon: number | null;
+  lineIds: string[];
+}
+
+export interface MunicipalArrival {
+  lineCode: string;
+  destination: string;
+  minutes: number;
+}
+
+export type ProvenanceKind = 'municipal' | 'cached-municipal' | 'bundled-catalog' | 'snapshot' | 'fixture' | 'provisional-fixture';
+export type ProvenanceDateKind = 'publication' | 'effective' | 'capture';
+
+export interface Provenance {
+  kind: ProvenanceKind;
+  sourceName: string;
+  fetchedAt?: string;
+  evidenceRef?: string;
+  snapshotDate?: string;
+  dateKind?: ProvenanceDateKind;
+}
+
+export interface PublishedTrip {
+  tripId: string;
+  shapeId: string;
+  direction: 0 | 1;
+  headsign: string;
+  origin: string | null;
+  destination: string | null;
+  departures: string[];
+  active: boolean;
+}
+
+export interface PublishedLineSchedule {
+  lineCode: string;
+  dayType: DayType;
+  scheduleId: string;
+  departures: string[];
+  trips?: PublishedTrip[];
+  provenance: Provenance;
+}
+
+export interface BundledScheduleSnapshot {
+  lineId: string;
+  lineCode: string;
+  directionId: string;
+  dayType: DayType;
+  service: DayService;
+  provenance: Provenance;
+}
+
+export interface RouteGeometry {
+  type: 'LineString';
+  coordinates: Array<[number, number]>;
+}
+
+export interface RouteShapeReceipt {
+  lineCode: string;
+  shapeId: string;
+  crs: 'OGC:CRS84';
+  geometry: RouteGeometry;
+  provenance: Provenance;
+}
+
+export interface TripStopSequence {
+  lineCode: string;
+  dayType: DayType;
+  tripId: string;
+  stops: Array<{ sequence: number; stop: NetworkStop }>;
+  provenance: Provenance;
+}
+
+export interface MunicipalRoutePattern {
+  tripId: string;
+  shapeId: string | null;
+  direction: string | null;
+  departureTimes: string[];
+}
+
+export interface LineStopDetail {
+  municipalCode: string;
+  lineCode: string;
+  patterns: MunicipalRoutePattern[];
+  provenance: Provenance;
+}
+
+export interface ArrivalReceipt {
+  stopId: string;
+  vitrasaId: string;
+  fetchedAt: string;
+  arrivals: MunicipalArrival[];
+  provenance: Provenance;
+}
+
 export interface TimeBand {
   startMinute: number;
   endMinute: number;
@@ -54,11 +166,10 @@ export interface Arrival {
   lineCode: string;
   destination: string;
   minutes: number;
-  eta: string;
 }
 
 export interface Favorite {
-  type: 'stop';
+  type: 'line' | 'stop';
   targetId: string;
   order: number;
 }

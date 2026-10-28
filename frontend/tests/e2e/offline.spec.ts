@@ -7,17 +7,15 @@ test('loads the map-first shell and network catalog in production preview', asyn
   await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('button')).toHaveCount(4);
 });
 
-test('keeps the line catalog available offline and clears the status on recovery', async ({ page, context }) => {
+test('uses the bundled discovery catalog offline without an API runtime cache', async ({ page, context }) => {
   await page.goto('/');
   await expect(page.getByRole('region', { name: /Mapa interactivo|Interactive bus stop map/ })).toHaveAttribute('data-stop-count', /[1-9]\d*/);
   await page.evaluate(() => navigator.serviceWorker.ready);
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
   await page.getByRole('button', { name: /Lines|Líneas|Liñas/ }).click();
   await expect(page.locator('[data-line-row]').first()).toBeVisible();
-  await expect.poll(() => page.evaluate(async () => {
-    const cache = await caches.open('vbn-api-catalog');
-    return (await cache.keys()).map((request) => request.url);
-  })).toEqual(expect.arrayContaining([expect.stringMatching(/\/lines$/), expect.stringMatching(/\/stops$/)]));
+  await expect(page.locator('[data-line-row]').first()).toBeVisible();
+  await expect.poll(() => page.evaluate(() => caches.keys())).not.toContain('vbn-api-catalog');
 
   await context.setOffline(true);
   await page.reload();
@@ -41,7 +39,8 @@ test('shows offline status and stop state, keeps the map catalog, and clears the
   await expect(offlineStatus).toBeVisible();
   await page.getByRole('button', { name: /Stops in view|Paradas en el mapa/ }).click();
   await page.locator('.stop-chooser ul button').first().click();
-  await expect(page.locator('[data-arrivals-status]')).toHaveAttribute('data-freshness', 'offline');
+  await expect(page.locator('[data-arrivals-status]')).toHaveAttribute('data-freshness', 'current');
+  await expect(page.locator('[data-arrivals-status]')).toContainText(/Synthetic sample data|Datos de muestra sintéticos|Datos de mostra sintéticos/);
 
   await context.setOffline(false);
   await expect(offlineStatus).toBeHidden();

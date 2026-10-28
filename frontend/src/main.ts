@@ -1,14 +1,30 @@
-import { getLineFrequency } from './application/get-line-frequency';
 import { createStopSelection, type StopSelection } from './application/select-stop';
+import { RequestVersion } from './application/request-version';
+import { getBundledScheduleFallback } from './application/get-bundled-schedule-fallback';
 import { renderLineFrequency } from './ui/line/frequency-view';
 import { renderLinesList } from './ui/line/lines-list';
 import { renderStopSearch } from './ui/search/stop-search';
-import { ApiScheduleRepository } from './infrastructure/schedule/api-schedule-repository';
+import { MunicipalScheduleRepository, type OnlineLineRoute } from './infrastructure/schedule/municipal-schedule-repository';
 import { SystemClock } from './infrastructure/system/clock';
 import { DocumentVisibility } from './infrastructure/system/visibility';
-import { HttpArrivalsGateway } from './infrastructure/arrivals/http-arrivals-gateway';
+import { MunicipalArrivalsAdapter } from './infrastructure/municipal/arrivals-adapter';
+import { MunicipalLineCatalogAdapter } from './infrastructure/municipal/line-catalog-adapter';
+import { MunicipalServiceCatalogAdapter } from './infrastructure/municipal/service-catalog-adapter';
+import { MunicipalStopDetailAdapter } from './infrastructure/municipal/stop-detail-adapter';
+import { MunicipalServingLinesAdapter } from './infrastructure/municipal/serving-lines-adapter';
+import { MunicipalLineScheduleAdapter } from './infrastructure/municipal/line-schedule-adapter';
+import { MunicipalRouteShapeAdapter } from './infrastructure/municipal/route-shape-adapter';
+import { MunicipalTripStopAdapter } from './infrastructure/municipal/trip-stop-adapter';
+import { MunicipalLineStopAdapter } from './infrastructure/municipal/line-stop-adapter';
+import { BundledDiscoveryCatalog } from './infrastructure/municipal/bundled-discovery-catalog';
+import { OnlineStopCatalog } from './infrastructure/municipal/online-stop-catalog';
+import { BundledScheduleSnapshotCatalog } from './infrastructure/schedule/bundled-schedule-snapshot';
+import { MunicipalHttpClient } from './infrastructure/municipal/http-client';
+import { createDefaultFixtureMunicipalClient } from './infrastructure/municipal/default-fixture-client';
+import { ArrivalCache } from './infrastructure/municipal/arrival-cache';
 import { renderStopArrivals } from './ui/stop/stop-view';
-import { getAppConfig } from './infrastructure/config';
+import { renderServingLines, renderServingLinesLoading } from './ui/stop/serving-lines-view';
+import { getAppConfig, getMunicipalProfileConfig } from './infrastructure/config';
 import { LocalStorageAdapter } from './infrastructure/storage/local-storage-adapter';
 import { createSettingsMenu } from './ui/settings/settings-menu';
 import { mountOfflineStatus } from './ui/offline-status';
@@ -19,7 +35,8 @@ import { applyTheme } from './ui/theme';
 import { renderFavorites } from './ui/home/favorites';
 import { toggleFavoriteForTarget } from './application/toggle-favorite';
 import { recordRecentView } from './domain/favorites';
-import type { DayType, Favorite, Line, RecentView, Stop } from './domain/types';
+import { deriveDayType } from './domain/day-type';
+import type { DayType, Favorite, Line, NetworkStop, Provenance, RecentView } from './domain/types';
 import { onLanguageChange, setDocumentLanguage } from './i18n';
 import { createShell, type Destination } from './ui/shell';
 import { createStopChooser } from './ui/map/stop-chooser';
@@ -32,6 +49,7 @@ const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing app root');
 
 const clock = new SystemClock();
+const onlineCatalogEvidenceRef = 'official-app-online-catalog-2026-10-28';
 const visibility = new DocumentVisibility();
 const storage = new LocalStorageAdapter();
 applyTheme();
@@ -47,8 +65,12 @@ let activePanelContent: HTMLElement | undefined;
 let activeMap: StopMapPort | undefined;
 let selection: StopSelection | undefined;
 let lines: Line[] = [];
-let stops: Stop[] = [];
-let schedule: ApiScheduleRepository | undefined;
+let stops: NetworkStop[] = [];
+let schedule: MunicipalScheduleRepository | undefined;
+let discoveryProvenance: Provenance | undefined;
+let lineCatalogUnavailable = false;
+let activeServingLinesRequest = 0;
+const lineViewRequests = new RequestVersion();
 let renderCurrentDestination: (() => void) | undefined;
 const settingsHost = document.createElement('div');
 settingsHost.className = 'settings-host';
@@ -56,6 +78,7 @@ shell.header.querySelector('.settings-trigger')?.replaceWith(settingsHost);
 createSettingsMenu(settingsHost, storage);
 shell.onDestinationChange((destination) => {
   currentDestination = destination;
+  if (destination !== 'lines') lineViewRequests.invalidate();
   renderCurrentDestination?.();
 });
 const shellRoot = app.querySelector<HTMLElement>('.app-shell');
@@ -71,6 +94,7 @@ void bootstrap();
 onLanguageChange(() => { void bootstrap(); });
 
 async function bootstrap(): Promise<void> {
+  lineViewRequests.invalidate();
   unsubscribeSelection?.();
   selection?.dispose();
   selection = undefined;
@@ -82,6 +106,7 @@ async function bootstrap(): Promise<void> {
   panelCloseListener = undefined;
 
   const config = getAppConfig();
+  const municipalConfig = getMunicipalProfileConfig();
   if (config.profile === 'production' && navigator.serviceWorker) {
     const { registerSW } = await import('virtual:pwa-register');
     registerSW({ immediate: true });
@@ -94,10 +119,122 @@ async function bootstrap(): Promise<void> {
     }
   }
 
-  schedule = new ApiScheduleRepository(config.arrivalsBaseUrl);
-  const arrivals = new HttpArrivalsGateway(config.arrivalsBaseUrl);
-  [lines, stops] = await Promise.all([schedule.listLines(), schedule.listStops()]);
-  selection = createStopSelection({ stops, arrivals, clock, visibility });
+  const municipalClient = municipalConfig.profile === 'fixture'
+    ? createDefaultFixtureMunicipalClient()
+    : new MunicipalHttpClient(municipalConfig.profile);
+  const bundledDiscovery = new BundledDiscoveryCatalog();
+  const isFixtureProfile = municipalConfig.profile === 'fixture';
+  let snapshotEntries: readonly unknown[] = [];
+  if (import.meta.env.MODE === 'test' && isFixtureProfile) {
+    const snapshotFixtures = await import('../tests/fixtures/schedule-snapshots');
+    snapshotEntries = new URLSearchParams(window.location.search).get('snapshotFixture') === 'untrusted'
+      ? snapshotFixtures.untrustedBundledScheduleSnapshots
+      : snapshotFixtures.bundledScheduleSnapshots;
+  }
+  const provisionalStopsByMunicipalCode: Record<string, NetworkStop> = {};
+  const allowsScopedCandidateActions = municipalConfig.profile === 'local-live'
+    || municipalConfig.profile === 'production';
+  const usesOnlineCatalog = allowsScopedCandidateActions;
+  schedule = new MunicipalScheduleRepository(
+    new MunicipalLineCatalogAdapter(municipalClient, clock, municipalConfig.profile),
+    new MunicipalServiceCatalogAdapter(municipalClient, clock, municipalConfig.profile),
+    new MunicipalStopDetailAdapter(municipalClient, municipalConfig.profile),
+    new MunicipalServingLinesAdapter(municipalClient, clock, municipalConfig.profile),
+    new MunicipalLineScheduleAdapter(
+      municipalClient,
+      clock,
+      municipalConfig.profile,
+      isFixtureProfile
+        ? {
+            A: {
+              scheduleId: 'A',
+              evidenceRef: 'spec.md#FR-031',
+              verification: 'provisional',
+              dayCodes: { weekday: '1', saturday: '6', sunday_holiday: '0' }
+            }
+          }
+        : {},
+      usesOnlineCatalog ? { evidenceRef: onlineCatalogEvidenceRef } : undefined
+    ),
+    bundledDiscovery,
+    new MunicipalRouteShapeAdapter(
+      municipalClient,
+      clock,
+      municipalConfig.profile,
+      isFixtureProfile
+        ? {
+            A: {
+              shapeId: 'Route_1005',
+              crs: 'OGC:CRS84',
+              evidenceRef: 'spec.md#FR-025',
+              verification: 'provisional'
+            }
+          }
+        : {}
+    ),
+    new MunicipalTripStopAdapter(
+      municipalClient,
+      clock,
+      municipalConfig.profile,
+      isFixtureProfile
+        ? (['weekday', 'saturday', 'sunday_holiday'] as const).map((dayType) => ({
+            lineCode: 'A',
+            lineId: 'line-a',
+            dayType,
+            tripId: 'A  02LP000_008002_4',
+            evidenceRef: 'spec.md#FR-032',
+            stopsByMunicipalCode: provisionalStopsByMunicipalCode,
+            verification: 'provisional' as const
+          }))
+        : []
+    ),
+    new MunicipalLineStopAdapter(
+      municipalClient,
+      clock,
+      municipalConfig.profile,
+      isFixtureProfile
+        ? {
+            '2789:A': {
+              min: 0,
+              expectedTripIdPrefix: 'A',
+              evidenceRef: 'spec.md#FR-026',
+              verification: 'provisional'
+            }
+          }
+        : allowsScopedCandidateActions
+          ? {
+              '2789:A': {
+                min: 0,
+                expectedTripIdPrefix: 'A',
+                evidenceRef: 'stakeholder-postman-validation-2026-10-28',
+                verification: 'stakeholder-attested'
+              }
+            }
+          : {}
+    ),
+    new BundledScheduleSnapshotCatalog(snapshotEntries),
+    usesOnlineCatalog
+      ? { stopCatalog: new OnlineStopCatalog(municipalClient, clock), evidenceRef: onlineCatalogEvidenceRef }
+      : undefined
+  );
+  const arrivals = new MunicipalArrivalsAdapter(municipalClient, clock, municipalConfig.profile);
+  const arrivalCache = new ArrivalCache(() => clock.now().getTime());
+  const [lineCatalogResult, discovery] = await Promise.all([
+    schedule.getMunicipalLineCatalog(storage.loadPreferences().language),
+    schedule.getStopDiscoveryCatalog()
+  ]);
+  stops = discovery.stops;
+  discoveryProvenance = discovery.provenance;
+  lineCatalogUnavailable = lineCatalogResult.kind === 'unavailable';
+  lines = lineCatalogResult.kind === 'success'
+    ? lineCatalogResult.value.lines.map((line) => ({
+        id: line.id,
+        code: line.code,
+        name: line.name,
+        color: line.color
+      }))
+    : [];
+  selection = createStopSelection({ stops, arrivals, clock, visibility, cache: arrivalCache });
   unsubscribeSelection = selection.subscribe((model) => {
     if (model.selectedStopId) activeMap?.setSelectedStop(model.selectedStopId);
     else activeMap?.setSelectedStop(null);
@@ -135,10 +272,31 @@ async function bootstrap(): Promise<void> {
     remember('stop', stop.id);
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
     const content = document.createElement('div');
+    const arrivalsContent = document.createElement('div');
+    arrivalsContent.dataset.stopArrivals = 'true';
+    const servingLinesContent = document.createElement('section');
+    servingLinesContent.dataset.stopServingLines = 'true';
+    content.append(arrivalsContent, servingLinesContent);
     activePanelStopId = stop.id;
-    activePanelContent = content;
+    activePanelContent = arrivalsContent;
     shell.openPanel(stop.name, content, opener);
     void selection.selectStop(stop.id);
+    const requestId = ++activeServingLinesRequest;
+    renderServingLinesLoading(servingLinesContent);
+    void schedule?.getMunicipalServingLines(stop).then(async (result) => {
+      if (requestId !== activeServingLinesRequest || activePanelStopId !== stop.id) return;
+      const lineStopResults = result.kind === 'success'
+        ? await Promise.all(result.value.lines.map((line) => schedule!.getLineStopDetail(stop, line.code)))
+        : [];
+      if (requestId !== activeServingLinesRequest || activePanelStopId !== stop.id) return;
+      const provisionalDetails = lineStopResults
+        .filter((detail) => detail.kind === 'success')
+        .map((detail) => detail.value);
+      renderServingLines(servingLinesContent, result, (lineCode) => {
+        const line = lines.find((candidate) => candidate.code === lineCode);
+        if (line) void showLine(line);
+      }, provisionalDetails);
+    });
   };
 
   const showStopOnMap = (stopId: string): void => {
@@ -209,6 +367,7 @@ async function bootstrap(): Promise<void> {
     if (currentDestination === 'search') {
       renderStopSearch(view, {
         stops,
+        discoveryProvenance,
         favoriteStopIds: storage.loadFavorites().filter((favorite) => favorite.type === 'stop').map((favorite) => favorite.targetId),
         onSelect: showStopOnMap,
         onFavoriteToggle: (stopId) => {
@@ -219,7 +378,9 @@ async function bootstrap(): Promise<void> {
       });
       return;
     }
-    renderLinesList(view, lines, (line) => { void showLine(line); });
+    renderLinesList(view, lines, (line) => { void showLine(line); }, {
+      unavailable: lineCatalogUnavailable
+    });
   }
 
   const clearSelectionOnPanelClose = () => {
@@ -242,18 +403,46 @@ async function bootstrap(): Promise<void> {
   renderDestination();
 
   async function showLine(line: Line, requestedDayType?: DayType): Promise<void> {
-    if (!schedule) return;
-    shell.navigate('lines');
+    const repository = schedule;
+    if (!repository) return;
+    if (currentDestination !== 'lines') shell.navigate('lines');
     remember('line', line.id);
-    const result = await getLineFrequency(line.id, schedule, clock, requestedDayType);
-    renderLineFrequency(view, {
-      lineCode: result.line.code,
-      lineColor: result.line.color,
-      timetable: result.timetable,
-      patterns: result.patterns,
+    const dayType = requestedDayType ?? deriveDayType(clock.now(), []);
+    const requestVersion = lineViewRequests.next();
+    const [scheduleResult, patterns, routeShapeResult, tripStopsResult] = await Promise.all([
+      navigator.onLine
+        ? repository.getPublishedLineSchedule(line.code, dayType)
+        : Promise.resolve({ kind: 'unavailable' as const, reason: 'offline' as const }),
+      repository.getRoutePatterns(line.id),
+      repository.getRouteShape(line.code),
+      repository.getTripStops(line.code, dayType)
+    ]);
+    if (!lineViewRequests.isCurrent(requestVersion) || currentDestination !== 'lines') return;
+    const snapshotFallback = await getBundledScheduleFallback(
+      repository,
+      line,
+      dayType,
+      patterns,
+      navigator.onLine,
+      scheduleResult
+    );
+    if (!lineViewRequests.isCurrent(requestVersion) || currentDestination !== 'lines') return;
+    const publishedSchedule = scheduleResult.kind === 'success' ? scheduleResult.value : undefined;
+    const render = (onlineRoute?: OnlineLineRoute) => renderLineFrequency(view, {
+      lineCode: line.code,
+      lineColor: line.color,
+      publishedSchedule,
+      bundledScheduleSnapshots: snapshotFallback.snapshots,
+      snapshotFallbackAttempted: snapshotFallback.attempted,
+      routeShape: onlineRoute?.routeShape
+        ?? (routeShapeResult.kind === 'success' ? routeShapeResult.value : undefined),
+      tripStops: tripStopsResult.kind === 'success' ? tripStopsResult.value : undefined,
+      scheduleUnavailableReason: scheduleResult.kind === 'unavailable' ? scheduleResult.reason : undefined,
+      patterns: onlineRoute?.patterns.length ? onlineRoute.patterns : patterns,
+      routeProvenance: onlineRoute?.patterns.length ? onlineRoute.provenance : discoveryProvenance,
       lines,
       favoriteStopIds: storage.loadFavorites().filter((favorite) => favorite.type === 'stop').map((favorite) => favorite.targetId),
-      dayType: result.dayType,
+      dayType,
       onDayTypeChange: (dayType) => { void showLine(line, dayType); },
       onStopSelect: showStopOnMap,
       onStopFavoriteToggle: (stopId) => {
@@ -262,5 +451,10 @@ async function bootstrap(): Promise<void> {
         refreshFavorites();
       }
     });
+    render();
+    if (!publishedSchedule?.trips?.length) return;
+    const onlineRoute = await repository.getOnlineLineRoute(publishedSchedule);
+    if (!lineViewRequests.isCurrent(requestVersion) || currentDestination !== 'lines') return;
+    if (onlineRoute.patterns.length > 0 || onlineRoute.routeShape) render(onlineRoute);
   }
 }

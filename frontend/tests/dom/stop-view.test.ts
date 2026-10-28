@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderStopArrivals } from '../../src/ui/stop/stop-arrivals-view';
 import { setDocumentLanguage } from '../../src/i18n';
 import type { StopArrivalsResult } from '../../src/application/get-stop-arrivals';
@@ -8,6 +8,7 @@ import type { Line } from '../../src/domain/types';
 const stop = {
   id: 'stop-1001',
   code: 'municipal-1001',
+  municipalCode: '2789',
   vitrasaId: '1001',
   name: 'Central',
   lat: 42.2,
@@ -34,6 +35,68 @@ describe('stop panel presentation', () => {
     expect(root.querySelector('[data-arrivals-privacy]')).toBeNull();
     expect(root.querySelector('[data-privacy-entry]')).toBeNull();
     expect(root.textContent).not.toMatch(/Cloudflare|Vitrasa|metadatos|perfil/i);
+  });
+
+  it('shows the update time with a refresh icon at the end and refreshes on activation', () => {
+    const root = document.createElement('main');
+    const onRefresh = vi.fn();
+    renderStopArrivals(root, {
+      ...result('current'),
+      fetchedAt: '2026-10-28T10:10:01.401Z'
+    }, onRefresh);
+
+    const status = root.querySelector<HTMLElement>('[data-arrivals-status]')!;
+    const refresh = root.querySelector<HTMLButtonElement>('[data-refresh-arrivals]')!;
+    const time = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' })
+      .format(new Date('2026-10-28T10:10:01.401Z'));
+    expect(status.textContent).toBe(`Updated: ${time}`);
+    expect(status.textContent).not.toContain('2026');
+    expect(status.textContent).not.toContain('Live');
+    expect(refresh.querySelector('svg')).toBeTruthy();
+    expect(refresh.getAttribute('aria-label')).toBe('Refresh arrivals');
+    expect(refresh.parentElement).toBe(root.querySelector('[data-arrivals-status-row]'));
+    expect([...refresh.parentElement!.children]).toEqual([status, refresh]);
+    refresh.click();
+    expect(onRefresh).toHaveBeenCalledOnce();
+  });
+
+  it('preserves and disables the refresh control while an update is pending', () => {
+    const root = document.createElement('main');
+    document.body.append(root);
+    const refresh = vi.fn();
+    renderStopArrivals(root, result('current'), refresh);
+    const button = root.querySelector<HTMLButtonElement>('[data-refresh-arrivals]')!;
+    button.focus();
+
+    renderStopArrivals(root, { ...result('loading'), retryPending: true }, refresh);
+
+    expect(root.querySelector('[data-refresh-arrivals]')).toBe(button);
+    expect(document.activeElement).toBe(button);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    button.click();
+    expect(refresh).not.toHaveBeenCalled();
+    root.remove();
+  });
+
+  it('updates the displayed time when a manual refresh completes with unchanged arrivals', () => {
+    const root = document.createElement('main');
+    renderStopArrivals(root, {
+      ...result('current'),
+      fetchedAt: '2026-10-28T10:10:01.401Z'
+    }, vi.fn());
+    renderStopArrivals(root, {
+      ...result('current'),
+      fetchedAt: '2026-10-28T10:10:01.401Z',
+      retryPending: true
+    }, vi.fn());
+    renderStopArrivals(root, {
+      ...result('current'),
+      fetchedAt: '2026-10-28T10:11:01.401Z'
+    }, vi.fn());
+
+    const time = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' })
+      .format(new Date('2026-10-28T10:11:01.401Z'));
+    expect(root.querySelector('[data-arrivals-status]')?.textContent).toBe(`Updated: ${time}`);
   });
 
   it('shows the selected stop serving lines with their catalog colors', () => {
@@ -63,6 +126,32 @@ describe('stop panel states and next actions', () => {
       renderStopArrivals(root, result(dataStatus), () => undefined);
       expect(root.querySelector('[data-next-action="retry"]')).toBeTruthy();
     }
+  });
+
+  it('preserves the focused Retry node and announces completion after pending refresh', () => {
+    const root = document.createElement('main');
+    document.body.append(root);
+    const onRetry = vi.fn();
+    renderStopArrivals(root, result('stale'), onRetry);
+    const retry = root.querySelector<HTMLButtonElement>('[data-next-action="retry"]')!;
+    retry.focus();
+    expect(retry.type).toBe('button');
+    retry.click();
+    expect(onRetry).toHaveBeenCalledOnce();
+    onRetry.mockClear();
+
+    renderStopArrivals(root, { ...result('stale'), retryPending: true }, onRetry);
+
+    expect(root.querySelector('[data-next-action="retry"]')).toBe(retry);
+    expect(document.activeElement).toBe(retry);
+    expect(retry.getAttribute('aria-disabled')).toBe('true');
+    retry.click();
+    expect(onRetry).not.toHaveBeenCalled();
+
+    renderStopArrivals(root, result('current'), onRetry);
+    expect(root.querySelector('[data-arrivals-status]')?.getAttribute('aria-live')).toBe('polite');
+    expect(root.querySelectorAll('[role="status"]')).toHaveLength(1);
+    expect(root.querySelector('[data-next-action="retry"]')).toBeNull();
   });
 
   it('links empty results to lines serving the selected stop', () => {

@@ -1,4 +1,4 @@
-import type { ArrivalsGateway, ClockPort, ScheduleRepository, StoragePort, VisibilityPort } from '../../../src/application/ports';
+import type { ClockPort, MunicipalArrivalsGateway, ScheduleRepository, StoragePort, VisibilityPort } from '../../../src/application/ports';
 import type { DatasetManifest, Favorite, Line, LineDetails, Stop, Timetable, UserPreferences } from '../../../src/domain/types';
 
 export class FakeScheduleRepository implements ScheduleRepository {
@@ -45,7 +45,7 @@ export class MemoryStorage implements StoragePort {
   savePreferences(value: UserPreferences): void { this.preferences = value; }
 }
 
-export class FakeArrivalsGateway implements ArrivalsGateway {
-  constructor(private readonly result: Awaited<ReturnType<ArrivalsGateway['getArrivals']>>) {}
+export class FakeArrivalsGateway implements MunicipalArrivalsGateway {
+  constructor(private readonly result: Awaited<ReturnType<MunicipalArrivalsGateway['getArrivals']>>) {}
   getArrivals(): Promise<typeof this.result> { return Promise.resolve(this.result); }
 }

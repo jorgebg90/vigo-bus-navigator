@@ -4,8 +4,8 @@ import { renderStopArrivals } from '../../src/ui/stop/stop-arrivals-view';
 import { setDocumentLanguage, translateCurrent } from '../../src/i18n';
 import type { StopArrivalsResult } from '../../src/application/get-stop-arrivals';
 
-const stop = { id: 's1', code: '1', vitrasaId: '1', name: 'Central', lat: null, lon: null, lineIds: [] };
-const arrival = { lineCode: 'L4A', destination: 'Bouzas', minutes: 5, eta: '10:00' };
+const stop = { id: 's1', code: '1', municipalCode: '2789', vitrasaId: '1', name: 'Central', lat: null, lon: null, lineIds: [] };
+const arrival = { lineCode: 'L4A', destination: 'Bouzas', minutes: 5 };
 
 function result(dataStatus: StopArrivalsResult['dataStatus']): StopArrivalsResult {
   return {
@@ -28,7 +28,12 @@ describe('stop arrivals freshness states', () => {
       const status = root.querySelector('[role=status]') as HTMLElement;
       expect(status.dataset.freshness).toBe(state);
       expect(status.getAttribute('aria-live')).toBe(state === 'loading' ? 'off' : 'polite');
-      expect(status.textContent).toContain(translateCurrent(`status${state[0].toUpperCase()}${state.slice(1)}` as 'statusCurrent'));
+      if (state === 'current') {
+        expect(status.textContent).toMatch(/^Updated:/);
+        expect(status.textContent).not.toContain(translateCurrent('statusCurrent'));
+      } else {
+        expect(status.textContent).toContain(translateCurrent(`status${state[0].toUpperCase()}${state.slice(1)}` as 'statusCurrent'));
+      }
     });
   }
 
@@ -51,16 +56,24 @@ describe('stop arrivals freshness states', () => {
       const currentRegion = root.querySelector('[role=status]');
       if (liveRegion) expect(currentRegion).toBe(liveRegion);
       liveRegion = currentRegion;
-      expect(liveRegion?.textContent).toContain(
-        translateCurrent(`status${state[0].toUpperCase()}${state.slice(1)}` as 'statusCurrent')
-      );
+      if (state === 'current') {
+        expect(liveRegion?.textContent).toMatch(/^Updated:/);
+        expect(liveRegion?.textContent).not.toContain(translateCurrent('statusCurrent'));
+      } else {
+        expect(liveRegion?.textContent).toContain(
+          translateCurrent(`status${state[0].toUpperCase()}${state.slice(1)}` as 'statusCurrent')
+        );
+      }
     }
   });
 
   it('stale keeps the original update time', () => {
     const root = document.createElement('main');
     renderStopArrivals(root, result('stale'));
-    expect(root.querySelector('[role=status]')?.textContent).toContain('2026-10-25T18:29:00Z');
+    const time = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' })
+      .format(new Date('2026-10-25T18:29:00Z'));
+    expect(root.querySelector('[role=status]')?.textContent).toContain(`Updated: ${time}`);
+    expect(root.querySelector('[role=status]')?.textContent).not.toContain('2026');
   });
 
   it('does not announce loading before three seconds and announces it once afterward', () => {

@@ -17,6 +17,35 @@ describe('US4 favorites view', () => {
     expect(root.querySelector('[role="tabpanel"] button')?.textContent).toContain('Praza de América');
   });
 
+  it('opens a migrated line favorite when its line is available', () => {
+    const root = document.createElement('main');
+    const opened: string[] = [];
+    renderFavorites(root, [{ type: 'line', targetId: 'l4a', order: 0 }], [
+      { id: 'l4a', code: 'L4A', name: 'Bouzas', color: '#000' }
+    ], [], (item) => opened.push(`${item.type}:${item.targetId}`));
+
+    const open = root.querySelector<HTMLButtonElement>('.stop-open');
+    expect(open?.textContent).toContain('L4A');
+    expect(open?.textContent).toContain('Bouzas');
+    open?.click();
+    expect(opened).toEqual(['line:l4a']);
+  });
+
+  it('keeps unresolved line favorites visible but unavailable and removable', () => {
+    const root = document.createElement('main');
+    const opened: string[] = [];
+    const removed: string[] = [];
+    renderFavorites(root, [{ type: 'line', targetId: 'legacy-line', order: 0 }], [], [], (item) => {
+      opened.push(item.targetId);
+    }, { onRemove: (favorite) => removed.push(favorite.targetId) });
+
+    expect(root.textContent).toContain('Unavailable: legacy-line');
+    expect(root.querySelector('.stop-open')?.tagName).toBe('SPAN');
+    root.querySelector<HTMLButtonElement>('[data-action="remove"]')?.click();
+    expect(opened).toEqual([]);
+    expect(removed).toEqual(['legacy-line']);
+  });
+
   it('renders recent views and a session-only persistence notice', () => {
     const root = document.createElement('main');
     renderFavorites(root, [], [{ id: 'l4a', code: 'L4A', name: 'Bouzas', color: '#000' }], [], () => undefined, {

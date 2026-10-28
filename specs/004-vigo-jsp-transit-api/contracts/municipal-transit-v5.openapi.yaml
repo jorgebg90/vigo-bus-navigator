@@ -1,0 +1,809 @@
+openapi: 3.1.0
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+info:
+  title: Vigo Municipal Transit Source and Browser Models
+  version: 5.0.0
+  description: >-
+    Direct browser GET transport to the fixed public municipal JSP, plus
+    in-process normalized application schemas. This is not a hosted REST API.
+    No Worker, proxy, /api/v5 endpoint, credentials or profile parameters.
+    Source schemas are observed samples, not provider guarantees. The online
+    catalog (TRANSPORTE_PARADAS stop list, TRANSPORTE_LINEA_HORARIOS_EXTEND by
+    public line code, TRANSPORTE_PARADAS_TRIP by schedule trip_id and
+    TRANSPORTE_LINEA_GEOJSON by schedule shape_id) mirrors the official Vigo
+    app and was approved by the product owner for every line on 2026-10-28.
+    TRANSPORTE_LINEA_INFO_PARADA stays limited to one exact stop/line mapping.
+    Client receipt time is not provider generation time. Historical v3/v4 contracts are unchanged.
+  contact:
+    name: Vigo Bus Navigator maintainers
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+servers:
+  - url: https://datos.vigo.org
+    description: Fixed municipal source; no caller-configurable server
+security: []
+tags:
+  - name: municipal
+    description: Allowlisted public GET actions, credentials omitted
+paths:
+  /vci_api_app/api2.jsp:
+    get:
+      operationId: fetchMunicipalTransit
+      tags: [municipal]
+      summary: Fetch one allowlisted municipal transit action
+      description: >-
+        Use URLSearchParams, mode cors, credentials omit, redirect error.
+        No automatic alternate source or retries. Reject unknown keys/actions,
+        invalid values and candidate mappings outside exact live-profile
+        allowlists before network; production permits eight general actions,
+        the online line catalog actions for any validated identifier and one
+        exact line-stop detail mapping.
+        x-source-actions is normative for action-dependent required keys and
+        response schemas; the optional union query parameters here alone do
+        not express cross-parameter requirements. Total deadline 5 seconds
+        including bounded stream reading, charset decoding and full validation.
+        HTTP 200 alone is not semantic success. Empty requires valid envelope
+        and requested identity. Browser CORS permission must be separately
+        evidenced for every action/parameter class before production.
+      parameters:
+        - name: tipo
+          in: query
+          required: true
+          description: Closed source action; selected catalog locale is observable
+          schema:
+            type: string
+            enum:
+              - TRANSPORTE_LINEAS_ES
+              - TRANSPORTE_LINEAS_GA
+              - TRANSPORTE_LINEAS_SERVICIOS_ES
+              - TRANSPORTE_LINEAS_SERVICIOS_GA
+              - TRANSPORTE_PARADA_ID
+              - TRANSPORTE_LINEAS_PARADA
+              - TRANSPORTE_PARADAS
+              - TRANSPORTE-ESTIMACION-PARADA
+              - TRANSPORTE_LINEA_HORARIOS_EXTEND
+              - TRANSPORTE_LINEA_GEOJSON
+              - TRANSPORTE_PARADAS_TRIP
+              - TRANSPORTE_LINEA_INFO_PARADA
+        - name: id
+          in: query
+          description: >-
+            Action-specific ID, never a generic substitutable identifier.
+            Numeric source/Vitrasa ID for stop/arrivals; municipal ID for
+            lines-per-stop; public line code for schedules; schedule-row
+            shape_id for geometry and trip_id for trip stops. Preserve interior
+            trip spaces.
+          schema:
+            $ref: '#/components/schemas/OpaqueId'
+        - name: ttl
+          in: query
+          description: Fixed compatibility value on arrivals only; cache semantics unverified
+          schema:
+            type: integer
+            const: 5
+        - name: dia
+          in: query
+          description: >-
+            APK schedule selector mapping: 1=weekday, 6=Saturday,
+            0=Sunday/holiday, for every public line code in live profiles.
+          schema:
+            type: string
+            enum: ['0', '1', '6']
+        - name: stop_id
+          in: query
+          description: Municipal stop identifier on line-stop context, not Vitrasa ID
+          schema:
+            $ref: '#/components/schemas/NumericId'
+        - name: linea
+          in: query
+          description: Verified public line code, line-stop action only
+          schema:
+            $ref: '#/components/schemas/OpaqueId'
+        - name: min
+          in: query
+          description: >-
+            Fixed compatibility value 0 only. Stakeholder reports minutes as
+            the unit for the scoped local-live stop_id=2789,linea=A mapping;
+            independent semantics and production readiness remain open.
+          schema:
+            type: integer
+            const: 0
+      responses:
+        '200':
+          description: >-
+            Observed JSON payload; validate selected action's complete schema
+            and requested identity after charset-aware decoding. HTML/error
+            envelope, unexpected shape or missing required data is failure,
+            even with this HTTP status. Not a normalized application response.
+          headers:
+            Access-Control-Allow-Origin:
+              description: >-
+                Historical tested cases returned *. Any origin-specific policy
+                requires actual configured-host browser validation. Header is
+                generally not exposed to page JavaScript; capture with tooling.
+              schema:
+                type: string
+            Content-Type:
+              description: Observed application/json;charset=ISO-8859-1
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/SourceLines'
+                  - $ref: '#/components/schemas/SourceServices'
+                  - $ref: '#/components/schemas/SourceStops'
+                  - $ref: '#/components/schemas/SourceStopCatalog'
+                  - $ref: '#/components/schemas/SourceServingLines'
+                  - $ref: '#/components/schemas/SourceArrivals'
+                  - $ref: '#/components/schemas/SourceSchedule'
+                  - $ref: '#/components/schemas/SourceGeometryEnvelope'
+                  - $ref: '#/components/schemas/SourceTripStops'
+                  - $ref: '#/components/schemas/SourceLineStop'
+        default:
+          description: >-
+            Non-success HTTP response, provider error representation unknown.
+            Treat as typed failure, not empty. Honor Retry-After on rate limits;
+            no automatic retries or raw body exposure.
+x-transport-policy:
+  method: GET
+  credentials: omit
+  mode: cors
+  redirect: error
+  referrerPolicy: no-referrer
+  deadlineMilliseconds: 5000
+  maxResponseBytes: 262144
+  maxRowsOrPositions: 10000
+  maxConcurrentRequests: 2
+  minimumStartIntervalMilliseconds: 1000
+  unknownQueryKeys: reject
+  localeMapping: {gl: GA, es: ES, en: ES}
+  productionEnabled: true
+  productionScope: eight-supported-actions-plus-online-line-catalog
+x-profile-readiness:
+  normativeMatrix: action-readiness.md
+  fixtures: all-twelve-actions-including-synthetic-rejections
+  provisionalEvaluation:
+    profile: fixture
+    actions:
+      - TRANSPORTE_LINEA_HORARIOS_EXTEND
+      - TRANSPORTE_LINEA_GEOJSON
+      - TRANSPORTE_PARADAS_TRIP
+      - TRANSPORTE_LINEA_INFO_PARADA
+    networkRequests: false
+    requiredProvenance: provisional-fixture
+  localLiveAllowed:
+    - TRANSPORTE_LINEAS_ES
+    - TRANSPORTE_LINEAS_GA
+    - TRANSPORTE_LINEAS_SERVICIOS_ES
+    - TRANSPORTE_LINEAS_SERVICIOS_GA
+    - TRANSPORTE_PARADA_ID
+    - TRANSPORTE_LINEAS_PARADA
+    - TRANSPORTE_PARADAS
+    - TRANSPORTE-ESTIMACION-PARADA
+  onlineCatalog:
+    profiles: [local-live, production]
+    authorization: product-owner-explicit-2026-10-28
+    evidence: official-app-online-catalog-2026-10-28
+    actions:
+      - TRANSPORTE_LINEA_HORARIOS_EXTEND
+      - TRANSPORTE_LINEA_GEOJSON
+      - TRANSPORTE_PARADAS_TRIP
+    parameters: any-request-builder-validated-identifier
+  localLiveScoped:
+    evidenceClass: stakeholder-reported-postman-validation
+    productionReady: false
+    actions:
+      - action: TRANSPORTE_LINEA_INFO_PARADA
+        allowedParameters:
+          - {stop_id: '2789', linea: A}
+        constants: {min: '0'}
+    allOtherParameters: denied-before-network
+  productionScoped:
+    authorization: product-owner-explicit-2026-10-28
+    actions:
+      - action: TRANSPORTE_LINEA_INFO_PARADA
+        allowedParameters:
+          - {stop_id: '2789', linea: A}
+        constants: {min: '0'}
+    allOtherParameters: denied-before-network
+  productionAllowed:
+    - TRANSPORTE_LINEAS_ES
+    - TRANSPORTE_LINEAS_GA
+    - TRANSPORTE_LINEAS_SERVICIOS_ES
+    - TRANSPORTE_LINEAS_SERVICIOS_GA
+    - TRANSPORTE_PARADA_ID
+    - TRANSPORTE_LINEAS_PARADA
+    - TRANSPORTE_PARADAS
+    - TRANSPORTE-ESTIMACION-PARADA
+  productionRequiredActions: eight-supported-actions-plus-online-line-catalog
+  partialProductionReleaseAllowed: true
+  enablementChangeRequires: accepted-evidence-and-affected-contract-gate-review
+x-source-actions:
+  TRANSPORTE_LINEAS_ES:
+    requiredQuery: [tipo]
+    allowedQuery: [tipo]
+    responseSchema: '#/components/schemas/SourceLines'
+    verification: observed
+  TRANSPORTE_LINEAS_GA:
+    requiredQuery: [tipo]
+    allowedQuery: [tipo]
+    responseSchema: '#/components/schemas/SourceLines'
+    verification: observed
+  TRANSPORTE_LINEAS_SERVICIOS_ES:
+    requiredQuery: [tipo]
+    allowedQuery: [tipo]
+    responseSchema: '#/components/schemas/SourceServices'
+    verification: observed
+  TRANSPORTE_LINEAS_SERVICIOS_GA:
+    requiredQuery: [tipo]
+    allowedQuery: [tipo]
+    responseSchema: '#/components/schemas/SourceServices'
+    verification: observed
+  TRANSPORTE_PARADA_ID:
+    requiredQuery: [tipo, id]
+    allowedQuery: [tipo, id]
+    idSchema: '#/components/schemas/NumericId'
+    idNamespace: vitrasa
+    responseSchema: '#/components/schemas/SourceStops'
+    verification: one-stop-correlation
+  TRANSPORTE_LINEAS_PARADA:
+    requiredQuery: [tipo, id]
+    allowedQuery: [tipo, id]
+    idSchema: '#/components/schemas/NumericId'
+    idNamespace: municipal
+    responseSchema: '#/components/schemas/SourceServingLines'
+    verification: one-stop-correlation
+  TRANSPORTE_PARADAS:
+    requiredQuery: [tipo]
+    allowedQuery: [tipo]
+    responseSchema: '#/components/schemas/SourceStopCatalog'
+    verification: official-app-online-catalog
+    notes: stop_id is the municipal code, id is the Vitrasa ID, lineas lists public line codes
+  TRANSPORTE-ESTIMACION-PARADA:
+    requiredQuery: [tipo, id, ttl]
+    allowedQuery: [tipo, id, ttl]
+    idSchema: '#/components/schemas/NumericId'
+    idNamespace: vitrasa
+    constants: {ttl: 5}
+    responseSchema: '#/components/schemas/SourceArrivals'
+    verification: ttl-semantics-open
+  TRANSPORTE_LINEA_HORARIOS_EXTEND:
+    requiredQuery: [tipo, id, dia]
+    allowedQuery: [tipo, id, dia]
+    idNamespace: public line code, as used by the official app
+    responseSchema: '#/components/schemas/SourceSchedule'
+    verification: provisional
+    provisionalEvaluation:
+      fixtureOnly: true
+      assumptions: [FR-031]
+      dayCodeMapping: {weekday: '1', saturday: '6', sunday_holiday: '0'}
+    liveScope: {id: any-public-line-code, dia: ['1', '6', '0'], rows: keep-all-like-official-app}
+  TRANSPORTE_LINEA_GEOJSON:
+    requiredQuery: [tipo, id]
+    allowedQuery: [tipo, id]
+    idNamespace: shape_id from a schedule row
+    responseSchema: '#/components/schemas/SourceGeometryEnvelope'
+    verification: provisional
+    provisionalEvaluation:
+      fixtureOnly: true
+      assumptions: [FR-025]
+      crs: OGC:CRS84
+    liveScope: {id: schedule-row-shape-id}
+  TRANSPORTE_PARADAS_TRIP:
+    requiredQuery: [tipo, id]
+    allowedQuery: [tipo, id]
+    idNamespace: trip_id from a schedule row
+    responseSchema: '#/components/schemas/SourceTripStops'
+    verification: provisional
+    provisionalEvaluation:
+      fixtureOnly: true
+      assumptions: [FR-032]
+      sequence: contiguous-one-based-order
+    liveScope: {id: schedule-row-trip-id, selection: one-representative-trip-per-direction}
+  TRANSPORTE_LINEA_INFO_PARADA:
+    requiredQuery: [tipo, stop_id, linea, min]
+    allowedQuery: [tipo, stop_id, linea, min]
+    constants: {min: 0}
+    responseSchema: '#/components/schemas/SourceLineStop'
+    verification: provisional
+    provisionalEvaluation:
+      fixtureOnly: true
+      assumptions: [FR-026]
+      min: 0
+      reportedUnit: minutes
+      tripIdLeadingToken: equals-requested-public-line-code
+      shapeId: opaque-source-identity-only
+    localLiveScope: {stop_id: '2789', linea: A, min: 0, reportedBy: stakeholder}
+    blocker: Other stop/line pairs and parameters remain denied; approval is limited to exact mapping
+x-browser-ports:
+  description: In-process browser interfaces only; none are hosted HTTP endpoints
+  listLines:
+    input: uiLocale es/gl/en mapped to fixed ES/GA action
+    outputSchema: '#/components/schemas/LineCatalog'
+  listServices:
+    input: uiLocale es/gl/en mapped to fixed ES/GA action
+    outputSchema: '#/components/schemas/ServiceCatalog'
+  resolveStop:
+    input: verified Vitrasa ID
+    outputSchema: '#/components/schemas/NetworkStop'
+  listServingLines:
+    input: verified municipalCode
+    outputSchema: '#/components/schemas/ServingLines'
+  getArrivals:
+    input: verified Vitrasa ID; selected application stop association
+    outputSchema: '#/components/schemas/ArrivalReceipt'
+  getLineService:
+    input: exact stakeholder-attested line-A/day mappings in local-live and product-owner-approved production; explicit provisional mapping in fixture evaluation
+    outputSchema: '#/components/schemas/LineService'
+  getRouteShape:
+    input: exact stakeholder-attested Route_1005 mapping in local-live and product-owner-approved production; explicit provisional mapping in fixture evaluation
+    outputSchema: '#/components/schemas/RouteShape'
+  getTripStops:
+    input: exact stakeholder-attested weekday trip and catalog stop map in local-live and product-owner-approved production; provisional exact mapping in fixture evaluation
+    outputSchema: '#/components/schemas/TripStopSequence'
+  getLineStopDetail:
+    input: exact stakeholder-attested municipalCode=2789 and lineCode=A in local-live and product-owner-approved production with fixed min=0; provisional fixture evaluation otherwise
+    outputSchema: '#/components/schemas/LineStopDetail'
+  failure:
+    outputSchema: '#/components/schemas/OperationFailure'
+  arrivalView:
+    outputSchema: '#/components/schemas/ArrivalView'
+components:
+  schemas:
+    OpaqueId:
+      type: string
+      minLength: 1
+      maxLength: 128
+      pattern: '^[^\u0000-\u001F\u007F]+$'
+      description: Public source identity; preserve interior spaces/case; reject whitespace-only
+    NumericId:
+      type: string
+      pattern: '^[0-9]{1,12}$'
+      description: Decimal source ID as canonical string, not interchangeable across namespaces
+    Text:
+      type: string
+      minLength: 1
+      maxLength: 2048
+      description: Plain text only; render via textContent, never source HTML
+    SourceLine:
+      type: object
+      description: Observed line metadata; sparse optional fields may be absent
+      required: [linea, descripcion]
+      properties:
+        linea: {$ref: '#/components/schemas/OpaqueId'}
+        descripcion: {$ref: '#/components/schemas/Text'}
+        color: {type: string}
+        color_texto: {type: string}
+        imagen: {type: string, description: Raw path not fetched or rendered}
+        orden: {type: integer}
+        origen: {type: string}
+        destino: {type: string}
+    SourceLines:
+      type: array
+      maxItems: 10000
+      items: {$ref: '#/components/schemas/SourceLine'}
+    SourceService:
+      type: object
+      required: [linea, descripcion]
+      properties:
+        linea: {$ref: '#/components/schemas/OpaqueId'}
+        descripcion: {$ref: '#/components/schemas/Text'}
+        tipo: {type: string}
+        subtipo: {type: string}
+        color: {type: string}
+        imagen: {type: string}
+    SourceServices:
+      type: array
+      maxItems: 10000
+      items: {$ref: '#/components/schemas/SourceService'}
+    SourceStop:
+      type: object
+      required: [id, stop_id, nombre]
+      description: Coordinates may be absent; id and stop_id meanings require verified association
+      properties:
+        id: {type: integer, minimum: 0}
+        stop_id: {$ref: '#/components/schemas/NumericId'}
+        nombre: {$ref: '#/components/schemas/Text'}
+        lat: {type: [number, 'null']}
+        lon: {type: [number, 'null']}
+    SourceStops:
+      type: array
+      maxItems: 10000
+      description: Validate cardinality and requested identity, never silently take first wrong record
+      items: {$ref: '#/components/schemas/SourceStop'}
+    SourceCatalogStop:
+      type: object
+      required: [id, stop_id, nombre, lat, lon, lineas]
+      properties:
+        id: {type: integer, minimum: 0, description: Vitrasa stop ID}
+        stop_id: {$ref: '#/components/schemas/NumericId'}
+        nombre: {$ref: '#/components/schemas/Text'}
+        lat: {type: number}
+        lon: {type: number}
+        lineas: {type: string, description: Comma-separated public line codes}
+    SourceStopCatalog:
+      type: array
+      minItems: 1
+      maxItems: 10000
+      items: {$ref: '#/components/schemas/SourceCatalogStop'}
+    SourceServingLines:
+      type: array
+      maxItems: 10000
+      items: {$ref: '#/components/schemas/SourceLine'}
+    SourceArrivalStop:
+      type: object
+      required: [stop_vitrasa, nombre]
+      properties:
+        stop_vitrasa: {type: integer, minimum: 0}
+        nombre: {$ref: '#/components/schemas/Text'}
+        latitud: {type: [number, 'null']}
+        longitud: {type: [number, 'null']}
+    SourceEstimate:
+      type: object
+      required: [linea, ruta, minutos]
+      properties:
+        linea: {$ref: '#/components/schemas/OpaqueId'}
+        ruta: {$ref: '#/components/schemas/Text'}
+        minutos: {type: integer, minimum: 0, description: Observed wait minutes}
+        metros:
+          type: number
+          description: Observed numeric value; units/meaning not verified, not normalized
+    SourceArrivals:
+      type: object
+      required: [parada, estimaciones]
+      properties:
+        parada:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items: {$ref: '#/components/schemas/SourceArrivalStop'}
+        estimaciones:
+          type: array
+          maxItems: 10000
+          items: {$ref: '#/components/schemas/SourceEstimate'}
+    SourceScheduleRow:
+      type: object
+      x-verification: provisional
+      description: Observed top-level array rows, not a fictional info_linea wrapper
+      required: [trip_id, shape_id, horarios]
+      properties:
+        trip_id: {$ref: '#/components/schemas/OpaqueId'}
+        shape_id: {$ref: '#/components/schemas/OpaqueId'}
+        date: {type: string, description: Service reference date, not generation time}
+        num_paradas: {type: integer}
+        inicio_s: {type: string}
+        fin_s: {type: string}
+        direccion: {type: string}
+        dir: {type: integer}
+        activo: {type: integer, description: Observed flag, semantics unverified}
+        longitud_metros: {type: number, description: Raw value, no verified distance meaning}
+        horarios: {type: string, description: Observed comma-separated published departure strings}
+        tiempo_s: {type: string, description: Raw duration label, not parsed without verification}
+    SourceSchedule:
+      type: array
+      maxItems: 10000
+      x-verification: provisional
+      items: {$ref: '#/components/schemas/SourceScheduleRow'}
+    SourceGeometryEnvelope:
+      type: array
+      minItems: 1
+      maxItems: 1
+      x-verification: provisional
+      items:
+        type: object
+        required: [st_asgeojson]
+        properties:
+          st_asgeojson:
+            type: string
+            description: >-
+              Escaped JSON string; decode again and fully validate LineString.
+              No explicit CRS observed. Do not equate plausible range with CRS proof.
+            contentMediaType: application/json
+    SourceTripStop:
+      type: object
+      x-verification: provisional
+      required: [id, stop_id, nombre, orden]
+      properties:
+        id: {type: integer, minimum: 0}
+        stop_id: {$ref: '#/components/schemas/NumericId'}
+        nombre: {$ref: '#/components/schemas/Text'}
+        orden: {type: integer, minimum: 1}
+        lat: {type: [number, 'null']}
+        lon: {type: [number, 'null']}
+        lineas: {type: string, description: Denormalized list, not identity proof}
+    SourceTripStops:
+      type: array
+      maxItems: 10000
+      x-verification: provisional
+      items: {$ref: '#/components/schemas/SourceTripStop'}
+    SourceLineStopRow:
+      type: object
+      x-verification: provisional
+      description: Observed line-stop fields typed for fixture evaluation and exact local-live scope only; not a universal provider schema. The evaluator checks that the leading trip_id token matches the requested public line code; shape_id remains opaque.
+      required: [trip_id, shape_id, stop_id, horarios]
+      properties:
+        trip_id: {$ref: '#/components/schemas/OpaqueId'}
+        shape_id: {$ref: '#/components/schemas/OpaqueId'}
+        stop_id: {$ref: '#/components/schemas/NumericId'}
+        horarios:
+          type: string
+          maxLength: 2048
+          description: Comma-delimited HH:MM values, observed shape for fixture and scoped local-live normalization
+        hora_programada:
+          type: string
+          pattern: '^(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'
+          description: Observed HH:MM:SS field; meaning remains provisional
+        sentido: {type: integer}
+        nombre_linea: {$ref: '#/components/schemas/Text'}
+        direccion: {$ref: '#/components/schemas/Text'}
+        color_fondo: {type: string, pattern: '^#[0-9A-Fa-f]{6}$'}
+        color_front: {type: string, pattern: '^#[0-9A-Fa-f]{6}$'}
+        stop_name: {$ref: '#/components/schemas/Text'}
+    SourceLineStop:
+      type: array
+      maxItems: 10000
+      x-verification: provisional
+      items: {$ref: '#/components/schemas/SourceLineStopRow'}
+    NetworkLineSummary:
+      type: object
+      additionalProperties: false
+      required: [id, code, name, color]
+      properties:
+        id: {$ref: '#/components/schemas/OpaqueId', description: Preserved app identity through verified mapping}
+        code: {$ref: '#/components/schemas/OpaqueId', description: Source linea}
+        name: {$ref: '#/components/schemas/Text', description: Source descripcion}
+        color: {type: string, pattern: '^#[0-9A-Fa-f]{6}$', description: Validated source color or accessible app fallback}
+        textColor: {type: string, pattern: '^#[0-9A-Fa-f]{6}$', description: Validated source color_texto when usable}
+        displayOrder: {type: integer, description: Optional source orden, not stop sequence}
+        serviceType: {type: string, maxLength: 2048, description: Optional service tipo}
+        serviceSubtype: {type: string, maxLength: 2048, description: Optional service subtipo}
+    NetworkStop:
+      type: object
+      additionalProperties: false
+      required: [id, code, municipalCode, vitrasaId, name, lat, lon, lineIds]
+      properties:
+        id: {$ref: '#/components/schemas/OpaqueId', description: Stable application identity, not transport fallback}
+        code: {$ref: '#/components/schemas/OpaqueId', description: Public display code from verified mapping}
+        municipalCode: {$ref: '#/components/schemas/NumericId', description: Source stop_id}
+        vitrasaId:
+          type: [string, 'null']
+          pattern: '^[0-9]{1,12}$'
+          description: Source id only after confirmed arrivals correlation; null disables arrivals
+        name: {$ref: '#/components/schemas/Text', description: Source nombre}
+        lat: {type: [number, 'null'], minimum: 42, maximum: 42.5, description: Verified decimal latitude or null}
+        lon: {type: [number, 'null'], minimum: -9, maximum: -8.4, description: Verified decimal longitude or null}
+        lineIds:
+          type: array
+          uniqueItems: true
+          maxItems: 10000
+          items: {$ref: '#/components/schemas/OpaqueId'}
+      oneOf:
+        - properties: {lat: {type: number}, lon: {type: number}}
+        - properties: {lat: {type: 'null'}, lon: {type: 'null'}}
+    Provenance:
+      type: object
+      additionalProperties: false
+      required: [kind, sourceName]
+      description: No provider-generated timestamp is claimed
+      properties:
+        kind: {type: string, enum: [municipal, cached-municipal, bundled-catalog, snapshot, fixture, provisional-fixture]}
+        sourceName: {$ref: '#/components/schemas/Text'}
+        fetchedAt: {type: string, format: date-time, description: Original browser receipt after full validation only}
+        evidenceRef: {type: string, minLength: 1, description: Auditable artifact reference, never a user URL to fetch}
+        snapshotDate: {type: string, format: date, description: Trustworthy documented date, not build/mtime}
+        dateKind: {type: string, enum: [publication, effective, capture]}
+      allOf:
+        - if:
+            properties: {kind: {enum: [municipal, cached-municipal]}}
+          then:
+            required: [fetchedAt]
+        - if:
+            properties: {kind: {const: snapshot}}
+          then:
+            required: [evidenceRef, snapshotDate, dateKind]
+    LineCatalog:
+      type: object
+      additionalProperties: false
+      required: [lines, provenance]
+      properties:
+        lines: {type: array, maxItems: 10000, items: {$ref: '#/components/schemas/NetworkLineSummary'}}
+        provenance: {$ref: '#/components/schemas/Provenance'}
+    ServiceCatalog:
+      type: object
+      additionalProperties: false
+      required: [lines, provenance]
+      description: Service metadata joined by verified linea; does not itself claim timetable coverage
+      properties:
+        lines: {type: array, maxItems: 10000, items: {$ref: '#/components/schemas/NetworkLineSummary'}}
+        provenance: {$ref: '#/components/schemas/Provenance'}
+    ServingLines:
+      type: object
+      additionalProperties: false
+      required: [municipalCode, lines, provenance]
+      properties:
+        municipalCode: {$ref: '#/components/schemas/NumericId'}
+        lines: {type: array, maxItems: 10000, items: {$ref: '#/components/schemas/NetworkLineSummary'}}
+        provenance: {$ref: '#/components/schemas/Provenance'}
+    Arrival:
+      type: object
+      additionalProperties: false
+      required: [lineCode, destination, minutes]
+      properties:
+        lineCode: {$ref: '#/components/schemas/OpaqueId', description: Source linea}
+        destination: {$ref: '#/components/schemas/Text', description: Source ruta plain text}
+        minutes: {type: integer, minimum: 0, description: Source minutos in minutes; not provider ETA}
+    ArrivalReceipt:
+      type: object
+      additionalProperties: false
+      required: [stopId, vitrasaId, fetchedAt, arrivals, provenance]
+      properties:
+        stopId: {$ref: '#/components/schemas/OpaqueId', description: Selected application NetworkStop.id, never municipalCode or Vitrasa transport fallback}
+        vitrasaId: {$ref: '#/components/schemas/NumericId'}
+        fetchedAt: {type: string, format: date-time, description: Browser receipt after full validation; never reset on cache read}
+        arrivals:
+          type: array
+          maxItems: 10000
+          description: Stable ascending minutes; [] is valid only after complete envelope/identity validation
+          items: {$ref: '#/components/schemas/Arrival'}
+        provenance:
+          allOf:
+            - $ref: '#/components/schemas/Provenance'
+            - properties: {kind: {enum: [municipal, cached-municipal, fixture]}}
+          description: For all receipts, provenance.fetchedAt must equal canonical receipt fetchedAt exactly
+          required: [fetchedAt]
+      x-semantic-invariants:
+        - stopId equals selected NetworkStop.id and vitrasaId equals its verified transport identity
+        - fetchedAt equals provenance.fetchedAt exactly; only full validated receipt may advance it
+    OperationFailure:
+      type: object
+      additionalProperties: false
+      required: [kind, reason]
+      properties:
+        kind: {type: string, const: unavailable}
+        reason:
+          type: string
+          enum: [transport, timeout, rate-limited, http, invalid, oversized, identity-unverified, mapping-unverified, offline]
+          description: Safe internal category; browser network errors cannot reliably distinguish CORS
+    ArrivalView:
+      type: object
+      additionalProperties: false
+      required: [status, ageSeconds, refreshFailed, online, receipt]
+      description: >-
+        Derived with injected clock. <30s current/empty, [30,300) refreshing or
+        stale only after refresh failure, >=300 unavailable and actionable rows
+        suppressed. Offline never bypasses age. Semantic invariants additionally
+        tested in application tests; this schema is structural.
+      properties:
+        status: {type: string, enum: [loading, current, empty, refreshing, stale, unavailable]}
+        ageSeconds: {type: [number, 'null'], minimum: 0}
+        refreshFailed: {type: boolean}
+        online: {type: boolean}
+        receipt:
+          oneOf:
+            - $ref: '#/components/schemas/ArrivalReceipt'
+            - type: 'null'
+        reason:
+          type: string
+          enum: [transport, timeout, rate-limited, http, invalid, oversized, identity-unverified, mapping-unverified, offline]
+    DayType:
+      type: string
+      enum: [weekday, saturday, sunday_holiday]
+      description: App selection; source dia mapping must be verified, not inferred from enum order
+    PublishedTime:
+      type: string
+      pattern: '^(?:[01][0-9]|2[0-3]):[0-5][0-9]$'
+      description: Published service-day HH:MM; extended hours rejected until evidence and contract re-review
+    RoutePattern:
+      type: object
+      additionalProperties: false
+      required: [tripId, shapeId, direction, departureTimes]
+      properties:
+        tripId: {$ref: '#/components/schemas/OpaqueId'}
+        shapeId:
+          oneOf:
+            - $ref: '#/components/schemas/OpaqueId'
+            - type: 'null'
+        direction: {type: [string, 'null'], maxLength: 2048}
+        departureTimes:
+          type: array
+          maxItems: 10000
+          items: {$ref: '#/components/schemas/PublishedTime'}
+          description: Parsed source horarios without fabricated bands/frequencies
+        providerDate:
+          type: string
+          format: date
+          description: Source service reference date, never provider generation time
+    SnapshotTimetable:
+      type: object
+      additionalProperties: false
+      required: [lineCode, dayType, direction, publishedTimes, provenance]
+      description: Exact line/day/direction match and trustworthy provenance required
+      properties:
+        lineCode: {$ref: '#/components/schemas/OpaqueId'}
+        dayType: {$ref: '#/components/schemas/DayType'}
+        direction: {$ref: '#/components/schemas/Text'}
+        publishedTimes:
+          type: array
+          maxItems: 10000
+          items: {$ref: '#/components/schemas/PublishedTime'}
+        provenance:
+          allOf:
+            - $ref: '#/components/schemas/Provenance'
+            - properties: {kind: {const: snapshot}}
+    LineService:
+      type: object
+      additionalProperties: false
+      required: [lineCode, dayType, scheduleId, patterns, timetable, provenance]
+      properties:
+        lineCode: {$ref: '#/components/schemas/OpaqueId'}
+        dayType: {$ref: '#/components/schemas/DayType'}
+        scheduleId: {$ref: '#/components/schemas/OpaqueId', description: Verified source schedule identity, not public code substitution}
+        patterns: {type: array, maxItems: 10000, items: {$ref: '#/components/schemas/RoutePattern'}}
+        timetable:
+          oneOf:
+            - $ref: '#/components/schemas/SnapshotTimetable'
+            - type: 'null'
+        provenance: {$ref: '#/components/schemas/Provenance'}
+    Position:
+      type: array
+      minItems: 2
+      maxItems: 2
+      prefixItems:
+        - {type: number, minimum: -180, maximum: 180}
+        - {type: number, minimum: -90, maximum: 90}
+      items: {type: number}
+      description: Longitude then latitude, no heuristic swap or synthetic points
+    LineString:
+      type: object
+      additionalProperties: false
+      required: [type, coordinates]
+      properties:
+        type: {type: string, const: LineString}
+        coordinates:
+          type: array
+          minItems: 2
+          maxItems: 10000
+          items: {$ref: '#/components/schemas/Position'}
+    RouteShape:
+      type: object
+      additionalProperties: false
+      required: [shapeId, crs, geometry, provenance]
+      description: Scoped local-live output uses the stakeholder-reported CRS mapping for Route_1005 and remains outside production readiness; fixture-only provisional output must be visibly labeled.
+      properties:
+        shapeId: {$ref: '#/components/schemas/OpaqueId'}
+        crs: {type: string, const: 'OGC:CRS84', description: OGC:CRS84 is stakeholder-reported for the scoped local-live Route_1005 mapping; in fixture evaluation it remains an explicit provisional assumption, not independent provider evidence}
+        geometry: {$ref: '#/components/schemas/LineString'}
+        provenance: {$ref: '#/components/schemas/Provenance'}
+    TripStop:
+      type: object
+      additionalProperties: false
+      required: [sequence, stop]
+      properties:
+        sequence: {type: integer, minimum: 1, description: Source orden; validate uniqueness/continuity}
+        stop: {$ref: '#/components/schemas/NetworkStop'}
+    TripStopSequence:
+      type: object
+      additionalProperties: false
+      required: [tripId, stops, provenance]
+      properties:
+        tripId: {$ref: '#/components/schemas/OpaqueId'}
+        stops:
+          type: array
+          maxItems: 10000
+          description: Ascending validated source sequence, never geographic sort
+          items: {$ref: '#/components/schemas/TripStop'}
+        provenance: {$ref: '#/components/schemas/Provenance'}
+    LineStopDetail:
+      type: object
+      additionalProperties: false
+      x-verification: provisional
+      required: [municipalCode, lineCode, patterns, provenance]
+      description: Scoped local-live output is restricted to stop 2789/line A and fixed min=0 under stakeholder attestation; production remains disabled. Fixture-only output uses fixed min=0, checks the leading trip_id token against the requested line code, preserves shape_id as opaque, and is visibly labeled.
+      properties:
+        municipalCode: {$ref: '#/components/schemas/NumericId'}
+        lineCode: {$ref: '#/components/schemas/OpaqueId'}
+        patterns: {type: array, maxItems: 10000, items: {$ref: '#/components/schemas/RoutePattern'}}
+        provenance: {$ref: '#/components/schemas/Provenance'}

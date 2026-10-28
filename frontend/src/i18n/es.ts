@@ -31,12 +31,14 @@ export const messages = {
   cached: 'Datos guardados',
   unavailable: 'Llegadas no disponibles',
   statusCurrent: 'Tiempo real',
+  syntheticData: 'Datos de muestra sintéticos',
   statusStale: 'Datos desactualizados',
   statusEmpty: 'Sin llegadas próximas',
   statusUnavailable: 'Llegadas no disponibles',
   statusLoading: 'Cargando llegadas…',
   retry: 'Reintentar',
-  updated: 'Actualizado {time}',
+  updated: 'Actualizado: {time}',
+  refreshArrivals: 'Actualizar llegadas',
   arrivalsTo: '{line} hacia {destination}: {minutes} min',
   minutes: '{minutes} min',
   navMap: 'Mapa',
@@ -82,4 +84,27 @@ export const messages = {
   ,lastDeparture: 'Última salida'
   ,frequencyCaption: 'Frecuencias de {line} · {dayType}'
   ,noPublishedService: 'No hay servicio publicado para este tipo de día'
+  ,lineCatalogUnavailable: 'El catálogo municipal de líneas no está disponible ahora.'
+  ,scheduleMappingUnavailable: 'El horario no está disponible porque la asociación de línea y horario aún no está verificada.'
+  ,lineDepartures: 'Salidas'
+  ,scheduleSource: 'Horario · {source} · recibido {time}'
+  ,provisionalScheduleSource: 'Evaluación provisional de muestra · {source} · recibida {time}'
+  ,sourceLabel: 'Fuente: {source}'
+  ,provisionalSourceLabel: 'Origen provisional de muestra: {source}'
+  ,routeShapeTextAlternative: 'Este trazado es una vista provisional; no hay una descripción verificada parada por parada disponible.'
+  ,provisionalDataWarning: 'Datos provisionales: inferidos y no verificados por el proveedor.'
+  ,routeShapePreview: 'Vista provisional del trazado'
+  ,routeShape: 'Trazado del recorrido'
+  ,routeShapeStopsAlternative: 'Las listas de paradas de cada sentido describen este trazado.'
+  ,tripStopSequence: 'Paradas provisionales del trayecto, en orden'
+  ,lineStopDepartures: 'Salidas provisionales de la línea {line}'
+  ,bundledDiscoveryNotice: 'La búsqueda general de paradas y los resúmenes de recorridos aún usan el catálogo empaquetado, capturado el {date}; puede no ser exhaustivo.'
+  ,servingLinesTitle: 'Líneas'
+  ,servingLinesLoading: 'Cargando líneas de esta parada…'
+  ,servingLinesUnavailable: 'No se pudieron verificar las líneas de esta parada.'
+  ,bundledScheduleSnapshotSource: 'Horario sin conexión empaquetado · {source} · fecha de {dateKind} {date} · {line} / {direction} · {dayType}'
+  ,snapshotScheduleUnavailable: 'No hay un horario empaquetado fiable para esta línea, dirección y tipo de día.'
+  ,publicationDate: 'publicación'
+  ,effectiveDate: 'vigencia'
+  ,captureDate: 'captura'
 } as const;

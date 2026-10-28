@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { renderLineFrequency } from '../../src/ui/line/frequency-view';
-import type { Line, Stop, Timetable } from '../../src/domain/types';
+import type { Line, Provenance, Stop, Timetable } from '../../src/domain/types';
 import { setDocumentLanguage } from '../../src/i18n';
 
 const testTimetables: Record<string, Timetable> = {
@@ -44,6 +44,49 @@ describe('US1 line frequency view', () => {
     expect(root.textContent).toContain('12');
     expect(root.textContent).not.toContain('fixture');
     expect(root.querySelector('[role="tablist"][aria-label="Day type"]')).not.toBeNull();
+  });
+
+  it('attributes bundled fallback data to its exact dated source and direction', () => {
+    const root = document.createElement('main');
+    const snapshotProvenance: Provenance = {
+      kind: 'snapshot',
+      sourceName: 'Vigo municipal timetable publication',
+      evidenceRef: 'https://example.test/timetables/2026',
+      snapshotDate: '2026-10-25',
+      dateKind: 'publication'
+    };
+    renderLineFrequency(root, {
+      lineCode: 'L4A',
+      bundledScheduleSnapshots: [{
+        lineId: 'l4a',
+        lineCode: 'L4A',
+        directionId: 'outbound',
+        dayType: 'weekday',
+        service: testTimetables.l4a.byDayType.weekday!,
+        provenance: snapshotProvenance
+      }],
+      dayType: 'weekday',
+      onDayTypeChange: () => undefined
+    });
+
+    expect(root.querySelector('[data-schedule-provenance="snapshot"]')?.textContent).toContain(
+      'Bundled offline timetable · Vigo municipal timetable publication · publication date 2026-10-25 · L4A / outbound · Weekday'
+    );
+    expect(root.textContent).not.toContain('JSP');
+    expect(root.textContent).not.toContain('live');
+  });
+
+  it('shows unavailable instead of an untrusted snapshot timetable', () => {
+    const root = document.createElement('main');
+    renderLineFrequency(root, {
+      lineCode: 'L4A',
+      dayType: 'weekday',
+      snapshotFallbackAttempted: true
+    });
+
+    expect(root.querySelector('[data-schedule-status="snapshot-unavailable"]')?.textContent)
+      .toBe('No trustworthy bundled timetable is available for this line, direction, and day.');
+    expect(root.querySelector('table')).toBeNull();
   });
 
   it('provides a captioned frequency table and keyboard-operable day-type tabs', () => {
@@ -104,8 +147,9 @@ describe('US1 line frequency view', () => {
     expect(directions.map((direction) => [...direction.querySelectorAll('[data-route-stop]')].map((item) => item.querySelector('.stop-open')?.textContent))).toEqual([
       ['Praza de América', 'Urzáiz'], ['Urzáiz', 'Praza de América']
     ]);
-    expect([...root.children].indexOf(root.querySelector('table')!)).toBeLessThan(
-      [...root.children].indexOf(directions[0]!)
+    const dayPanel = root.querySelector('[role="tabpanel"]')!;
+    expect([...dayPanel.children].indexOf(dayPanel.querySelector('table')!)).toBeLessThan(
+      [...dayPanel.children].indexOf(directions[0]!)
     );
     expect(directions[0]?.querySelector('[data-route-stop="stop-1"] [data-line-code-badge]')?.textContent).toBe('4A');
     expect(directions[0]?.querySelector('[data-route-stop="stop-1"] .route-stop-info .line-badges')).toBeTruthy();
@@ -121,6 +165,36 @@ describe('US1 line frequency view', () => {
       lineCode: 'L7', timetable: testTimetables.l7, dayType: 'saturday'
     });
     expect(root.textContent).toContain('No published service for this day type');
+  });
+
+  it('groups online published departures by direction and states days without service', () => {
+    const provenance = { kind: 'municipal' as const, sourceName: 'Vigo municipal transit JSP', fetchedAt: '2026-10-28T12:00:00.000Z' };
+    const trip = { origin: null, destination: null, active: true };
+    const root = document.createElement('main');
+    renderLineFrequency(root, {
+      lineCode: '4C',
+      dayType: 'weekday',
+      publishedSchedule: {
+        lineCode: '4C', dayType: 'weekday', scheduleId: '4C', departures: ['07:00', '08:15'], provenance,
+        trips: [
+          { ...trip, tripId: 't1', shapeId: 's1', direction: 1, headsign: 'COIA', departures: ['08:15'] },
+          { ...trip, tripId: 't0', shapeId: 's0', direction: 0, headsign: 'G. ESPINO', departures: ['07:00'] }
+        ]
+      }
+    });
+    expect(root.textContent).not.toContain('Vigo municipal transit JSP');
+    expect(root.textContent).not.toContain('Municipal transit data');
+    expect([...root.querySelectorAll('[data-schedule-direction] h3')].map((heading) => heading.textContent))
+      .toEqual(['G. ESPINO', 'COIA']);
+    expect(root.querySelector('[data-schedule-direction="1"] li')?.textContent).toBe('08:15');
+
+    renderLineFrequency(root, {
+      lineCode: 'N4',
+      dayType: 'weekday',
+      publishedSchedule: { lineCode: 'N4', dayType: 'weekday', scheduleId: 'N4', departures: [], trips: [], provenance }
+    });
+    expect(root.querySelector('[data-no-service]')?.textContent).toBe('No published service for this day type');
+    expect(root.querySelector('[data-line-departures]')).toBeNull();
   });
 
   it('offers the nearest served day when the selected day has no service', () => {
@@ -145,5 +219,106 @@ describe('US1 line frequency view', () => {
 
     expect(root.textContent).toContain('No published frequency data is available for this line.');
     expect(root.querySelector('table')).toBeNull();
+  });
+
+  it('visibly labels provisional fixture schedules as unverified', () => {
+    const root = document.createElement('main');
+    renderLineFrequency(root, {
+      lineCode: 'A',
+      dayType: 'weekday',
+      publishedSchedule: {
+        lineCode: 'A',
+        dayType: 'weekday',
+        scheduleId: 'A',
+        departures: ['08:00'],
+        provenance: {
+          kind: 'provisional-fixture',
+          sourceName: 'Synthetic provisional evaluation fixture',
+          evidenceRef: 'spec.md#FR-031',
+          fetchedAt: '2026-10-27T12:00:00.000Z'
+        }
+      }
+    });
+
+    expect(root.querySelector('[data-provisional-warning]')?.textContent)
+      .toContain('Provisional data — inferred and not verified by the provider.');
+    const provenance = root.querySelector('[data-schedule-provenance]')?.textContent ?? '';
+    expect(provenance).toContain('Synthetic provisional evaluation fixture');
+    expect(provenance).not.toContain('2026-10-27T12:00:00.000Z');
+    expect(provenance).toMatch(/2026/);
+  });
+
+  it('keeps provisional geometry decorative without a verified stop-by-stop equivalent', () => {
+    const root = document.createElement('main');
+    renderLineFrequency(root, {
+      lineCode: 'A',
+      dayType: 'weekday',
+      routeShape: {
+        lineCode: 'A',
+        shapeId: 'Route_1005',
+        crs: 'OGC:CRS84',
+        geometry: { type: 'LineString', coordinates: [[-8.62, 42.23], [-8.63, 42.24]] },
+        provenance: {
+          kind: 'provisional-fixture',
+          sourceName: 'Synthetic provisional geometry evaluation fixture',
+          evidenceRef: 'spec.md#FR-025'
+        }
+      },
+      tripStops: {
+        lineCode: 'A',
+        dayType: 'weekday',
+        tripId: 'A  02LP000_008002_4',
+        stops: [
+          { sequence: 1, stop: { id: 'stop-1', code: '2789', municipalCode: '2789', vitrasaId: null, name: 'Airport', lat: 42.23, lon: -8.62, lineIds: ['A'] } },
+          { sequence: 2, stop: { id: 'stop-2', code: '2790', municipalCode: '2790', vitrasaId: null, name: 'City centre', lat: 42.24, lon: -8.63, lineIds: ['A'] } }
+        ],
+        provenance: {
+          kind: 'provisional-fixture',
+          sourceName: 'Synthetic provisional trip-stop evaluation fixture',
+          evidenceRef: 'spec.md#FR-032'
+        }
+      }
+    });
+
+    expect(root.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(root.querySelector('[data-route-shape-text-alternative]')?.textContent)
+      .toContain('no verified stop-by-stop description');
+    expect(root.querySelector('[data-route-shape] [data-provenance-source]')?.textContent)
+      .toContain('Synthetic provisional geometry evaluation fixture');
+    expect(root.querySelectorAll('[data-provisional-warning]')).toHaveLength(2);
+    expect(root.querySelector('[data-trip-stop-sequence] [data-provenance-source]')?.textContent)
+      .toContain('Synthetic provisional trip-stop evaluation fixture');
+    expect([...root.querySelector('[data-trip-stop-sequence] ol')!.querySelectorAll('li')].map((item) => item.textContent))
+      .toEqual(['Airport', 'City centre']);
+    expect(root.textContent).not.toContain('stop-1');
+  });
+
+  it('exposes day tabs as a keyboard-operable tablist with a labeled panel', () => {
+    const root = document.createElement('main');
+    renderLineFrequency(root, {
+      lineCode: 'A',
+      dayType: 'weekday',
+      onDayTypeChange: () => undefined,
+      publishedSchedule: {
+        lineCode: 'A',
+        dayType: 'weekday',
+        scheduleId: 'A',
+        departures: ['08:00'],
+        provenance: {
+          kind: 'provisional-fixture',
+          sourceName: 'Synthetic provisional schedule evaluation fixture',
+          evidenceRef: 'spec.md#FR-031',
+          fetchedAt: '2026-10-27T12:00:00.000Z'
+        }
+      }
+    });
+
+    const tabList = root.querySelector('[role="tablist"]');
+    expect(tabList?.querySelectorAll('[role="tab"]')).toHaveLength(3);
+    expect(root.querySelector('[role="tab"][data-day-type="weekday"]')?.getAttribute('tabindex')).toBe('0');
+    expect(root.querySelector('[role="tab"][data-day-type="saturday"]')?.getAttribute('tabindex')).toBe('-1');
+    expect(root.querySelector('[role="tabpanel"]')?.getAttribute('aria-labelledby')).toBe('line-day-tab-weekday');
+    expect(root.textContent).toContain('Provisional fixture evaluation');
+    expect(root.textContent).not.toContain('Published departures');
   });
 });

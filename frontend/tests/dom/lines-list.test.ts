@@ -21,6 +21,7 @@ describe('lines list', () => {
     expect(root.textContent).toContain('4A');
     expect(root.textContent).toContain('Praza de América');
     expect(root.textContent).toContain('Bouzas');
+    expect(root.textContent).not.toContain('Municipal catalog');
     expect(root.querySelector('[data-results-count]')).toBeNull();
   });
 

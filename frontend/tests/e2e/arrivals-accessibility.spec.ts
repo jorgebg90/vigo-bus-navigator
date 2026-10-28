@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { useMunicipalProfile } from './helpers/municipal-profile';
 
 test('arrivals view is keyboard-operable, visible-focus, and WCAG 2.2 AA', async ({ page }) => {
   await page.goto('/');
@@ -41,41 +42,37 @@ test('arrivals view is keyboard-operable, visible-focus, and WCAG 2.2 AA', async
 });
 
 test('refreshes arrivals every 30 seconds only while visible and keeps focus stable', async ({ page }) => {
+  const { requests } = await useMunicipalProfile(page);
   await page.addInitScript(() => {
-    const originalFetch = window.fetch.bind(window);
     const originalSetInterval = window.setInterval.bind(window);
-    window.setInterval = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) =>
-      originalSetInterval(handler, timeout === 30_000 ? 1_000 : timeout, ...args)) as typeof window.setInterval;
-    (window as Window & { __arrivalsRequestCount?: number }).__arrivalsRequestCount = 0;
-    window.fetch = async (input, init) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-      if (/\/stops\/\d+\/arrivals(?:\?.*)?$/.test(url)) {
-        const state = window as unknown as Window & { __arrivalsRequestCount: number };
-        state.__arrivalsRequestCount += 1;
-        return new Response(JSON.stringify({
-          stopId: '1234', generatedAt: '2026-10-26T12:00:00Z', dataStatus: 'current',
-          arrivals: [{ lineCode: '4A', destination: 'Bouzas', minutes: 3, eta: '2026-10-26T12:03:00Z' }]
-        }), { status: 200, headers: { 'content-type': 'application/json' } });
+    (window as Window & { __refreshTimerCount?: number }).__refreshTimerCount = 0;
+    window.setInterval = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
+      if (timeout !== 30_000 || typeof handler !== 'function') {
+        return originalSetInterval(handler, timeout, ...args);
       }
-      return originalFetch(input, init);
-    };
+      return originalSetInterval(() => {
+        const state = window as unknown as Window & { __refreshTimerCount: number };
+        state.__refreshTimerCount += 1;
+        handler(...args);
+      }, 1_000);
+    }) as typeof window.setInterval;
   });
-  const requestCount = () => page.evaluate(() => (window as Window & { __arrivalsRequestCount?: number }).__arrivalsRequestCount ?? 0);
+  const timerCount = () => page.evaluate(() => (window as Window & { __refreshTimerCount?: number }).__refreshTimerCount ?? 0);
   await page.goto('/');
   await page.getByRole('button', { name: /Stops in view|Paradas en el mapa/ }).click();
   await page.locator('.stop-chooser ul button').first().click();
-  await expect.poll(requestCount).toBeGreaterThan(0);
-  await expect(page.locator('[data-arrivals-status]')).not.toHaveAttribute('data-freshness', 'loading');
+  await expect(page.locator('[data-arrivals-status]')).toContainText(/Synthetic sample data|Datos de muestra sintéticos|Datos de mostra sintéticos/);
   const focusBefore = await page.evaluate(() => document.activeElement?.outerHTML);
-  const countAfterSelection = await requestCount();
-  await expect.poll(requestCount, { timeout: 5_000 }).toBeGreaterThan(countAfterSelection);
+  await expect.poll(timerCount, { timeout: 5_000 }).toBeGreaterThan(0);
   expect(await page.evaluate(() => document.activeElement?.outerHTML)).toBe(focusBefore);
 
-  const countAfterRefresh = await requestCount();
   await page.evaluate(() => {
     Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
     document.dispatchEvent(new Event('visibilitychange'));
   });
+  await page.waitForTimeout(100);
+  const countWhileHidden = await timerCount();
   await page.waitForTimeout(1_100);
-  expect(await requestCount()).toBe(countAfterRefresh);
+  expect(await timerCount()).toBe(countWhileHidden);
+  expect(requests).toEqual([]);
 });

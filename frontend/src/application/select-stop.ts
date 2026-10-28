@@ -1,20 +1,20 @@
 import { getStopArrivals, pendingStopArrivals, startStopArrivalsRefresh, type StopArrivalsResult } from './get-stop-arrivals';
-import type { ArrivalsCachePort, ArrivalsGateway, ClockPort, VisibilityPort } from './ports';
+import type { ClockPort, MunicipalArrivalCachePort, MunicipalArrivalsGateway, VisibilityPort } from './ports';
 import { getFreshnessState } from '../domain/freshness';
-import type { Stop } from '../domain/types';
+import type { NetworkStop } from '../domain/types';
 
 export interface StopSelectionViewModel {
   selectedStopId?: string;
-  stop?: Stop;
+  stop?: NetworkStop;
   arrivals?: StopArrivalsResult;
 }
 
 export interface StopSelectionDependencies {
-  stops: Stop[];
-  arrivals: ArrivalsGateway;
+  stops: NetworkStop[];
+  arrivals: MunicipalArrivalsGateway;
   clock: ClockPort;
   visibility: VisibilityPort;
-  cache?: ArrivalsCachePort;
+  cache?: MunicipalArrivalCachePort;
 }
 
 export interface StopSelection {
@@ -38,7 +38,7 @@ export function createStopSelection(dependencies: StopSelectionDependencies): St
     for (const listener of listeners) listener(viewModel);
   };
 
-  const load = async (stop: Stop, token: number): Promise<StopArrivalsResult> => {
+  const load = async (stop: NetworkStop, token: number): Promise<StopArrivalsResult> => {
     const result = await getStopArrivals(stop, dependencies.arrivals, dependencies.clock, dependencies.cache);
     if (disposed || token !== requestToken) return result;
     const ageSeconds = result.fetchedAt ? Math.max(0, (dependencies.clock.now().getTime() - Date.parse(result.fetchedAt)) / 1_000) : undefined;
@@ -72,6 +72,13 @@ export function createStopSelection(dependencies: StopSelectionDependencies): St
       }
     },
     async refresh() {
+      if (activeLoad && viewModel.arrivals) {
+        viewModel = {
+          ...viewModel,
+          arrivals: { ...viewModel.arrivals, retryPending: true }
+        };
+        publish();
+      }
       await activeLoad?.();
     },
     clearSelection() {

@@ -18,7 +18,7 @@ test('saves a stop from its panel, restores it after reload, and removes it from
   await expect(saved.getByRole('tab', { name: /Favorites|Favoritos/ })).toBeVisible();
   const savedStop = saved.locator('.stop-open').first();
   await expect(savedStop).toBeVisible();
-  const favoriteId = await page.evaluate(() => JSON.parse(localStorage.getItem('vbn:v1:favorites') ?? '{"data":[]}').data[0].targetId as string);
+  const favoriteId = await page.evaluate(() => JSON.parse(localStorage.getItem('vbn:v2:favorites') ?? '{"data":[]}').data[0].targetId as string);
   await savedStop.click();
   await expect(page.getByRole('main')).toHaveAttribute('data-destination', 'map');
   await expect(page.locator('.map-container')).toHaveAttribute('data-focused-stop', favoriteId);

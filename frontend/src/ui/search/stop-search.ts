@@ -1,4 +1,4 @@
-import type { Stop } from '../../domain/types';
+import type { Provenance, Stop } from '../../domain/types';
 import { renderFavoriteToggle } from '../favorite-toggle';
 import { translateCurrent } from '../../i18n';
 
@@ -7,6 +7,7 @@ export interface StopSearchOptions {
   favoriteStopIds: string[];
   onSelect: (stopId: string) => void;
   onFavoriteToggle: (stopId: string) => void;
+  discoveryProvenance?: Provenance;
 }
 
 export function renderStopSearch(root: HTMLElement, options: StopSearchOptions): void {
@@ -20,6 +21,14 @@ export function renderStopSearch(root: HTMLElement, options: StopSearchOptions):
   const results = document.createElement('ul');
   results.setAttribute('aria-label', translateCurrent('stops'));
   landmark.append(search);
+  if (options.discoveryProvenance?.kind === 'bundled-catalog') {
+    const notice = document.createElement('p');
+    notice.dataset.stopDiscoverySource = options.discoveryProvenance.kind;
+    notice.textContent = translateCurrent('bundledDiscoveryNotice', {
+      date: options.discoveryProvenance.snapshotDate ?? ''
+    });
+    root.append(notice);
+  }
   root.append(landmark, results);
 
   const render = () => {

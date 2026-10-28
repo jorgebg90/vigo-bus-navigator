@@ -34,12 +34,14 @@ export const messages = {
 	cached: 'Cached data',
 	unavailable: 'Arrivals unavailable',
 	statusCurrent: 'Live',
+	syntheticData: 'Synthetic sample data',
 	statusStale: 'Stale data',
 	statusEmpty: 'No upcoming arrivals',
 	statusUnavailable: 'Arrivals unavailable',
 	statusLoading: 'Loading arrivals…',
 	retry: 'Retry',
-	updated: 'Updated {time}',
+	updated: 'Updated: {time}',
+	refreshArrivals: 'Refresh arrivals',
 	arrivalsTo: '{line} to {destination}: {minutes} min',
 	navMap: 'Map',
 	navSearch: 'Search',
@@ -84,4 +86,27 @@ export const messages = {
 	,lastDeparture: 'Last departure'
 	,frequencyCaption: '{line} frequency · {dayType}'
 	,noPublishedService: 'No published service for this day type'
+	,lineCatalogUnavailable: 'The municipal line catalog is unavailable right now.'
+	,scheduleMappingUnavailable: 'The timetable is unavailable because the line-to-schedule mapping has not been verified.'
+	,lineDepartures: 'Departures'
+	,scheduleSource: 'Schedule · {source} · received {time}'
+	,provisionalScheduleSource: 'Provisional fixture evaluation · {source} · received {time}'
+	,sourceLabel: 'Source: {source}'
+	,provisionalSourceLabel: 'Provisional fixture source: {source}'
+	,routeShapeTextAlternative: 'This shape is a provisional preview; no verified stop-by-stop description is available.'
+	,provisionalDataWarning: 'Provisional data — inferred and not verified by the provider.'
+	,routeShapePreview: 'Provisional route shape preview'
+	,routeShape: 'Route shape'
+	,routeShapeStopsAlternative: 'The stop lists for each direction describe this shape.'
+	,tripStopSequence: 'Provisional ordered trip stops'
+	,lineStopDepartures: 'Provisional departures for line {line}'
+	,bundledDiscoveryNotice: 'General stop search and route-pattern summaries still use the bundled discovery catalog captured on {date}; it may not be exhaustive.'
+	,servingLinesTitle: 'Lines'
+	,servingLinesLoading: 'Loading lines for this stop…'
+	,servingLinesUnavailable: 'The lines serving this stop could not be verified.'
+	,bundledScheduleSnapshotSource: 'Bundled offline timetable · {source} · {dateKind} date {date} · {line} / {direction} · {dayType}'
+	,snapshotScheduleUnavailable: 'No trustworthy bundled timetable is available for this line, direction, and day.'
+	,publicationDate: 'publication'
+	,effectiveDate: 'effective'
+	,captureDate: 'capture'
 } as const;
