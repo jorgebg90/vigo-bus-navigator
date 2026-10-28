@@ -59,6 +59,8 @@ export function createStopChooser(root: HTMLElement, options: StopChooserOptions
       dialog.className = 'stop-chooser';
       dialog.setAttribute('aria-label', `Stops here (${stops.length})`);
       dialog.setAttribute('aria-modal', 'true');
+      const header = document.createElement('div');
+      header.className = 'stop-chooser-header';
       const heading = document.createElement('h2');
       heading.textContent = translateCurrent('stopsHere', { count: stops.length });
       const closeButton = document.createElement('button');
@@ -67,6 +69,7 @@ export function createStopChooser(root: HTMLElement, options: StopChooserOptions
       closeButton.textContent = translateCurrent('close');
       closeButton.addEventListener('click', close);
       const list = document.createElement('ul');
+      header.append(heading, closeButton);
       const ordered = [...stops].sort((left, right) =>
         distanceSquared(left, center) - distanceSquared(right, center) || left.name.localeCompare(right.name)
       );
@@ -84,7 +87,7 @@ export function createStopChooser(root: HTMLElement, options: StopChooserOptions
         item.append(button, createLineBadges(stop.lineIds, options.lines ?? []));
         list.append(item);
       }
-      dialog.append(heading, closeButton, list);
+      dialog.append(header, list);
       dialog.addEventListener('cancel', (event) => { event.preventDefault(); close(); });
       dialog.addEventListener('click', (event) => { if (event.target === dialog) close(); });
       root.append(dialog);

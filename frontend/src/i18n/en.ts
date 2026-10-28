@@ -60,7 +60,6 @@ export const messages = {
 	removeFavorite: 'Remove from favorites',
 	stopPanelTitle: 'Stop {name}',
 	linePanelTitle: 'Line {line}',
-	stopsInView: 'Stops in view',
 	zoomIn: 'Zoom in',
 	zoomOut: 'Zoom out',
 	recenter: 'Recenter map',
@@ -89,6 +88,7 @@ export const messages = {
 	,lineCatalogUnavailable: 'The municipal line catalog is unavailable right now.'
 	,scheduleMappingUnavailable: 'The timetable is unavailable because the line-to-schedule mapping has not been verified.'
 	,lineDepartures: 'Departures'
+	,lineScheduleTitle: 'Departures and arrivals'
 	,scheduleSource: 'Schedule · {source} · received {time}'
 	,provisionalScheduleSource: 'Provisional fixture evaluation · {source} · received {time}'
 	,sourceLabel: 'Source: {source}'
@@ -98,8 +98,6 @@ export const messages = {
 	,routeShapePreview: 'Provisional route shape preview'
 	,routeShape: 'Route shape'
 	,routeShapeStopsAlternative: 'The stop lists for each direction describe this shape.'
-	,lineMapDirections: 'Directions shown on map'
-	,lineMapDirection: 'Direction: {direction}'
 	,lineMapDefaultDirection: 'Route'
 	,lineMapUnavailable: 'No verified route is available for this line.'
 	,tripStopSequence: 'Provisional ordered trip stops'
@@ -113,4 +111,7 @@ export const messages = {
 	,publicationDate: 'publication'
 	,effectiveDate: 'effective'
 	,captureDate: 'capture'
+  ,locationNoNearbyStops: 'No nearby bus stops are shown.'
+  ,locationUnavailable: 'Your location could not be used.'
+  ,locationOutsideCoverage: 'Your location is outside Vigo bus coverage.'
 } as const;

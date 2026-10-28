@@ -40,7 +40,11 @@ export function createSheet(root: HTMLElement, options: SheetOptions): SheetCont
       toggle.textContent = translateCurrent(expanded ? 'collapse' : 'expand');
       toggle.setAttribute('aria-expanded', String(expanded));
     }
-    panel.style.height = expanded ? 'min(85vh, 85dvh)' : '96px';
+    panel.style.height = expanded
+      ? 'min(85vh, 85dvh)'
+      : options.layout === 'phone'
+        ? '45dvh'
+        : '96px';
   };
 
   const onKeyDown = (event: KeyboardEvent) => {

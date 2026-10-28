@@ -58,7 +58,6 @@ export const messages = {
   removeFavorite: 'Quitar de favoritos',
   stopPanelTitle: 'Parada {name}',
   linePanelTitle: 'Línea {line}',
-  stopsInView: 'Paradas en el mapa',
   zoomIn: 'Acercar',
   zoomOut: 'Alejar',
   recenter: 'Centrar mapa',
@@ -72,6 +71,9 @@ export const messages = {
   ,useSearch: 'Usar búsqueda',
   mapControls: 'Controles del mapa',
   stopsHere: 'Paradas aquí ({count})'
+  ,locationNoNearbyStops: 'No se muestran paradas de autobús cercanas.'
+  ,locationUnavailable: 'No se pudo utilizar tu ubicación.'
+  ,locationOutsideCoverage: 'Tu ubicación está fuera de la cobertura de Vigo.'
   ,saveFavorite: 'Guardar {name} en favoritos'
   ,removeFavoriteNamed: 'Quitar {name} de favoritos'
   ,savedEmpty: 'Aún no hay favoritos'
@@ -87,6 +89,7 @@ export const messages = {
   ,lineCatalogUnavailable: 'El catálogo municipal de líneas no está disponible ahora.'
   ,scheduleMappingUnavailable: 'El horario no está disponible porque la asociación de línea y horario aún no está verificada.'
   ,lineDepartures: 'Salidas'
+  ,lineScheduleTitle: 'Salidas y llegadas'
   ,scheduleSource: 'Horario · {source} · recibido {time}'
   ,provisionalScheduleSource: 'Evaluación provisional de muestra · {source} · recibida {time}'
   ,sourceLabel: 'Fuente: {source}'
@@ -96,8 +99,6 @@ export const messages = {
   ,routeShapePreview: 'Vista provisional del trazado'
   ,routeShape: 'Trazado del recorrido'
   ,routeShapeStopsAlternative: 'Las listas de paradas de cada sentido describen este trazado.'
-  ,lineMapDirections: 'Sentidos mostrados en el mapa'
-  ,lineMapDirection: 'Sentido: {direction}'
   ,lineMapDefaultDirection: 'Recorrido'
   ,lineMapUnavailable: 'No hay un recorrido verificado disponible para esta línea.'
   ,tripStopSequence: 'Paradas provisionales del trayecto, en orden'

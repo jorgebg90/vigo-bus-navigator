@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openStopFromSearch } from './helpers/open-stop-from-search';
 
 test('shows loading within one second and a terminal state within ten for 20 stops on the mobile network profile', async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'Network emulation requires Chromium CDP.');
@@ -13,13 +14,10 @@ test('shows loading within one second and a terminal state within ten for 20 sto
   });
 
   await page.goto('/');
-  const stopsInView = page.getByRole('button', { name: /Stops in view|Paradas en el mapa/ });
-  await expect(stopsInView).toBeVisible();
   let terminalCount = 0;
 
   for (let index = 0; index < 20; index += 1) {
-    await stopsInView.click();
-    await page.locator('.stop-chooser ul button').nth(index).click();
+    await openStopFromSearch(page, '', index);
     const status = page.locator('[data-arrivals-status]');
     await expect(status).toBeVisible({ timeout: 1_000 });
     const terminal = await page.waitForFunction(() => {

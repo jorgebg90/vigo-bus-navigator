@@ -1,6 +1,6 @@
-import type { StopMapPort } from '../../application/ports';
+import type { LocationDisplayResult, StopMapPort } from '../../application/ports';
 import type { MapStop } from '../../domain/map-stops';
-import type { DirectionalRoute, SelectedLineRouteDisplay } from '../../domain/types';
+import type { CurrentLocation, DirectionalRoute, SelectedLineRouteDisplay } from '../../domain/types';
 import { translateCurrent } from '../../i18n';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -13,6 +13,8 @@ const SELECTION_LAYER_ID = 'selected-stop-ring';
 const ROUTE_SOURCE_ID = 'line-routes';
 const ROUTE_DIRECTION_0_LAYER_ID = 'line-route-direction-0';
 const ROUTE_DIRECTION_1_LAYER_ID = 'line-route-direction-1';
+const LOCATION_SOURCE_ID = 'user-location';
+const LOCATION_LAYER_ID = 'user-location-marker';
 const CLUSTER_MAX_ZOOM = 16;
 const HIT_HALF_SIZE = 22;
 
@@ -31,6 +33,14 @@ interface RouteFeature {
 interface RouteFeatureCollection {
   type: 'FeatureCollection';
   features: RouteFeature[];
+}
+interface LocationFeatureCollection {
+  type: 'FeatureCollection';
+  features: Array<{
+    type: 'Feature';
+    properties: Record<string, never>;
+    geometry: { type: 'Point'; coordinates: [number, number] };
+  }>;
 }
 
 function featureCollection(stops: MapStop[]): StopFeatureCollection {
@@ -64,6 +74,17 @@ function routeFeatureCollection(route: SelectedLineRouteDisplay | null): RouteFe
   return { type: 'FeatureCollection', features };
 }
 
+function locationFeatureCollection(location: CurrentLocation | undefined): LocationFeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: location ? [{
+      type: 'Feature',
+      properties: {},
+      geometry: { type: 'Point', coordinates: [location.longitude, location.latitude] }
+    }] : []
+  };
+}
+
 function isDisplayableDirection(direction: DirectionalRoute): boolean {
   return direction.headsign.trim().length > 0
     && direction.shapeId.trim().length > 0
@@ -89,6 +110,10 @@ export class BrowserMapPort implements StopMapPort {
   private stopSelected?: (stopId: string) => void;
   private chooserRequested?: (stopIds: string[]) => void;
   private lineRoute: SelectedLineRouteDisplay | null = null;
+  private location?: CurrentLocation;
+  private locationShouldCenter = true;
+  private userMoved = false;
+  private locationResolvers: Array<(result: LocationDisplayResult) => void> = [];
   private reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
   constructor(
@@ -104,8 +129,7 @@ export class BrowserMapPort implements StopMapPort {
     container.dataset.mapStyle = styles[options.theme];
     container.dataset.engine = 'maplibre-clustered-geojson';
     container.dataset.motion = this.reducedMotion ? 'instant' : 'standard';
-    container.dataset.stopCount = String(this.stops.length);
-    container.dataset.stopCoordinates = JSON.stringify(this.stops.map((stop) => stop.coordinates));
+    this.updateStopAttributes();
     container.setAttribute('role', 'region');
     container.setAttribute('aria-label', translateCurrent('mapLabel'));
     const canvas = document.createElement('div');
@@ -118,6 +142,9 @@ export class BrowserMapPort implements StopMapPort {
     try {
       if (!this.container) return;
       this.map = await this.mapFactory(container, styles[theme]);
+      this.map.on('movestart', (event) => {
+        if (event.originalEvent) this.userMoved = true;
+      });
       const mapCanvas = container.querySelector<HTMLCanvasElement>('.maplibregl-canvas');
       mapCanvas?.setAttribute('aria-hidden', 'true');
       mapCanvas?.setAttribute('tabindex', '-1');
@@ -126,7 +153,7 @@ export class BrowserMapPort implements StopMapPort {
         if (!this.map) return;
         this.map.addSource(SOURCE_ID, {
           type: 'geojson',
-          data: featureCollection(this.stops),
+          data: featureCollection(this.getVisibleStops()),
           cluster: true,
           clusterRadius: 50,
           clusterMaxZoom: CLUSTER_MAX_ZOOM,
@@ -135,6 +162,10 @@ export class BrowserMapPort implements StopMapPort {
         this.map.addSource(ROUTE_SOURCE_ID, {
           type: 'geojson',
           data: routeFeatureCollection(this.lineRoute)
+        });
+        this.map.addSource(LOCATION_SOURCE_ID, {
+          type: 'geojson',
+          data: locationFeatureCollection(this.location)
         });
         const mapStop = getComputedStyle(document.documentElement).getPropertyValue('--map-stop').trim() || '#9B2F3B';
         const mapHalo = getComputedStyle(document.documentElement).getPropertyValue('--map-halo').trim() || '#FFFFFF';
@@ -202,6 +233,17 @@ export class BrowserMapPort implements StopMapPort {
           filter: ['!', ['has', 'point_count']],
           paint: { 'circle-radius': HIT_HALF_SIZE, 'circle-color': 'rgba(0, 0, 0, 0)', 'circle-opacity': 0 }
         });
+        this.map.addLayer({
+          id: LOCATION_LAYER_ID,
+          type: 'circle',
+          source: LOCATION_SOURCE_ID,
+          paint: {
+            'circle-color': '#1769AA',
+            'circle-radius': 8,
+            'circle-stroke-color': '#FFFFFF',
+            'circle-stroke-width': 3
+          }
+        });
         this.map.on('click', (event) => { void this.handleMapClick(event); });
         this.map.on('mouseenter', CLUSTER_LAYER_ID, () => { if (this.map) this.map.getCanvas().style.cursor = 'pointer'; });
         this.map.on('mouseleave', CLUSTER_LAYER_ID, () => { if (this.map) this.map.getCanvas().style.cursor = ''; });
@@ -212,6 +254,7 @@ export class BrowserMapPort implements StopMapPort {
         if (routeFeatureCollection(this.lineRoute).features.length > 0) this.fitLineRoute();
         else if (this.focusedStopId) this.applyFocus();
         else this.fitStops(this.stops);
+        if (this.location) this.applyLocation();
       });
     } catch {
       this.container?.setAttribute('data-tiles', 'unavailable');
@@ -256,18 +299,56 @@ export class BrowserMapPort implements StopMapPort {
 
   setStops(stops: MapStop[]): void {
     this.stops = stops;
-    if (this.container) {
-      this.container.dataset.stopCount = String(stops.length);
-      this.container.dataset.stopCoordinates = JSON.stringify(stops.map((stop) => stop.coordinates));
-    }
-    const source = this.map?.getSource(SOURCE_ID) as import('maplibre-gl').GeoJSONSource | undefined;
-    source?.setData(featureCollection(stops));
+    this.updateStopAttributes();
+    this.updateStopSource();
     this.refreshSelectionRing();
+  }
+
+  showLocation(location: CurrentLocation, center = true): Promise<LocationDisplayResult> {
+    this.location = location;
+    this.locationShouldCenter = center;
+    this.container?.setAttribute('data-location-visible', 'true');
+    return new Promise((resolve) => {
+      this.locationResolvers.push(resolve);
+      if (this.ready) this.applyLocation();
+    });
+  }
+
+  clearLocation(): void {
+    this.location = undefined;
+    this.locationShouldCenter = true;
+    this.container?.removeAttribute('data-location-visible');
+    const source = this.map?.getSource(LOCATION_SOURCE_ID) as import('maplibre-gl').GeoJSONSource | undefined;
+    source?.setData(locationFeatureCollection(undefined));
+    this.resolveLocation({ cameraCentered: false, hasVisibleStops: false });
+  }
+
+  private applyLocation(): void {
+    if (!this.map || !this.ready || !this.location) return;
+    const source = this.map.getSource(LOCATION_SOURCE_ID) as import('maplibre-gl').GeoJSONSource | undefined;
+    source?.setData(locationFeatureCollection(this.location));
+    const cameraCentered = this.locationShouldCenter && !this.userMoved;
+    if (cameraCentered) {
+      this.container?.setAttribute('data-location-centered', 'true');
+      this.map.jumpTo({ center: [this.location.longitude, this.location.latitude], zoom: 15 });
+    } else {
+      this.container?.removeAttribute('data-location-centered');
+    }
+    const hasVisibleStops = cameraCentered
+      && this.stops.some((stop) => this.map!.getBounds().contains(stop.coordinates));
+    this.resolveLocation({ cameraCentered, hasVisibleStops });
+  }
+
+  private resolveLocation(result: LocationDisplayResult): void {
+    for (const resolve of this.locationResolvers.splice(0)) resolve(result);
   }
 
   setLineRoute(route: SelectedLineRouteDisplay | null): void {
     this.lineRoute = route;
     this.updateLineRouteAttributes();
+    this.updateStopAttributes();
+    this.updateStopSource();
+    this.refreshSelectionRing();
     const source = this.map?.getSource(ROUTE_SOURCE_ID) as import('maplibre-gl').GeoJSONSource | undefined;
     source?.setData(routeFeatureCollection(route));
     if (this.ready && routeFeatureCollection(route).features.length > 0) this.fitLineRoute();
@@ -289,12 +370,14 @@ export class BrowserMapPort implements StopMapPort {
     return () => { if (this.chooserRequested === listener) this.chooserRequested = undefined; };
   }
 
-  fitToStops(): void {
+  fitToStops(userInitiated = false): void {
+    if (userInitiated) this.userMoved = true;
     this.focusedStopId = null;
-    this.fitStops(this.stops);
+    this.fitStops(this.getVisibleStops());
   }
 
   focusStop(stopId: string): void {
+    this.userMoved = true;
     this.focusedStopId = stopId;
     this.container?.setAttribute('data-focused-stop', stopId);
     if (this.ready) this.applyFocus();
@@ -317,12 +400,30 @@ export class BrowserMapPort implements StopMapPort {
       this.map?.jumpTo({ center: stop, zoom: Math.max(this.map.getZoom(), 14) });
       return;
     }
+
     const longitudes = coordinates.map(([longitude]) => longitude);
     const latitudes = coordinates.map(([, latitude]) => latitude);
     this.map?.fitBounds(
       [[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]],
       { padding: 48, maxZoom: 15, duration: this.reducedMotion ? 0 : 300 }
     );
+  }
+
+  private getVisibleStops(): MapStop[] {
+    const route = this.lineRoute;
+    return route ? this.stops.filter((stop) => stop.lineIds.includes(route.lineId)) : this.stops;
+  }
+
+  private updateStopAttributes(): void {
+    if (!this.container) return;
+    const visibleStops = this.getVisibleStops();
+    this.container.dataset.stopCount = String(visibleStops.length);
+    this.container.dataset.stopCoordinates = JSON.stringify(visibleStops.map((stop) => stop.coordinates));
+  }
+
+  private updateStopSource(): void {
+    const source = this.map?.getSource(SOURCE_ID) as import('maplibre-gl').GeoJSONSource | undefined;
+    source?.setData(featureCollection(this.getVisibleStops()));
   }
 
   private fitLineRoute(): void {
@@ -395,12 +496,14 @@ export class BrowserMapPort implements StopMapPort {
 
   zoomIn(): void {
     if (!this.map) return;
+    this.userMoved = true;
     if (this.reducedMotion) this.map.jumpTo({ zoom: this.map.getZoom() + 1 });
     else this.map.zoomIn({ duration: 200 });
   }
 
   zoomOut(): void {
     if (!this.map) return;
+    this.userMoved = true;
     if (this.reducedMotion) this.map.jumpTo({ zoom: this.map.getZoom() - 1 });
     else this.map.zoomOut({ duration: 200 });
   }
@@ -440,6 +543,7 @@ export class BrowserMapPort implements StopMapPort {
   }
 
   unmount(): void {
+    this.resolveLocation({ cameraCentered: false, hasVisibleStops: false });
     this.map?.remove();
     this.map = undefined;
     this.container?.replaceChildren();
@@ -448,5 +552,7 @@ export class BrowserMapPort implements StopMapPort {
     this.selectedStopId = null;
     this.focusedStopId = null;
     this.ready = false;
+    this.location = undefined;
+    this.userMoved = false;
   }
 }

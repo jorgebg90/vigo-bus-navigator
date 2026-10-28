@@ -23,3 +23,7 @@ node_modules/
 # Local env files
 .env
 .env.local
+.idea/
+Thumbs.db
+*.tmp
+*.swp

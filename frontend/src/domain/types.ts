@@ -2,6 +2,19 @@ export type DayType = 'weekday' | 'saturday' | 'sunday_holiday';
 export type Theme = 'light';
 export type Language = 'es' | 'gl' | 'en';
 
+export interface CurrentLocation {
+  latitude: number;
+  longitude: number;
+  accuracyMeters: number;
+}
+
+export type LocationRequestState =
+  | 'not-requested'
+  | 'requesting'
+  | 'located'
+  | 'unavailable'
+  | 'outside-coverage';
+
 export interface Line {
   id: string;
   code: string;

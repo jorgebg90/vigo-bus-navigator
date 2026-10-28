@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openStopFromSearch } from './helpers/open-stop-from-search';
 
 test('reduced motion preserves map and panel information without animated movement', async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium' || (page.viewportSize()?.width ?? 0) < 1024, 'Camera movement assertions require stable desktop WebGL coordinates.');
@@ -9,9 +10,7 @@ test('reduced motion preserves map and panel information without animated moveme
   await page.getByRole('button', { name: /Recenter map|Centrar mapa/ }).click({ force: true });
   await expect(map).toHaveAttribute('data-fit-motion', 'instant');
 
-  await page.getByRole('button', { name: /Stops in view|Paradas en el mapa/ }).click();
-  const chooser = page.getByRole('dialog');
-  await chooser.locator('ul button').first().click();
+  await openStopFromSearch(page);
   const panel = page.locator('aside[aria-label="Details"]');
   await expect(panel.locator('h2')).toBeVisible();
   expect(await page.locator('#app *').evaluateAll((elements) => elements.filter((element) => {

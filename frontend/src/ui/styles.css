@@ -70,9 +70,9 @@ button { cursor: pointer; }
 .primary-nav { position: absolute; z-index: 20; top: var(--space-3); left: var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--canvas); box-shadow: var(--elevation-panel); }
 .primary-nav button { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 12px; background: transparent; color: var(--text); }
 .primary-nav button[aria-current='page'] { background: var(--accent); color: var(--on-accent); }
-.context-panel { position: absolute; z-index: 15; top: 4.5rem; right: var(--space-3); box-sizing: border-box; width: min(24rem, calc(100% - 2 * var(--space-3))); max-height: calc(100% - 6rem); min-width: 0; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface-soft); box-shadow: var(--elevation-panel); }
+.context-panel { position: absolute; z-index: 15; top: 4.5rem; right: var(--space-3); box-sizing: border-box; width: min(24rem, calc(100% - 2 * var(--space-3))); max-height: calc(100% - 6rem); min-width: 0; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--canvas); box-shadow: var(--elevation-panel); }
 .context-panel[hidden] { display: none; }
-.panel-header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3); border-bottom: 1px solid var(--border); background: var(--surface-soft); }
+.panel-header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3); border-bottom: 1px solid var(--border); background: var(--canvas); }
 .panel-header h2 { flex: 1; margin: 0; font-size: var(--font-size-h2); line-height: var(--line-height-h2); }
 .panel-close { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text); }
 .detail-sheet { position: relative; display: flex; flex-direction: column; overflow: auto; min-height: 96px; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-panel) var(--radius-panel) 0 0; background: var(--canvas); color: var(--text); box-shadow: var(--elevation-panel); transition: height var(--motion-standard); }
@@ -91,9 +91,10 @@ button { cursor: pointer; }
 .line-view .provisional-route-shape { display: block; width: 100%; max-height: 20rem; color: var(--text); border: 1px solid var(--border); }
 .line-view > .map-panel { order: -1; }
 .line-view [data-schedule-direction] { box-sizing: border-box; width: 100%; min-width: 0; max-width: none; margin: 0; padding: .25rem 0; }
+.line-view [data-schedule-disclosure] { margin: var(--space-2) 0; }
+.line-view [data-schedule-toggle] { width: fit-content; min-height: 0; padding: var(--space-1) 0; color: var(--text); font-size: 1.125rem; font-weight: 700; line-height: 1.5; cursor: pointer; }
+.line-view [data-schedule-content] { padding-top: var(--space-2); }
 .line-view [data-schedule-direction] h3 { margin: 0 0 .25rem; font-size: .875rem; line-height: 1.25; }
-.line-view [data-line-map-directions] { margin: 0; padding: .5rem 0; font-size: .8125rem; }
-.line-view [data-line-map-directions] ol { margin: .25rem 0 0; padding-left: 1.25rem; }
 .line-view [data-line-map-status='unavailable'] { margin: 0; padding: .5rem 0; font-size: .8125rem; }
 .line-view [data-line-departures] { display: block; box-sizing: border-box; width: 100%; max-width: 100%; margin: 0; padding: 0; list-style: none; font-size: .6875rem; line-height: 1.2; overflow-wrap: anywhere; }
 .line-view [data-line-departures] li { display: inline; white-space: nowrap; }
@@ -119,6 +120,8 @@ ul { padding-left: 1.25rem; }
 .map-toolbar .map-zoom-group { display: flex; flex-direction: column; overflow: hidden; border-radius: 12px; background: var(--canvas); box-shadow: var(--elevation-panel); }
 .map-toolbar .map-zoom-group button { border-radius: 0; box-shadow: none; }
 .map-toolbar .map-zoom-group button[data-zoom='out'] { border-top: 1px solid var(--border); }
+.location-status-host { position: absolute; z-index: 3; top: 14rem; left: var(--space-3); max-width: min(28rem, calc(100vw - 2rem)); }
+.location-status-host [data-location-status] { margin: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--canvas); color: var(--text); box-shadow: var(--elevation-panel); }
 .map-attribution-strip { position: absolute; z-index: 3; left: var(--space-2); bottom: var(--space-2); display: flex; flex-wrap: wrap; gap: var(--space-1); max-width: calc(100% - 6rem); padding: var(--space-1) var(--space-2); border: 1px solid var(--border); background: var(--canvas); color: var(--text); font-size: var(--font-size-small); }
 .maplibregl-ctrl-attrib-button { min-width: 44px !important; min-height: 44px !important; }
 .map-attribution-strip a, [data-privacy-entry] { color: var(--accent); }
@@ -167,9 +170,11 @@ ol > li:has(> .arrival-minutes) { display: flex; align-items: center; gap: var(-
 [role='tabpanel'] button { min-height: 44px; }
 [data-storage-notice] { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3); border-bottom: 1px solid var(--border); background: var(--status-error-bg); color: var(--status-error-fg); }
 [data-storage-notice] button { min-width: 44px; min-height: 44px; border: 1px solid currentColor; border-radius: var(--radius-control); background: var(--canvas); color: inherit; }
-.stop-chooser { width: min(32rem, calc(100vw - 2rem)); max-height: 60vh; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--canvas); color: var(--text); }
+.stop-chooser { box-sizing: border-box; width: min(32rem, calc(100vw - 2rem)); max-height: 60vh; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--canvas); color: var(--text); }
 .stop-chooser::backdrop { background: rgba(0, 0, 0, .45); }
-.stop-chooser h2 { margin-top: 0; }
+.stop-chooser-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
+.stop-chooser h2 { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.stop-chooser-header [data-chooser-close] { flex: none; min-height: 44px; padding: 0 var(--space-2); }
 .stop-chooser ul { max-height: calc(60vh - 8rem); overflow: auto; list-style: none; padding: 0; }
 .stop-chooser li { display: flex; align-items: center; gap: var(--space-2); border-bottom: 1px solid var(--border); }
 .stop-chooser li button { flex: 1; width: auto; min-height: 44px; padding: var(--space-2); text-align: left; border: 0; background: transparent; color: var(--text); }
@@ -189,6 +194,16 @@ ol > li:has(> .arrival-minutes) { display: flex; align-items: center; gap: var(-
 
 @media (max-width: 599px) {
   .destination-view { width: auto; right: var(--space-3); max-height: 60dvh; }
+  .app-shell:has(> .destination-view[data-destination='lines']) > .map-base { bottom: 45dvh; }
+  .destination-view[data-destination='lines'] { top: auto; right: 0; bottom: 0; left: 0; width: auto; height: 45dvh; max-height: 45dvh; border-radius: var(--radius-panel) var(--radius-panel) 0 0; }
+  .app-shell:has(> .destination-view[data-destination='search']) > .map-base { bottom: 45dvh; }
+  .destination-view[data-destination='search'] { top: auto; right: 0; bottom: 0; left: 0; width: auto; height: 45dvh; max-height: 45dvh; border-radius: var(--radius-panel) var(--radius-panel) 0 0; }
+  .app-shell:has(> .context-panel:not([hidden])) > .map-base { bottom: 45dvh; }
+  .app-shell:has(> .context-panel:not([hidden]) .detail-sheet[data-snap='expanded']) > .map-base { bottom: 85dvh; }
+  .context-panel { height: 45dvh; max-height: none; overflow: hidden; }
+  .context-panel:has(.detail-sheet[data-snap='expanded']) { height: 85dvh; }
+  .context-panel > .detail-sheet { box-sizing: border-box; height: 100%; max-height: none; min-height: 0; border-radius: var(--radius-panel) var(--radius-panel) 0 0; }
+  .detail-sheet > .sheet-content { flex: 1; min-height: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

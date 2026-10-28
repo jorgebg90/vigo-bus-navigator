@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { openStopFromSearch } from './helpers/open-stop-from-search';
 
-test('Map opens the shared stop-arrivals panel from the accessible chooser', async ({ page }) => {
+test('Map opens the shared stop-arrivals panel from stop search', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /Stops in view|Paradas en el mapa/ }).click();
-  await page.getByRole('dialog').locator('ul button').first().click();
+  await openStopFromSearch(page);
   const panel = page.locator('aside[aria-label="Details"]');
   await expect(panel.locator('h2').first()).toBeFocused();
   await expect(panel.locator('[data-arrivals-status]')).toBeVisible();
@@ -12,8 +12,7 @@ test('Map opens the shared stop-arrivals panel from the accessible chooser', asy
 
 test('Saved opens and removes persisted favorites', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /Stops in view|Paradas en el mapa/ }).click();
-  await page.locator('.stop-chooser ul button').first().click();
+  await openStopFromSearch(page);
   await page.locator('aside[aria-label="Details"] .favorite-toggle').click();
   await page.getByRole('button', { name: /Saved|Guardado|Gardado/ }).click();
   await expect(page.getByRole('tab', { name: /Favorites|Favoritos/ })).toHaveAttribute('aria-selected', 'true');
@@ -36,6 +35,8 @@ test('Lines opens a provisional fixture timetable over the persistent map', asyn
   await page.locator('[data-line-row] button').first().click();
   await expect(page.locator('[data-schedule-provenance="provisional-fixture"]')).toBeVisible();
   await expect(page.locator('[data-provisional-warning]').first()).toBeVisible();
+  await expect(page.locator('[data-schedule-disclosure]')).toHaveJSProperty('open', false);
+  await page.locator('[data-schedule-toggle]').click();
   await expect(page.locator('[data-line-departures] li')).toHaveText(['08:00', '08:15']);
   await expect(page.getByRole('tab', { name: /Saturday|Sábado/ })).toBeVisible();
   await expect(page.getByRole('table')).toHaveCount(0);

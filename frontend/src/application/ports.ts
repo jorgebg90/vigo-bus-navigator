@@ -7,6 +7,7 @@ import type {
   NetworkStop,
   ArrivalReceipt,
   BundledScheduleSnapshot,
+  CurrentLocation,
   DayType,
   Language,
   LineRoutePattern,
@@ -120,16 +121,31 @@ export interface VisibilityPort {
   onVisibilityChange(listener: (visible: boolean) => void): () => void;
 }
 
+export type GeolocationResult =
+  | { kind: 'success'; location: CurrentLocation }
+  | { kind: 'unavailable'; reason: 'unsupported' | 'denied' | 'timeout' | 'error' | 'invalid' };
+
+export interface GeolocationPort {
+  getCurrentPosition(): Promise<GeolocationResult>;
+}
+
+export interface LocationDisplayResult {
+  cameraCentered: boolean;
+  hasVisibleStops: boolean;
+}
+
 export interface StopMapPort {
   mount(container: HTMLElement, options: { theme: 'light' | 'dark' }): void;
   setTheme(theme: 'light' | 'dark'): void;
   unmount(): void;
   setStops(stops: MapStop[]): void;
+  showLocation(location: CurrentLocation, center?: boolean): Promise<LocationDisplayResult>;
+  clearLocation(): void;
   setLineRoute(route: SelectedLineRouteDisplay | null): void;
   setSelectedStop(stopId: string | null): void;
   onStopSelected(listener: (stopId: string) => void): () => void;
   onChooserRequested(listener: (stopIds: string[]) => void): () => void;
-  fitToStops(): void;
+  fitToStops(userInitiated?: boolean): void;
   focusStop(stopId: string): void;
   zoomIn(): void;
   zoomOut(): void;

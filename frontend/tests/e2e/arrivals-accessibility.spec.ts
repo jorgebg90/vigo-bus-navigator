@@ -7,14 +7,13 @@ test('arrivals view is keyboard-operable, visible-focus, and WCAG 2.2 AA', async
   const map = page.getByRole('region', { name: /Mapa interactivo|Interactive bus stop map/ });
   await expect(map).toBeVisible();
   await expect(map.locator('canvas.maplibregl-canvas')).toHaveAttribute('aria-hidden', 'true');
-  const stopsInView = page.getByRole('button', { name: /Paradas en el mapa|Stops in view/ });
-  await stopsInView.focus();
-  const focusStyle = await stopsInView.evaluate((element) => getComputedStyle(element).outlineStyle !== 'none');
+  const recenter = page.getByRole('button', { name: /Recenter map|Centrar mapa/ });
+  await recenter.focus();
+  const focusStyle = await recenter.evaluate((element) => getComputedStyle(element).outlineStyle !== 'none');
   expect(focusStyle).toBe(true);
-  await page.keyboard.press('Enter');
-  const chooser = page.getByRole('dialog');
-  await expect(chooser).toBeVisible();
-  await chooser.locator('ul button').first().focus();
+  await page.locator('.primary-nav [data-destination="search"]').click();
+  await page.getByRole('searchbox', { name: /Search stops|Buscar paradas/ }).fill('Aeroporto de Peinador');
+  await page.getByRole('button', { name: 'Aeroporto de Peinador', exact: true }).focus();
   await page.keyboard.press('Enter');
 
   const panel = page.locator('aside[aria-label="Details"]');
@@ -38,7 +37,7 @@ test('arrivals view is keyboard-operable, visible-focus, and WCAG 2.2 AA', async
   );
   expect(undersized).toBe(0);
   await page.keyboard.press('Escape');
-  await expect(stopsInView).toBeFocused();
+  await expect(page.locator('main h1')).toBeFocused();
 });
 
 test('refreshes arrivals every 30 seconds only while visible and keeps focus stable', async ({ page }) => {
@@ -59,8 +58,9 @@ test('refreshes arrivals every 30 seconds only while visible and keeps focus sta
   });
   const timerCount = () => page.evaluate(() => (window as Window & { __refreshTimerCount?: number }).__refreshTimerCount ?? 0);
   await page.goto('/');
-  await page.getByRole('button', { name: /Stops in view|Paradas en el mapa/ }).click();
-  await page.locator('.stop-chooser ul button').first().click();
+  await page.locator('.primary-nav [data-destination="search"]').click();
+  await page.getByRole('searchbox', { name: /Search stops|Buscar paradas/ }).fill('Aeroporto de Peinador');
+  await page.getByRole('button', { name: 'Aeroporto de Peinador', exact: true }).click();
   await expect(page.locator('[data-arrivals-status]')).toContainText(/Synthetic sample data|Datos de muestra sintéticos|Datos de mostra sintéticos/);
   const focusBefore = await page.evaluate(() => document.activeElement?.outerHTML);
   await expect.poll(timerCount, { timeout: 5_000 }).toBeGreaterThan(0);

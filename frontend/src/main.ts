@@ -41,9 +41,13 @@ import { onLanguageChange, setDocumentLanguage, translateCurrent } from './i18n'
 import { createShell, type Destination } from './ui/shell';
 import { createStopChooser } from './ui/map/stop-chooser';
 import { renderMapToolbar } from './ui/map/map-toolbar';
-import type { StopMapPort } from './application/ports';
+import type { GeolocationPort, StopMapPort } from './application/ports';
 import { showStorageNotice } from './ui/settings/storage-notice';
 import { renderMapAttribution } from './ui/privacy/privacy-view';
+import { BrowserGeolocation } from './infrastructure/system/browser-geolocation';
+import { isValidCurrentLocation, isWithinMapCoverage } from './domain/map-stops';
+import type { CurrentLocation, LocationRequestState } from './domain/types';
+import { renderLocationStatus, type LocationStatusMessage } from './ui/map/location-status';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing app root');
@@ -63,6 +67,13 @@ let currentDestination: Destination = 'map';
 let activePanelStopId: string | undefined;
 let activePanelContent: HTMLElement | undefined;
 let activeMap: StopMapPort | undefined;
+const geolocation: GeolocationPort = new BrowserGeolocation();
+let locationAttempted = false;
+let locationState: LocationRequestState = 'not-requested';
+let currentLocation: CurrentLocation | undefined;
+let locationWasCentered = false;
+let locationStatus: LocationStatusMessage | null = null;
+let locationStatusRoot: HTMLElement | undefined;
 let selectedLineRoute: SelectedLineRouteDisplay | null = null;
 let selection: StopSelection | undefined;
 let lines: Line[] = [];
@@ -280,7 +291,8 @@ async function bootstrap(): Promise<void> {
     const stop = stops.find((candidate) => candidate.id === stopId);
     if (!stop || !selection) return;
     remember('stop', stop.id);
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
+    const activeElement = document.activeElement;
+    const opener = activeElement instanceof HTMLElement && activeElement !== document.body ? activeElement : undefined;
     const content = document.createElement('div');
     const arrivalsContent = document.createElement('div');
     arrivalsContent.dataset.stopArrivals = 'true';
@@ -337,21 +349,79 @@ async function bootstrap(): Promise<void> {
     activeMap = map;
     mountedMapTheme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
     mapCleanup = renderMap(mapRoot, map, stops, mountedMapTheme);
+    locationStatusRoot = document.createElement('div');
+    locationStatusRoot.className = 'location-status-host';
+    mapRoot.append(locationStatusRoot);
+    renderLocationStatus(locationStatusRoot, locationStatus);
     map.setLineRoute(selectedLineRoute);
     map.onStopSelected(selectStop);
     const chooser = createStopChooser(mapRoot, { onSelect: selectStop, lines });
     renderMapToolbar(mapRoot, {
       map,
-      stops,
-      onStopsInView: (visibleStops, center, opener) => chooser.open(visibleStops, center, opener)
+      onRecenter: () => {
+        if (locationState === 'located') {
+          locationStatus = map.getStopsInView(stops).length === 0 ? 'no-nearby-stops' : null;
+          updateLocationStatus(map, locationStatusRoot);
+        }
+      }
     });
     renderMapAttribution(mapRoot);
-    const stopsInViewButton = mapRoot.querySelector<HTMLButtonElement>('[data-stops-in-view]');
+    const recenterButton = mapRoot.querySelector<HTMLButtonElement>('[data-recenter]');
     map.onChooserRequested((stopIds) => {
-      if (stopsInViewButton) chooser.open(stops.filter((stop) => stopIds.includes(stop.id)), map.getMapCenter(), stopsInViewButton);
+      if (recenterButton) chooser.open(stops.filter((stop) => stopIds.includes(stop.id)), map.getMapCenter(), recenterButton);
     });
     const unmount = mapCleanup;
     mapCleanup = () => { chooser.destroy(); unmount?.(); };
+
+    if (currentLocation) void map.showLocation(currentLocation, false);
+    if (!locationAttempted && currentDestination === 'map' && isMobileViewport()) {
+      locationAttempted = true;
+      locationState = 'requesting';
+      void geolocation.getCurrentPosition().then(async (result) => {
+        if (result.kind !== 'success' || !isValidCurrentLocation(result.location)) {
+          locationState = 'unavailable';
+          locationStatus = 'unavailable';
+          map.clearLocation();
+          updateLocationStatus(map, locationStatusRoot);
+          return;
+        }
+        if (!isWithinMapCoverage(result.location)) {
+          locationState = 'outside-coverage';
+          currentLocation = undefined;
+          locationStatus = 'outside-coverage';
+          map.clearLocation();
+          updateLocationStatus(map, locationStatusRoot);
+          return;
+        }
+        currentLocation = result.location;
+        locationState = 'located';
+        const targetMap = activeMap;
+        if (!targetMap) return;
+        const displayResult = await targetMap.showLocation(result.location, targetMap === map && currentDestination === 'map');
+        if (activeMap !== targetMap) return;
+        locationWasCentered = displayResult.cameraCentered;
+        locationStatus = currentDestination === 'map' && displayResult.cameraCentered && !displayResult.hasVisibleStops
+          ? 'no-nearby-stops'
+          : null;
+        updateLocationStatus(targetMap, locationStatusRoot);
+      }).catch((error: unknown) => {
+        locationState = 'unavailable';
+        locationStatus = 'unavailable';
+        map.clearLocation();
+        updateLocationStatus(map, locationStatusRoot);
+        console.error('Could not access the current location.', error);
+      });
+    }
+  }
+
+  function isMobileViewport(): boolean {
+    return globalThis.matchMedia?.('(max-width: 599px)').matches ?? false;
+  }
+
+  function updateLocationStatus(map: StopMapPort, root: HTMLElement | undefined): void {
+    if (activeMap === map && currentDestination === 'map' && root?.isConnected) {
+      renderLocationStatus(root, locationStatus);
+    }
   }
 
   function renderDestination(): void {
@@ -374,7 +444,13 @@ async function bootstrap(): Promise<void> {
       });
       return;
     }
-    if (currentDestination === 'map') return;
+    if (currentDestination === 'map') {
+      if (locationState === 'located' && locationWasCentered && !locationStatus && activeMap?.getStopsInView(stops).length === 0) {
+        locationStatus = 'no-nearby-stops';
+      }
+      if (locationStatusRoot) renderLocationStatus(locationStatusRoot, locationStatus);
+      return;
+    }
     if (currentDestination === 'search') {
       renderStopSearch(view, {
         stops,

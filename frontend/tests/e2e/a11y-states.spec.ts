@@ -44,9 +44,11 @@ test('primary destinations and open overlays have no WCAG 2.2 AA violations in l
   }
 });
 
-test('chooser and settings menu remain accessible while open', async ({ page }) => {
+test('stop details and settings menu remain accessible while open', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /Stops in view|Paradas en el mapa/ }).click();
+  await page.locator('.primary-nav [data-destination="search"]').click();
+  await page.getByRole('searchbox', { name: /Search stops|Buscar paradas/ }).fill('Aeroporto de Peinador');
+  await page.getByRole('button', { name: 'Aeroporto de Peinador', exact: true }).click();
   let violations = await new AxeBuilder({ page }).include('#app').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
   expect(violations.violations).toEqual([]);
   await page.keyboard.press('Escape');

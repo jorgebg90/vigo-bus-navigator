@@ -143,9 +143,14 @@ export function renderLineFrequency(root: HTMLElement, options: FrequencyViewOpt
         warning.textContent = translateCurrent('provisionalDataWarning');
         root.append(warning);
       }
+      const scheduleDisclosure = options.publishedSchedule.departures.length > 0
+        ? createScheduleDisclosure()
+        : undefined;
+      if (scheduleDisclosure) root.append(scheduleDisclosure.details);
+      const scheduleContent = scheduleDisclosure?.content ?? root;
       const heading = document.createElement('h2');
       heading.textContent = translateCurrent('lineDepartures');
-      root.append(heading);
+      scheduleContent.append(heading);
       const directions = groupDeparturesByDirection(options.publishedSchedule);
       if (options.publishedSchedule.departures.length === 0) {
         const noService = document.createElement('p');
@@ -153,7 +158,7 @@ export function renderLineFrequency(root: HTMLElement, options: FrequencyViewOpt
         noService.textContent = translateCurrent('noPublishedService');
         root.append(noService);
       } else if (directions.length === 0) {
-        root.append(createDepartureList(options.publishedSchedule.departures, translateCurrent('lineDepartures')));
+        scheduleContent.append(createDepartureList(options.publishedSchedule.departures, translateCurrent('lineDepartures')));
       }
       for (const direction of directions) {
         const section = document.createElement('section');
@@ -164,9 +169,11 @@ export function renderLineFrequency(root: HTMLElement, options: FrequencyViewOpt
           directionHeading,
           createDepartureList(direction.departures, `${translateCurrent('lineDepartures')} · ${direction.headsign}`)
         );
-        root.append(section);
+        scheduleContent.append(section);
       }
     } else if (options.bundledScheduleSnapshots?.length) {
+      const scheduleDisclosure = createScheduleDisclosure();
+      root.append(scheduleDisclosure.details);
       for (const snapshot of options.bundledScheduleSnapshots) {
         const direction = options.patterns?.find((pattern) => pattern.id === snapshot.directionId);
         const section = document.createElement('section');
@@ -186,7 +193,7 @@ export function renderLineFrequency(root: HTMLElement, options: FrequencyViewOpt
         });
         section.append(source);
         appendFrequencyTable(section, snapshot.lineCode, snapshot.dayType, snapshot.service);
-        root.append(section);
+        scheduleDisclosure.content.append(section);
       }
     } else {
       const unavailable = document.createElement('p');
@@ -229,11 +236,25 @@ export function renderLineFrequency(root: HTMLElement, options: FrequencyViewOpt
     wrapDayPanel(root, dayTabs, options.dayType);
     return;
   }
-  appendFrequencyTable(root, options.lineCode, options.dayType, service);
+  const scheduleDisclosure = createScheduleDisclosure();
+  appendFrequencyTable(scheduleDisclosure.content, options.lineCode, options.dayType, service);
+  root.append(scheduleDisclosure.details);
   appendRouteProvenance();
   appendPatterns();
   appendProvisionalCandidateDetails(root, options);
   wrapDayPanel(root, dayTabs, options.dayType);
+}
+
+function createScheduleDisclosure(): { details: HTMLDetailsElement; content: HTMLElement } {
+  const details = document.createElement('details');
+  details.dataset.scheduleDisclosure = 'true';
+  const summary = document.createElement('summary');
+  summary.dataset.scheduleToggle = 'true';
+  summary.textContent = translateCurrent('lineScheduleTitle');
+  const content = document.createElement('div');
+  content.dataset.scheduleContent = 'true';
+  details.append(summary, content);
+  return { details, content };
 }
 
 function appendFrequencyTable(
@@ -398,23 +419,7 @@ function appendMapRouteStatus(
   route: SelectedLineRouteDisplay | undefined,
   unavailable: boolean
 ): void {
-  const directions = route?.directions ?? [];
-  if (directions.length > 0) {
-    const section = document.createElement('section');
-    section.dataset.lineMapDirections = 'true';
-    section.setAttribute('aria-label', translateCurrent('lineMapDirections'));
-    const list = document.createElement('ol');
-    for (const direction of directions) {
-      const item = document.createElement('li');
-      item.textContent = translateCurrent('lineMapDirection', {
-        direction: direction.headsign || translateCurrent('lineMapDefaultDirection')
-      });
-      list.append(item);
-    }
-    section.append(list);
-    root.append(section);
-    return;
-  }
+  if (route?.directions.length) return;
   if (!unavailable) return;
   const status = document.createElement('p');
   status.dataset.lineMapStatus = 'unavailable';

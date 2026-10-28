@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { openStopFromSearch } from './helpers/open-stop-from-search';
 
 test('saves a stop from its panel, restores it after reload, and removes it from Saved', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /Stops in view|Paradas en el mapa/ }).click();
-  await page.locator('.stop-chooser ul button').first().click();
+  await openStopFromSearch(page);
   const details = page.locator('aside[aria-label="Details"]');
   const toggle = details.locator('.favorite-toggle');
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');

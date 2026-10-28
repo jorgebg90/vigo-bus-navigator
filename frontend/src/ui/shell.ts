@@ -99,7 +99,7 @@ export function createShell(container: HTMLElement): ShellController {
     if (!restoreFocus) return;
     if (opener?.isConnected) opener.focus();
     else if (destination === 'map') {
-      (base.querySelector<HTMLElement>('[data-stops-in-view]') ?? main.querySelector<HTMLElement>('h1'))?.focus();
+      (base.querySelector<HTMLElement>('[data-recenter]') ?? main.querySelector<HTMLElement>('h1'))?.focus();
     } else main.querySelector<HTMLElement>('h1')?.focus();
   };
 

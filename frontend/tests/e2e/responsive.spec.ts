@@ -9,6 +9,10 @@ const viewports = [
 
 test('map shell reflows without overflow and keeps navigation, settings, map controls, and attribution usable', async ({ page }) => {
   await page.goto('/');
+  await expect(page.locator('.map-toolbar [data-stops-in-view]')).toHaveCount(0);
+  await expect(page.locator('.map-toolbar [data-recenter]')).toHaveCount(1);
+  await expect(page.locator('.map-toolbar [data-zoom="in"]')).toHaveCount(1);
+  await expect(page.locator('.map-toolbar [data-zoom="out"]')).toHaveCount(1);
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();

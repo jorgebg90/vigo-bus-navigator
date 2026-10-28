@@ -36,6 +36,7 @@ export const messages = {
 	statusCurrent: 'Tempo real',
 	syntheticData: 'Datos de mostra sintéticos',
 	lineDepartures: 'Saídas',
+	lineScheduleTitle: 'Saídas e chegadas',
 	scheduleSource: 'Horario · {source} · recibido {time}',
 	provisionalScheduleSource: 'Avaliación provisional de mostra · {source} · recibida {time}',
 	sourceLabel: 'Fonte: {source}',
@@ -45,8 +46,6 @@ export const messages = {
 	routeShapePreview: 'Vista provisional do trazado',
 	routeShape: 'Trazado do percorrido',
 	routeShapeStopsAlternative: 'As listas de paradas de cada sentido describen este trazado.',
-	lineMapDirections: 'Sentidos mostrados no mapa',
-	lineMapDirection: 'Sentido: {direction}',
 	lineMapDefaultDirection: 'Percorrido',
 	lineMapUnavailable: 'Non hai un percorrido verificado dispoñible para esta liña.',
 	tripStopSequence: 'Paradas provisionais da viaxe, en orde',
@@ -76,7 +75,6 @@ export const messages = {
 	removeFavorite: 'Quitar dos favoritos',
 	stopPanelTitle: 'Parada {name}',
 	linePanelTitle: 'Liña {line}',
-	stopsInView: 'Paradas no mapa',
 	zoomIn: 'Achegar',
 	zoomOut: 'Afastar',
 	recenter: 'Centrar mapa',
@@ -108,4 +106,7 @@ export const messages = {
 	publicationDate: 'publicación',
 	effectiveDate: 'vixencia',
 	captureDate: 'captura'
+  ,locationNoNearbyStops: 'Non se amosan paradas de autobús próximas.'
+  ,locationUnavailable: 'Non se puido utilizar a túa ubicación.'
+  ,locationOutsideCoverage: 'A túa ubicación está fóra da cobertura de Vigo.'
 } as const;

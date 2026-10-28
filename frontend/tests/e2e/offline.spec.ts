@@ -37,8 +37,9 @@ test('shows offline status and stop state, keeps the map catalog, and clears the
   await context.setOffline(true);
   expect(await page.evaluate(() => navigator.onLine)).toBe(false);
   await expect(offlineStatus).toBeVisible();
-  await page.getByRole('button', { name: /Stops in view|Paradas en el mapa/ }).click();
-  await page.locator('.stop-chooser ul button').first().click();
+  await page.locator('.primary-nav [data-destination="search"]').click();
+  await page.getByRole('searchbox', { name: /Search stops|Buscar paradas/ }).fill('Aeroporto de Peinador');
+  await page.getByRole('button', { name: 'Aeroporto de Peinador', exact: true }).click();
   await expect(page.locator('[data-arrivals-status]')).toHaveAttribute('data-freshness', 'current');
   await expect(page.locator('[data-arrivals-status]')).toContainText(/Synthetic sample data|Datos de muestra sintéticos|Datos de mostra sintéticos/);
 

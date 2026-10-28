@@ -34,7 +34,7 @@ const testLines: Line[] = [
 describe('US1 line frequency view', () => {
   beforeEach(() => setDocumentLanguage('en'));
 
-  it('provides accessible text labels for every map route direction', () => {
+  it('does not render a redundant direction message for a selected map route', () => {
     const root = document.createElement('main');
     const mapRoute: SelectedLineRouteDisplay = {
       lineId: 'line-4c',
@@ -47,9 +47,7 @@ describe('US1 line frequency view', () => {
 
     renderLineFrequency(root, { lineCode: '4C', dayType: 'weekday', mapRoute });
 
-    expect(root.querySelector('[data-line-map-directions]')?.getAttribute('aria-label')).toBe('Directions shown on map');
-    expect([...root.querySelectorAll('[data-line-map-directions] li')].map((item) => item.textContent))
-      .toEqual(['Direction: Outbound to Coia', 'Direction: Inbound to Urzaiz']);
+    expect(root.querySelector('[data-line-map-directions]')).toBeNull();
     expect(root.querySelector('[data-line-map-status="unavailable"]')).toBeNull();
   });
 
@@ -145,6 +143,10 @@ describe('US1 line frequency view', () => {
     });
 
     expect(root.querySelector('table caption')?.textContent).toContain('L4A');
+    const scheduleDisclosure = root.querySelector<HTMLDetailsElement>('[data-schedule-disclosure]');
+    expect(scheduleDisclosure?.open).toBe(false);
+    scheduleDisclosure?.querySelector<HTMLElement>('[data-schedule-toggle]')?.click();
+    expect(scheduleDisclosure?.open).toBe(true);
     const tabs = root.querySelector('[role="tablist"]');
     expect(tabs).toBeTruthy();
     expect(tabs?.querySelectorAll('[role="tab"]')).toHaveLength(3);
@@ -229,8 +231,14 @@ describe('US1 line frequency view', () => {
     });
     expect(root.textContent).not.toContain('Vigo municipal transit JSP');
     expect(root.textContent).not.toContain('Municipal transit data');
+    const scheduleDisclosure = root.querySelector<HTMLDetailsElement>('[data-schedule-disclosure]');
+    expect(scheduleDisclosure?.open).toBe(false);
+    expect(scheduleDisclosure?.querySelector('[data-schedule-toggle]')?.textContent).toBe('Departures and arrivals');
+    scheduleDisclosure?.querySelector<HTMLElement>('[data-schedule-toggle]')?.click();
+    expect(scheduleDisclosure?.open).toBe(true);
     expect([...root.querySelectorAll('[data-schedule-direction] h3')].map((heading) => heading.textContent))
       .toEqual(['G. ESPINO', 'COIA']);
+    expect(scheduleDisclosure?.querySelector('[data-schedule-toggle]')?.textContent).toBe('Departures and arrivals');
     expect(root.querySelector('[data-schedule-direction="1"] li')?.textContent).toBe('08:15');
 
     renderLineFrequency(root, {

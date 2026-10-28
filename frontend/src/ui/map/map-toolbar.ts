@@ -1,12 +1,9 @@
 import type { StopMapPort } from '../../application/ports';
-import type { Stop } from '../../domain/types';
 import { translateCurrent } from '../../i18n';
 import { setIconButton } from '../icons';
 
 export interface MapToolbarOptions {
   map: StopMapPort;
-  stops: Stop[];
-  onStopsInView: (stops: Stop[], center: [number, number], opener: HTMLButtonElement) => void;
   onRecenter?: () => void;
 }
 
@@ -16,20 +13,12 @@ export function renderMapToolbar(root: HTMLElement, options: MapToolbarOptions):
   toolbar.setAttribute('role', 'toolbar');
   toolbar.setAttribute('aria-label', translateCurrent('mapControls'));
 
-  const visibleStops = document.createElement('button');
-  visibleStops.type = 'button';
-  visibleStops.dataset.stopsInView = 'true';
-  setIconButton(visibleStops, 'stops', translateCurrent('stopsInView'));
-  visibleStops.addEventListener('click', () => {
-    options.onStopsInView(options.map.getStopsInView(options.stops), options.map.getMapCenter(), visibleStops);
-  });
-
   const recenter = document.createElement('button');
   recenter.type = 'button';
   recenter.dataset.recenter = 'true';
   setIconButton(recenter, 'recenter', translateCurrent('recenter'));
   recenter.addEventListener('click', () => {
-    options.map.fitToStops();
+    options.map.fitToStops(true);
     options.onRecenter?.();
   });
 
@@ -49,6 +38,6 @@ export function renderMapToolbar(root: HTMLElement, options: MapToolbarOptions):
   zoomGroup.className = 'map-zoom-group';
   zoomGroup.append(zoomIn, zoomOut);
 
-  toolbar.append(visibleStops, recenter, zoomGroup);
+  toolbar.append(recenter, zoomGroup);
   root.append(toolbar);
 }
