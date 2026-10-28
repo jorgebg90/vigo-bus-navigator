@@ -4,11 +4,11 @@
 **Branch**: `007-repository-cleanup` (based on `origin/develop`)
 **Baseline date**: 2026-10-28
 **Baseline tracked files**: 368
-**Status**: Implemented; final verification complete with Playwright E2E blocked by an occupied local port
+**Status**: Implemented; final Playwright E2E passed with 2 workers (104 passed, 7 skipped)
 
-## Baseline Validation
+## Initial Baseline Validation
 
-| Command | Baseline result |
+| Command | Initial baseline result |
 | --- | --- |
 | `npm test` | PASS — 74 files, 363 tests |
 | `npm run typecheck` | PASS — frontend and Worker TypeScript |
@@ -20,7 +20,7 @@
 | `npm run validate:production-artifact` | PASS — fixed source, credential-free requests, and action/mapping checks |
 | `npm run size` | PASS — JS 373.4 KiB gzip, CSS 13.6 KiB gzip, first-map graph 384.2 KiB / 500 KiB |
 | `npm run snapshot:generate` | PASS — generated outputs match tracked baseline |
-| `npm run test:e2e` | BLOCKED — Playwright reported `http://127.0.0.1:4173 is already used`; existing process was left untouched |
+| `npm run test:e2e` | Initially blocked because `http://127.0.0.1:4173` was occupied. After the baseline, the identified listener was stopped and the final run passed with 2 workers; see Final Validation. |
 | `npm ci` | NOT RUN — dependencies are already installed; no manifest changes were made at baseline |
 
 ## Baseline Repository Areas and Lifecycle Classification
