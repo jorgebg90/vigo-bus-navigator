@@ -15,8 +15,8 @@ orchestrates; the constitution is the final arbiter of disagreements.
 | Actor | Agent file | Dimension owned |
 | --- | --- | --- |
 | Project Lead | [.github/agents/project-lead.agent.md](../.github/agents/project-lead.agent.md) | Orchestration, delivery, gate discipline |
-| Software Architect | [.github/agents/software-architect.agent.md](../.github/agents/software-architect.agent.md) | Frontend/backend alignment, architecture, boundaries, integration |
-| Backend Developer | [.github/agents/backend-developer.agent.md](../.github/agents/backend-developer.agent.md) | Data-source adapters, data acquisition, contracts, browser persistence adapters |
+| Software Architect | [.github/agents/software-architect.agent.md](../.github/agents/software-architect.agent.md) | Frontend architecture, boundaries, integration, transit-data contracts |
+| Backend Developer | [.github/agents/backend-developer.agent.md](../.github/agents/backend-developer.agent.md) | Municipal data acquisition, browser-side adapters, contracts, browser persistence |
 | UX Designer | [.github/agents/ux-designer.agent.md](../.github/agents/ux-designer.agent.md) | Web/webapp designs, responsive interactions, WCAG 2.2 AA validation |
 | Frontend Developer | [.github/agents/frontend-developer.agent.md](../.github/agents/frontend-developer.agent.md) | Frontend implementation and alignment with approved UX designs |
 | QA Tester | [.github/agents/qa-tester.agent.md](../.github/agents/qa-tester.agent.md) | Testability, coverage, quality gates |
@@ -68,10 +68,10 @@ action MUST pass a browser fetch with credentials omitted before release. If all
 actions return `Access-Control-Allow-Origin: *`, CORS validation is independent
 of the production host; otherwise the configured production origin MUST be
 tested. A failed gate blocks release and reopens architecture review at G1; it
-MUST NOT trigger a Worker fallback. The legacy Worker may remain only until the
-direct feature is accepted and released, then MUST be removed from transit
-runtime and deployment. Existing closed gate records remain unchanged and do
-not count as approval for this transition.
+MUST NOT trigger a Worker fallback. Feature 004's direct-browser transition has
+been implemented; the migration-era Worker runtime, workspace, and deployment
+path have been removed from the maintained repository. Historical specifications
+and closed gate records remain unchanged and do not authorize a Worker fallback.
 
 ## Design and Implementation Cycle
 
@@ -86,12 +86,12 @@ not count as approval for this transition.
 - G4: UX Designer, Frontend Developer, and QA verify that tasks cover the design,
   accessibility requirements, dependencies, and automated/manual checks.
 - Implementation: Frontend Developer builds against the approved designs.
-  Design deviations return to UX Designer; frontend/backend contract conflicts
+  Design deviations return to UX Designer; transit-data contract conflicts
   go to Software Architect with both developers. Record decisions and re-review
   affected gate artifacts before proceeding.
 - G5: UX Designer validates design fidelity and WCAG 2.2 AA with automated and
   manual evidence; Frontend Developer demonstrates implementation alignment;
-  Software Architect validates frontend/backend integration. QA quality and
+  Software Architect validates application integration. QA quality and
   Stakeholder acceptance remain independent required verdicts. Missing evidence
   or unresolved accessibility findings block approval, not just failing scans.
 
@@ -113,11 +113,10 @@ and the actor re-approves.
 - Everything is written in English (product UI language is a spec-level decision).
 - Clean code and YAGNI: the simplest solution that passes its gate wins.
 - The product stays pure frontend: static HTTPS hosting, user data in
-  `localStorage`, no accounts. GitHub Pages is supported but not required under
-  ratified v2.1.0. The v1.3.0/v2.0.0 InfoBus Worker path remains legacy
-  behavior only during migration. Feature 004 removes the Worker from the
-  transit flow after successful production verification; no new Worker upstream
-  or fallback is authorized. The reference architecture example
+  `localStorage`, no accounts or transit proxy. GitHub Pages is supported but
+  not required under ratified v2.1.0. The v1.3.0/v2.0.0 InfoBus Worker path is
+  historical only; its runtime has been removed. No new Worker upstream or
+  fallback is authorized. The reference architecture example
   (`docs/reference/spec-000-architecture-example.md`) is non-normative.
 - Blog drafts live in `docs/blog/`, one per phase, maintained by the
   Communicator.

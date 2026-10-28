@@ -1,4 +1,4 @@
-import catalogData from '../../../../worker/src/catalog-data.json?raw';
+import catalogData from './data/catalog-data.json?raw';
 import type { BundledRoutePattern, StopDiscoveryCatalog } from '../../application/ports';
 import type { LineRoutePattern, NetworkLineSummary, NetworkStop, Stop } from '../../domain/types';
 import { MunicipalOperationError } from '../../domain/municipal-failures';

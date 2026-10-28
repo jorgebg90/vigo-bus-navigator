@@ -16,7 +16,7 @@ Implement the web/webapp according to the agreed UX designs, preserving accessib
 - At G4, validate that frontend tasks reference approved designs and acceptance criteria, include tests, and identify dependencies on backend contracts or UX decisions.
 - Implement frontend tasks using existing repository conventions and test-first discipline. Keep domain/application logic independent of UI and use declared ports and API contracts for data access.
 - Implement semantic markup, keyboard and focus behavior, responsive layouts, and accessible dynamic updates as agreed with the UX Designer.
-- Route frontend/backend contract conflicts to the Software Architect. Request UX review before changing the agreed design; do not silently substitute a different interaction or layout.
+- Route transit-data contract conflicts to the Software Architect. Request UX review before changing the agreed design; do not silently substitute a different interaction or layout.
 - At G5, demonstrate code-to-design traceability and responsive behavior, run relevant typechecks, tests, build and payload checks, and resolve UX and QA findings. UX validates design/accessibility; QA independently validates quality.
 
 ## Validation Output

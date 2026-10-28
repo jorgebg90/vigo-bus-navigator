@@ -60,12 +60,12 @@ npm run typecheck
 git diff --check
 ```
 
-Import [the Postman collection](../../postman/vigo-bus-navigator-worker.postman_collection.json)
-to call the municipal JSP directly. Seven general source actions are enabled
-without candidate parameters; the four candidate actions are separately
-restricted to exact product-owner-approved line-A samples in both live
-profiles. Other candidate parameters fail before network access. Postman
-requests do not validate browser CORS behavior.
+Import [the Postman collection](../../postman/vigo-bus-navigator-municipal.postman_collection.json)
+for the final ordered set of municipal JSP requests: eight generally enabled
+catalog/stop/arrival actions, three online line schedule/route actions using
+identifiers from returned schedule rows, and the single restricted stop-2789 /
+line-A / `min=0` mapping. It contains no exploratory or unapproved requests.
+Postman requests do not validate browser CORS behavior.
 
 Expected branch `004-vigo-jsp-transit-api`; plan/spec paths match this folder.
 Latest focused implementation validation: `npm test -- --run` passed 296 tests

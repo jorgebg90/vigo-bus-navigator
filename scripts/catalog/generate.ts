@@ -1,12 +1,12 @@
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { parse } from 'csv-parse/sync';
 import { unzipSync } from 'fflate';
 import { addCatalogStop, type CatalogStopRecord } from './stop-coordinates';
 
 const root = resolve(import.meta.dirname, '../..');
-const target = resolve(root, 'worker/src/catalog-data.json');
+const target = resolve(root, 'frontend/src/infrastructure/municipal/data/catalog-data.json');
 const sources = {
 	stops: 'https://datos.vigo.org/data/transporte/paradas.json',
 	gtfs: 'https://datos.vigo.org/data/transporte/gtfs_vigo.zip',
@@ -234,6 +234,6 @@ const catalog = {
 	lines: catalogLines,
 	stops
 };
-await mkdir(resolve(root, 'worker/src'), { recursive: true });
+await mkdir(dirname(target), { recursive: true });
 await writeFile(target, `${JSON.stringify(catalog)}\n`);
 console.log(`Generated ${catalogLines.length} lines, ${stops.length} stops, ${catalogLines.reduce((count, line) => count + line.patterns.length, 0)} route patterns`);

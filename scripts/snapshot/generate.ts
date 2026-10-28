@@ -5,10 +5,10 @@ import { validateStopCoordinates } from './geo';
 
 const root = resolve(import.meta.dirname, '../..');
 const source = resolve(root, 'scripts/snapshot/source/manifest.json');
-const target = resolve(root, 'worker/src/schedule-data/manifest.json');
+const target = resolve(root, 'scripts/snapshot/generated/manifest.json');
 const sourceStops = resolve(root, 'scripts/snapshot/source/stops.json');
 const sourceLines = resolve(root, 'scripts/snapshot/source/lines');
-const targetLines = resolve(root, 'worker/src/schedule-data/lines');
+const targetLines = resolve(root, 'scripts/snapshot/generated/lines');
 
 const manifest = JSON.parse(await readFile(source, 'utf8')) as Record<string, any>;
 if (typeof manifest.datasetVersion !== 'string' || typeof manifest.validFrom !== 'string' || typeof manifest.validUntil !== 'string' || typeof manifest.generatedAt !== 'string' || !Array.isArray(manifest.holidays) || !Array.isArray(manifest.lines)) {

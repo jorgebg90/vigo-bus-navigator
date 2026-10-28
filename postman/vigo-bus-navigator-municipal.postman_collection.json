@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Vigo Bus Navigator - Municipal JSP",
-    "description": "Direct requests to the public Vigo municipal JSP; this collection does not call the retired Worker API. Eight general actions (including the TRANSPORTE_PARADAS online stop catalog) plus the online line catalog (schedule by public line code, trip stops by trip_id, geometry by shape_id) are enabled for every line in local-live and production, mirroring the official Vigo app. Line-stop detail remains limited to stop 2789 / line A. Postman does not validate browser CORS behavior.",
+    "description": "Final, ordered Postman requests for municipal JSP actions enabled by the application. Includes the eight general actions, online schedule/geometry/trip-stop requests using identifiers from returned schedule rows, and the one restricted line-stop mapping (municipal stop 2789, line A, min=0). No exploratory or unapproved requests are included. Postman does not validate browser CORS behavior.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -39,20 +39,15 @@
       "key": "tripId",
       "value": "A  02LP000_008002_4",
       "type": "string"
-    },
-    {
-      "key": "min",
-      "value": "0",
-      "type": "string"
     }
   ],
   "item": [
     {
-      "name": "Supported actions - enabled in the application",
-      "description": "These seven source actions are enabled in local-live and production profiles. Use municipal stop IDs and Vitrasa IDs only for their documented, distinct purposes.",
+      "name": "01 - Catalogs, stops and arrivals",
+      "description": "Eight generally enabled source actions for local-live and production. Use municipal stop IDs and Vitrasa IDs only for their documented, distinct purposes.",
       "item": [
         {
-          "name": "Lines catalog (Spanish / English locale)",
+          "name": "01 - GET - Lines catalog (Spanish / English locale)",
           "request": {
             "method": "GET",
             "header": [],
@@ -75,7 +70,7 @@
           ]
         },
         {
-          "name": "Lines catalog (Galician locale)",
+          "name": "02 - GET - Lines catalog (Galician locale)",
           "request": {
             "method": "GET",
             "header": [],
@@ -98,7 +93,7 @@
           ]
         },
         {
-          "name": "Line service metadata (Spanish)",
+          "name": "03 - GET - Line service metadata (Spanish)",
           "request": {
             "method": "GET",
             "header": [],
@@ -121,7 +116,7 @@
           ]
         },
         {
-          "name": "Line service metadata (Galician)",
+          "name": "04 - GET - Line service metadata (Galician)",
           "request": {
             "method": "GET",
             "header": [],
@@ -144,7 +139,7 @@
           ]
         },
         {
-          "name": "Stop detail by Vitrasa ID",
+          "name": "05 - GET - Stop detail by Vitrasa ID",
           "request": {
             "method": "GET",
             "header": [],
@@ -167,7 +162,7 @@
           ]
         },
         {
-          "name": "Lines serving a municipal stop",
+          "name": "06 - GET - Lines serving a municipal stop",
           "request": {
             "method": "GET",
             "header": [],
@@ -190,7 +185,7 @@
           ]
         },
         {
-          "name": "Online stop catalog (all stops)",
+          "name": "07 - GET - Online stop catalog (all stops)",
           "request": {
             "method": "GET",
             "header": [],
@@ -215,7 +210,7 @@
           ]
         },
         {
-          "name": "Arrivals by Vitrasa ID",
+          "name": "08 - GET - Arrivals by Vitrasa ID",
           "request": {
             "method": "GET",
             "header": [],
@@ -240,11 +235,11 @@
       ]
     },
     {
-      "name": "Online line catalog - every line",
-      "description": "Mirrors the official Vigo app: schedules by public line code, then trip stops and geometry from the trip_id/shape_id of the returned rows. Enabled for every line in local-live and production by product-owner direction on 2026-10-28. Line-stop detail remains limited to stop 2789 / line A.",
+      "name": "02 - Online schedules and route data",
+      "description": "These three requests are enabled for public line codes and schedule-derived trip_id/shape_id values. Start with a schedule request, then use identifiers from its returned rows for route geometry and trip stops.",
       "item": [
         {
-          "name": "Schedule by public line code (dayCode 1 weekday, 6 Saturday, 0 Sunday/holiday)",
+          "name": "09 - GET - Schedule by public line code",
           "request": {
             "method": "GET",
             "description": "Use the public line code (for example A, C1, 4C) as id. The app keeps every returned row like the official app; trip_id prefixes are internal block codes, not line identity. Departure times are separated by ', '.",
@@ -268,7 +263,7 @@
           ]
         },
         {
-          "name": "Route geometry by schedule shape_id",
+          "name": "10 - GET - Route geometry by schedule shape_id",
           "request": {
             "method": "GET",
             "description": "Use a shape_id from a schedule row. The app draws the shape of the first representative trip.",
@@ -277,21 +272,27 @@
           }
         },
         {
-          "name": "Trip stops by schedule trip_id",
+          "name": "11 - GET - Trip stops by schedule trip_id",
           "request": {
             "method": "GET",
             "description": "Use a trip_id from a schedule row. The app requests one representative trip per direction (active first, then most departures).",
             "header": [],
             "url": "{{endpoint}}?tipo=TRANSPORTE_PARADAS_TRIP&id={{tripId}}"
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "03 - Restricted line-stop detail",
+      "description": "This request is enabled only for municipal stop 2789, public line A, and min=0 in local-live and production. Do not change these parameters; other mappings are not enabled.",
+      "item": [
         {
-          "name": "Line-stop details - municipal stop 2789, line A",
+          "name": "12 - GET - Stop 2789 / line A / min 0",
           "request": {
             "method": "GET",
-            "description": "Stakeholder reports min is measured in minutes. The app sends only fixed min=0 and permits only stop_id=2789,linea=A in production and local-live; it does not expose a configurable threshold.",
+            "description": "Only this exact approved mapping is enabled. The application does not expose a configurable min threshold.",
             "header": [],
-            "url": "{{endpoint}}?tipo=TRANSPORTE_LINEA_INFO_PARADA&stop_id={{stopId}}&linea={{lineCode}}&min={{min}}"
+            "url": "{{endpoint}}?tipo=TRANSPORTE_LINEA_INFO_PARADA&stop_id=2789&linea=A&min=0"
           }
         }
       ]

@@ -3,17 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "workspaces": [
-    "frontend",
-    "worker"
-  ],
   "scripts": {
     "dev": "vite --config frontend/vite.config.ts --mode development",
-    "dev:worker": "wrangler dev --local --cwd worker",
-    "dev:worker:live": "wrangler dev --local --cwd worker --var DEPLOYMENT_ENV:development --var UPSTREAM_FIXTURES:false",
     "build": "vite build --config frontend/vite.config.ts --mode production",
     "preview": "vite preview --config frontend/vite.config.ts",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p worker/tsconfig.json",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -23,8 +17,6 @@
     "validate:feature004-contract": "tsx scripts/validate-feature004-contract.ts",
     "validate:production-artifact": "tsx scripts/validate-production-artifact.ts",
     "smoke:municipal-live": "tsx scripts/smoke-municipal-live.ts",
-    "test:contract": "vitest run --config worker/vitest.config.ts",
-    "test:load": "vitest run --config worker/vitest.load.config.ts",
     "size": "size-limit && tsx scripts/check-payload-budget.ts",
     "snapshot:generate": "tsx scripts/snapshot/generate.ts",
     "catalog:generate": "tsx scripts/catalog/generate.ts"
@@ -35,7 +27,6 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
-    "@cloudflare/workers-types": "^4.20250415.0",
     "@playwright/test": "^1.55.0",
     "@size-limit/file": "^11.2.0",
     "@stoplight/spectral-cli": "^6.15.0",

@@ -5,14 +5,15 @@
 The Playwright configuration covers Chrome desktop, Chrome Android, and Safari
 iOS. Run `npm run test:e2e` after installing the required browsers.
 
-## Contract gates (feature 002)
+## Municipal contracts and data
 
-- `npm run lint:openapi` validates the real-time arrivals contract v2
-  (`specs/002-realtime-bus-api/contracts/realtime-arrivals.openapi.yaml`).
-- `npm run test:contract` runs the Worker contract suite (fixture mode, no
-  network): success/empty/stale, error taxonomy (400/404/405/429/502/503/504),
-  OPTIONS preflight, `/health`, CORS `*` on every response, staleness bound,
-  and the SC-005 100-request resilience loop.
+- `npm run lint:openapi` validates the retained historical arrivals contract
+  and the current municipal browser contract.
+- `npm run test` runs deterministic frontend, domain, and script tests without
+  municipal network traffic.
+- `npm run validate:feature004-contract` and
+  `npm run validate:production-artifact` validate the current browser-facing
+  source contract and production artifact.
 - Snapshot generation fails when any stop coordinate falls outside the Vigo
   bounding box (lat 42.19–42.31, lon −8.79…−8.67).
 
@@ -34,5 +35,5 @@ matrix before release.
 
 No account, analytics, tracking identifier, or user-state network request is
 present. Favorites, preferences, and recent views use namespaced browser
-storage only. The Worker receives only the public stop identifier required for
-the arrival lookup.
+storage only. The browser sends only the public identifiers needed for
+municipal data lookups; it sends no profile data or credentials.

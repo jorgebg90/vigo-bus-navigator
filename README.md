@@ -60,13 +60,16 @@ The project follows the Spec Kit cycle, each step guarded by a harness gate:
 .github/agents/     Harness actors as VS Code custom agents
 .github/skills/     Spec Kit skills (/speckit-* commands)
 docs/               Harness charter and the blog series (docs/blog/)
+frontend/           Static browser application and tests
+scripts/            Contract checks and data-generation tooling
+postman/            Manual municipal-source request collection
 specs/              Feature specifications, plans, tasks, and actor verdicts
 ```
 
 ## Local validation
 
 ```bash
-npm install
+npm ci
 npm run dev
 npm run typecheck
 npm test
@@ -82,9 +85,9 @@ network traffic. `npm run dev` uses `local-live` and calls the municipal JSP
 directly from the browser. Run `npm run build` before `npm run size`; the latter
 enforces the first-map and per-file budgets.
 
-## Client-side transit boundary
+## Browser-side transit integration
 
-The browser-side BFF is implemented in
+The municipal integration is implemented in
 [`frontend/src/infrastructure/municipal`](frontend/src/infrastructure/municipal)
 and coordinated by the frontend schedule repository. These modules own the
 fixed municipal action allowlist, bounded GET transport, source normalization,
@@ -118,11 +121,11 @@ mapping is available; the UI does not infer a timetable from service metadata.
 Route geometry, trip sequencing, and detailed stop data also remain
 unavailable until their respective mappings are implemented.
 
-The legacy `worker/` workspace remains only as migration-era source, test, and
-catalog-generation material. It is no longer deployed or called by the frontend.
-The static PWA and its service worker cache frontend assets only. User favorites
-and settings remain in browser `localStorage`; no account or application-level
-activity tracking is introduced.
+The application is a static, browser-only PWA. No transit Worker or application
+backend is deployed or called by the frontend. The browser service worker caches
+frontend assets only. User favorites and settings remain in browser
+`localStorage`; no account or application-level activity tracking is
+introduced.
 
 Environment variables:
 
