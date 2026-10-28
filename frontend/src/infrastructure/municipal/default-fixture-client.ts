@@ -13,7 +13,19 @@ import lineStopDetailFixture from '../../../tests/fixtures/municipal/line-stop-d
 import { MunicipalFixtureTransport } from './fixture-transport';
 import { MunicipalHttpClient } from './http-client';
 
-export function createDefaultFixtureMunicipalClient(): MunicipalHttpClient {
+export function createDefaultFixtureMunicipalClient(
+  routeFixture: 'missing' | 'invalid' | undefined = undefined
+): MunicipalHttpClient {
+  const routeGeometry = routeFixture === 'missing'
+    ? '[]'
+    : routeFixture === 'invalid'
+      ? JSON.stringify([{
+          st_asgeojson: JSON.stringify({
+            type: 'LineString',
+            coordinates: [[300, 42], [301, 43]]
+          })
+        }])
+      : routeGeometryFixture;
   const fixtures = new MunicipalFixtureTransport({
     TRANSPORTE_LINEAS_ES: new TextEncoder().encode(lineCatalogEsFixture),
     TRANSPORTE_LINEAS_GA: new TextEncoder().encode(lineCatalogGaFixture),
@@ -24,7 +36,7 @@ export function createDefaultFixtureMunicipalClient(): MunicipalHttpClient {
     TRANSPORTE_PARADAS: new TextEncoder().encode(stopCatalogFixture),
     'TRANSPORTE-ESTIMACION-PARADA': new TextEncoder().encode(arrivalsFixture),
     TRANSPORTE_LINEA_HORARIOS_EXTEND: new TextEncoder().encode(scheduleFixture),
-    TRANSPORTE_LINEA_GEOJSON: new TextEncoder().encode(routeGeometryFixture),
+    TRANSPORTE_LINEA_GEOJSON: new TextEncoder().encode(routeGeometry),
     TRANSPORTE_PARADAS_TRIP: new TextEncoder().encode(tripStopsFixture),
     TRANSPORTE_LINEA_INFO_PARADA: new TextEncoder().encode(lineStopDetailFixture)
   });

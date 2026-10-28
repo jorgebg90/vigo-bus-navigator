@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { renderLineFrequency } from '../../src/ui/line/frequency-view';
-import type { Line, Provenance, Stop, Timetable } from '../../src/domain/types';
+import type { Line, Provenance, SelectedLineRouteDisplay, Stop, Timetable } from '../../src/domain/types';
 import { setDocumentLanguage } from '../../src/i18n';
 
 const testTimetables: Record<string, Timetable> = {
@@ -33,6 +33,51 @@ const testLines: Line[] = [
 
 describe('US1 line frequency view', () => {
   beforeEach(() => setDocumentLanguage('en'));
+
+  it('provides accessible text labels for every map route direction', () => {
+    const root = document.createElement('main');
+    const mapRoute: SelectedLineRouteDisplay = {
+      lineId: 'line-4c',
+      lineCode: '4C',
+      directions: [
+        { direction: 0, headsign: 'Outbound to Coia', shapeId: 'shape-out', geometry: { type: 'LineString', coordinates: [[-8.72, 42.24], [-8.7, 42.25]] } },
+        { direction: 1, headsign: 'Inbound to Urzaiz', shapeId: 'shape-back', geometry: { type: 'LineString', coordinates: [[-8.7, 42.25], [-8.72, 42.24]] } }
+      ]
+    };
+
+    renderLineFrequency(root, { lineCode: '4C', dayType: 'weekday', mapRoute });
+
+    expect(root.querySelector('[data-line-map-directions]')?.getAttribute('aria-label')).toBe('Directions shown on map');
+    expect([...root.querySelectorAll('[data-line-map-directions] li')].map((item) => item.textContent))
+      .toEqual(['Direction: Outbound to Coia', 'Direction: Inbound to Urzaiz']);
+    expect(root.querySelector('[data-line-map-status="unavailable"]')).toBeNull();
+  });
+
+  it('announces unavailable map geometry without hiding timetable details', () => {
+    const root = document.createElement('main');
+    renderLineFrequency(root, {
+      lineCode: 'N4',
+      dayType: 'weekday',
+      mapRouteUnavailable: true,
+      publishedSchedule: {
+        lineCode: 'N4',
+        dayType: 'weekday',
+        scheduleId: 'N4',
+        departures: ['07:00'],
+        provenance: { kind: 'municipal', sourceName: 'test' }
+      }
+    });
+
+    expect(root.querySelector('[data-line-map-status="unavailable"]')?.getAttribute('role')).toBe('status');
+    expect(root.querySelector('[data-line-map-status="unavailable"]')?.textContent)
+      .toBe('No verified route is available for this line.');
+    expect(root.querySelector('[data-line-departures] li')?.textContent).toBe('07:00');
+
+    setDocumentLanguage('es');
+    renderLineFrequency(root, { lineCode: 'N4', dayType: 'weekday', mapRouteUnavailable: true });
+    expect(root.querySelector('[data-line-map-status="unavailable"]')?.textContent)
+      .toBe('No hay un recorrido verificado disponible para esta línea.');
+  });
   it('renders day type and frequency without technical dataset metadata', () => {
     const root = document.createElement('main');
     renderLineFrequency(root, {

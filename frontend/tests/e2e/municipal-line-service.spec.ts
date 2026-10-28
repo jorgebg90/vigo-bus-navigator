@@ -109,3 +109,50 @@ test('does not use an offline snapshot when source evidence is untrusted', async
   await expect(page.locator('[data-schedule-provenance="snapshot"]')).toHaveCount(0);
   expect(requests).toEqual([]);
 });
+
+test('shows a selected line route on the map and clears it before independent stop selection', async ({ page }) => {
+  const { requests } = await useMunicipalProfile(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: /Lines|Líneas|Liñas/ }).click();
+  await page.getByRole('searchbox', { name: /Search lines|Buscar líneas|Buscar liñas/ }).fill('A');
+  await page.getByRole('button', { name: 'A Synthetic line A' }).click();
+
+  const map = page.locator('.map-base [data-engine="maplibre-clustered-geojson"]');
+  await expect(map).toHaveAttribute('data-route-line', 'A');
+  await expect(map).toHaveAttribute('data-route-count', '1');
+  await expect(map).toHaveAttribute('data-route-shapes', 'Route_1005');
+  await expect(page.locator('[data-line-map-directions]')).toContainText(/Route|Recorrido|Percorrido/);
+
+  await page.locator('.map-toolbar [data-stops-in-view]').click();
+  const chooser = page.getByRole('dialog');
+  await expect(chooser).toBeVisible();
+  await chooser.locator('ul button').first().click();
+  await expect(page.locator('aside[aria-label="Details"] h2')).toBeVisible();
+  await expect(map).toHaveAttribute('data-route-count', '1');
+
+  await page.getByRole('button', { name: /Search|Buscar/ }).click();
+  await expect(map).toHaveAttribute('data-route-count', '0');
+  await page.getByRole('searchbox', { name: /Search stops|Buscar paradas/ }).fill('Aeroporto de Peinador');
+  await page.getByRole('button', { name: 'Aeroporto de Peinador', exact: true }).click();
+  await expect(page.locator('aside[aria-label="Details"] h2')).toContainText('Aeroporto de Peinador');
+  await expect(map).toHaveAttribute('data-route-count', '0');
+  expect(requests).toEqual([]);
+});
+
+test('shows no fabricated route for missing or invalid fixture geometry', async ({ page }) => {
+  const { requests } = await useMunicipalProfile(page);
+  for (const routeFixture of ['missing', 'invalid']) {
+    await page.goto(`/?routeFixture=${routeFixture}`);
+    await page.getByRole('button', { name: /Lines|Líneas|Liñas/ }).click();
+    await page.getByRole('searchbox', { name: /Search lines|Buscar líneas|Buscar liñas/ }).fill('A');
+    await page.getByRole('button', { name: 'A Synthetic line A' }).click();
+
+    const map = page.locator('.map-base [data-engine="maplibre-clustered-geojson"]');
+    await expect(map).toHaveAttribute('data-route-count', '0');
+    await expect(page.locator('[data-line-map-status="unavailable"]')).toContainText(
+      /No verified route is available|No hay un recorrido verificado disponible|Non hai un percorrido verificado dispoñible/
+    );
+    await expect(page.locator('[data-line-departures] li')).toHaveText(['08:00', '08:15']);
+  }
+  expect(requests).toEqual([]);
+});

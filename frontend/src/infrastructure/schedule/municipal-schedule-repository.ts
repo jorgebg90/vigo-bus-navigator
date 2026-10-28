@@ -9,6 +9,7 @@ import type {
 import type {
   BundledScheduleSnapshot,
   DayType,
+  DirectionalRoute,
   Language,
   LineRoutePattern,
   NetworkLineSummary,
@@ -39,6 +40,7 @@ export interface OnlineCatalogOptions {
 
 export interface OnlineLineRoute {
   patterns: LineRoutePattern[];
+  directionalRoutes?: DirectionalRoute[];
   routeShape?: RouteShapeReceipt;
   provenance?: TripStopSequence['provenance'];
 }
@@ -121,7 +123,8 @@ export class MunicipalScheduleRepository implements ScheduleRepositoryV5 {
       discovery.stops.map((stop) => [stop.municipalCode, stop])
     );
     const representatives = selectRepresentativeTrips(schedule.trips);
-    const [sequences, routeShape] = await Promise.all([
+    const shapeIds = [...new Set(representatives.map((trip) => trip.shapeId))];
+    const [sequences, routeShapes] = await Promise.all([
       Promise.all(representatives.map((trip) => this.tripStops!.getTripStopsById(
         schedule.lineCode,
         schedule.dayType,
@@ -129,10 +132,26 @@ export class MunicipalScheduleRepository implements ScheduleRepositoryV5 {
         this.online!.evidenceRef,
         stopsByMunicipalCode
       ))),
-      representatives[0] && this.routeShape
-        ? this.routeShape.getRouteShapeById(schedule.lineCode, representatives[0].shapeId, this.online.evidenceRef)
-        : Promise.resolve(undefined)
+      this.routeShape
+        ? Promise.all(shapeIds.map((shapeId) => this.routeShape!.getRouteShapeById(
+            schedule.lineCode,
+            shapeId,
+            this.online!.evidenceRef
+          )))
+        : Promise.resolve([])
     ]);
+
+    const routeShapesById = new Map<string, RouteShapeReceipt>();
+    routeShapes.forEach((result, index) => {
+      const shapeId = shapeIds[index];
+      if (result?.kind === 'success' && shapeId) routeShapesById.set(shapeId, result.value);
+    });
+    const directionalRoutes: DirectionalRoute[] = representatives.flatMap((trip) => {
+      const shape = routeShapesById.get(trip.shapeId);
+      return shape
+        ? [{ direction: trip.direction, headsign: trip.headsign, shapeId: trip.shapeId, geometry: shape.geometry }]
+        : [];
+    });
 
     const patterns: LineRoutePattern[] = [];
     let provenance: OnlineLineRoute['provenance'];
@@ -151,7 +170,8 @@ export class MunicipalScheduleRepository implements ScheduleRepositoryV5 {
     });
     return {
       patterns,
-      routeShape: routeShape?.kind === 'success' ? routeShape.value : undefined,
+      directionalRoutes,
+      routeShape: directionalRoutes[0] ? routeShapesById.get(directionalRoutes[0].shapeId) : undefined,
       provenance
     };
   }

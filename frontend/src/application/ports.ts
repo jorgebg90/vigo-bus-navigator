@@ -13,6 +13,7 @@ import type {
   NetworkLineSummary,
   PublishedLineSchedule,
   RouteShapeReceipt,
+  SelectedLineRouteDisplay,
   TripStopSequence,
   LineStopDetail,
   Provenance,
@@ -124,6 +125,7 @@ export interface StopMapPort {
   setTheme(theme: 'light' | 'dark'): void;
   unmount(): void;
   setStops(stops: MapStop[]): void;
+  setLineRoute(route: SelectedLineRouteDisplay | null): void;
   setSelectedStop(stopId: string | null): void;
   onStopSelected(listener: (stopId: string) => void): () => void;
   onChooserRequested(listener: (stopIds: string[]) => void): () => void;

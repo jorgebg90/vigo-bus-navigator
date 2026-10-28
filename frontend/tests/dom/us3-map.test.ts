@@ -11,6 +11,7 @@ describe('US3 map fallback', () => {
     const map: StopMapPort = {
       mount: () => undefined, setStops: () => undefined, fitToStops: () => undefined, focusStop: () => undefined, setSelectedStop: () => undefined,
       onStopSelected: () => () => undefined, onChooserRequested: () => () => undefined,
+      setLineRoute: () => undefined,
       zoomIn: () => undefined, zoomOut: () => undefined, getMapCenter: () => [-8.72, 42.24], getStopsInView: () => [],
       setTheme: () => undefined, unmount: () => undefined
     };

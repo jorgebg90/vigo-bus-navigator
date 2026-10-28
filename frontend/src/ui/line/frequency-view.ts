@@ -7,6 +7,7 @@ import type {
   Provenance,
   PublishedLineSchedule,
   RouteShapeReceipt,
+  SelectedLineRouteDisplay,
   Timetable,
   TripStopSequence
 } from '../../domain/types';
@@ -25,6 +26,8 @@ export interface FrequencyViewOptions {
   scheduleUnavailableReason?: MunicipalFailureReason;
   routeProvenance?: Provenance;
   routeShape?: RouteShapeReceipt;
+  mapRoute?: SelectedLineRouteDisplay;
+  mapRouteUnavailable?: boolean;
   tripStops?: TripStopSequence;
   patterns?: LineRoutePattern[];
   lines?: Line[];
@@ -55,6 +58,7 @@ export function renderLineFrequency(root: HTMLElement, options: FrequencyViewOpt
   const heading = document.createElement('h1');
   heading.append(createLineBadge({ code: options.lineCode, color: options.lineColor }));
   root.append(heading);
+  appendMapRouteStatus(root, options.mapRoute, options.mapRouteUnavailable ?? false);
   const appendPatterns = () => {
     for (const pattern of options.patterns ?? []) {
       const direction = document.createElement('section');
@@ -387,6 +391,36 @@ function appendProvisionalCandidateDetails(root: HTMLElement, options: Frequency
     section.append(list);
     root.append(section);
   }
+}
+
+function appendMapRouteStatus(
+  root: HTMLElement,
+  route: SelectedLineRouteDisplay | undefined,
+  unavailable: boolean
+): void {
+  const directions = route?.directions ?? [];
+  if (directions.length > 0) {
+    const section = document.createElement('section');
+    section.dataset.lineMapDirections = 'true';
+    section.setAttribute('aria-label', translateCurrent('lineMapDirections'));
+    const list = document.createElement('ol');
+    for (const direction of directions) {
+      const item = document.createElement('li');
+      item.textContent = translateCurrent('lineMapDirection', {
+        direction: direction.headsign || translateCurrent('lineMapDefaultDirection')
+      });
+      list.append(item);
+    }
+    section.append(list);
+    root.append(section);
+    return;
+  }
+  if (!unavailable) return;
+  const status = document.createElement('p');
+  status.dataset.lineMapStatus = 'unavailable';
+  status.setAttribute('role', 'status');
+  status.textContent = translateCurrent('lineMapUnavailable');
+  root.append(status);
 }
 
 function createDayTabs(options: FrequencyViewOptions): HTMLElement {

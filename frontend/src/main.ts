@@ -36,8 +36,8 @@ import { renderFavorites } from './ui/home/favorites';
 import { toggleFavoriteForTarget } from './application/toggle-favorite';
 import { recordRecentView } from './domain/favorites';
 import { deriveDayType } from './domain/day-type';
-import type { DayType, Favorite, Line, NetworkStop, Provenance, RecentView } from './domain/types';
-import { onLanguageChange, setDocumentLanguage } from './i18n';
+import type { DayType, Favorite, Line, NetworkStop, Provenance, RecentView, SelectedLineRouteDisplay } from './domain/types';
+import { onLanguageChange, setDocumentLanguage, translateCurrent } from './i18n';
 import { createShell, type Destination } from './ui/shell';
 import { createStopChooser } from './ui/map/stop-chooser';
 import { renderMapToolbar } from './ui/map/map-toolbar';
@@ -63,6 +63,7 @@ let currentDestination: Destination = 'map';
 let activePanelStopId: string | undefined;
 let activePanelContent: HTMLElement | undefined;
 let activeMap: StopMapPort | undefined;
+let selectedLineRoute: SelectedLineRouteDisplay | null = null;
 let selection: StopSelection | undefined;
 let lines: Line[] = [];
 let stops: NetworkStop[] = [];
@@ -78,7 +79,11 @@ shell.header.querySelector('.settings-trigger')?.replaceWith(settingsHost);
 createSettingsMenu(settingsHost, storage);
 shell.onDestinationChange((destination) => {
   currentDestination = destination;
-  if (destination !== 'lines') lineViewRequests.invalidate();
+  if (destination !== 'lines') {
+    lineViewRequests.invalidate();
+    selectedLineRoute = null;
+    activeMap?.setLineRoute(null);
+  }
   renderCurrentDestination?.();
 });
 const shellRoot = app.querySelector<HTMLElement>('.app-shell');
@@ -119,8 +124,13 @@ async function bootstrap(): Promise<void> {
     }
   }
 
+  const routeFixture = import.meta.env.MODE === 'test' && municipalConfig.profile === 'fixture'
+    ? new URLSearchParams(window.location.search).get('routeFixture')
+    : null;
   const municipalClient = municipalConfig.profile === 'fixture'
-    ? createDefaultFixtureMunicipalClient()
+    ? createDefaultFixtureMunicipalClient(
+        routeFixture === 'missing' || routeFixture === 'invalid' ? routeFixture : undefined
+      )
     : new MunicipalHttpClient(municipalConfig.profile);
   const bundledDiscovery = new BundledDiscoveryCatalog();
   const isFixtureProfile = municipalConfig.profile === 'fixture';
@@ -327,6 +337,7 @@ async function bootstrap(): Promise<void> {
     activeMap = map;
     mountedMapTheme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
     mapCleanup = renderMap(mapRoot, map, stops, mountedMapTheme);
+    map.setLineRoute(selectedLineRoute);
     map.onStopSelected(selectStop);
     const chooser = createStopChooser(mapRoot, { onSelect: selectStop, lines });
     renderMapToolbar(mapRoot, {
@@ -406,6 +417,8 @@ async function bootstrap(): Promise<void> {
     const repository = schedule;
     if (!repository) return;
     if (currentDestination !== 'lines') shell.navigate('lines');
+    selectedLineRoute = null;
+    activeMap?.setLineRoute(null);
     remember('line', line.id);
     const dayType = requestedDayType ?? deriveDayType(clock.now(), []);
     const requestVersion = lineViewRequests.next();
@@ -428,12 +441,36 @@ async function bootstrap(): Promise<void> {
     );
     if (!lineViewRequests.isCurrent(requestVersion) || currentDestination !== 'lines') return;
     const publishedSchedule = scheduleResult.kind === 'success' ? scheduleResult.value : undefined;
-    const render = (onlineRoute?: OnlineLineRoute) => renderLineFrequency(view, {
+    const getSelectedRoute = (onlineRoute?: OnlineLineRoute): SelectedLineRouteDisplay | null => {
+      if (onlineRoute?.directionalRoutes?.length) {
+        return { lineId: line.id, lineCode: line.code, directions: onlineRoute.directionalRoutes };
+      }
+      if (routeShapeResult.kind !== 'success') return null;
+      return {
+        lineId: line.id,
+        lineCode: line.code,
+        directions: [{
+          direction: 0,
+          headsign: translateCurrent('lineMapDefaultDirection'),
+          shapeId: routeShapeResult.value.shapeId,
+          geometry: routeShapeResult.value.geometry
+        }]
+      };
+    };
+    const render = (onlineRoute?: OnlineLineRoute, routeLoaded = false) => {
+      const mapRoute = getSelectedRoute(onlineRoute);
+      if (routeLoaded || mapRoute) {
+        selectedLineRoute = mapRoute;
+        activeMap?.setLineRoute(mapRoute);
+      }
+      renderLineFrequency(view, {
       lineCode: line.code,
       lineColor: line.color,
       publishedSchedule,
       bundledScheduleSnapshots: snapshotFallback.snapshots,
       snapshotFallbackAttempted: snapshotFallback.attempted,
+      mapRoute: mapRoute ?? undefined,
+      mapRouteUnavailable: routeLoaded && !mapRoute,
       routeShape: onlineRoute?.routeShape
         ?? (routeShapeResult.kind === 'success' ? routeShapeResult.value : undefined),
       tripStops: tripStopsResult.kind === 'success' ? tripStopsResult.value : undefined,
@@ -450,11 +487,13 @@ async function bootstrap(): Promise<void> {
         notifyStorageFailure();
         refreshFavorites();
       }
-    });
-    render();
-    if (!publishedSchedule?.trips?.length) return;
+      });
+    };
+    const hasOnlineTrips = Boolean(publishedSchedule?.trips?.length);
+    render(undefined, !hasOnlineTrips);
+    if (!hasOnlineTrips || !publishedSchedule) return;
     const onlineRoute = await repository.getOnlineLineRoute(publishedSchedule);
     if (!lineViewRequests.isCurrent(requestVersion) || currentDestination !== 'lines') return;
-    if (onlineRoute.patterns.length > 0 || onlineRoute.routeShape) render(onlineRoute);
+    render(onlineRoute, true);
   }
 }

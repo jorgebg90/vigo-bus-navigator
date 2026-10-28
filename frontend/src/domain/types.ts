@@ -102,6 +102,19 @@ export interface RouteShapeReceipt {
   provenance: Provenance;
 }
 
+export interface DirectionalRoute {
+  direction: 0 | 1;
+  headsign: string;
+  shapeId: string;
+  geometry: RouteGeometry;
+}
+
+export interface SelectedLineRouteDisplay {
+  lineId: string;
+  lineCode: string;
+  directions: DirectionalRoute[];
+}
+
 export interface TripStopSequence {
   lineCode: string;
   dayType: DayType;

@@ -1,5 +1,6 @@
 import type { StopMapPort } from '../../application/ports';
 import type { MapStop } from '../../domain/map-stops';
+import type { DirectionalRoute, SelectedLineRouteDisplay } from '../../domain/types';
 import { translateCurrent } from '../../i18n';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -9,6 +10,9 @@ const CLUSTER_COUNT_LAYER_ID = 'stop-cluster-count';
 const STOP_LAYER_ID = 'stop-points';
 const STOP_HIT_LAYER_ID = 'stop-hit-targets';
 const SELECTION_LAYER_ID = 'selected-stop-ring';
+const ROUTE_SOURCE_ID = 'line-routes';
+const ROUTE_DIRECTION_0_LAYER_ID = 'line-route-direction-0';
+const ROUTE_DIRECTION_1_LAYER_ID = 'line-route-direction-1';
 const CLUSTER_MAX_ZOOM = 16;
 const HIT_HALF_SIZE = 22;
 
@@ -18,6 +22,16 @@ const styles = {
 } as const;
 
 type StopFeatureCollection = Exclude<import('maplibre-gl').GeoJSONSourceSpecification['data'], string>;
+type MapFactory = (container: HTMLElement, style: string) => Promise<import('maplibre-gl').Map>;
+interface RouteFeature {
+  type: 'Feature';
+  properties: { lineCode: string; shapeId: string; direction: 0 | 1; headsign: string };
+  geometry: DirectionalRoute['geometry'];
+}
+interface RouteFeatureCollection {
+  type: 'FeatureCollection';
+  features: RouteFeature[];
+}
 
 function featureCollection(stops: MapStop[]): StopFeatureCollection {
   return {
@@ -31,6 +45,40 @@ function featureCollection(stops: MapStop[]): StopFeatureCollection {
   } as StopFeatureCollection;
 }
 
+function routeFeatureCollection(route: SelectedLineRouteDisplay | null): RouteFeatureCollection {
+  const seenShapeIds = new Set<string>();
+  const features = route ? route.directions.flatMap((direction) => {
+    if (!isDisplayableDirection(direction) || seenShapeIds.has(direction.shapeId)) return [];
+    seenShapeIds.add(direction.shapeId);
+    return [{
+      type: 'Feature' as const,
+      properties: {
+        lineCode: route.lineCode,
+        shapeId: direction.shapeId,
+        direction: direction.direction,
+        headsign: direction.headsign
+      },
+      geometry: direction.geometry
+    }];
+  }) : [];
+  return { type: 'FeatureCollection', features };
+}
+
+function isDisplayableDirection(direction: DirectionalRoute): boolean {
+  return direction.headsign.trim().length > 0
+    && direction.shapeId.trim().length > 0
+    && direction.geometry.type === 'LineString'
+    && direction.geometry.coordinates.length >= 2
+    && direction.geometry.coordinates.every(([longitude, latitude]) => (
+      Number.isFinite(longitude)
+      && Number.isFinite(latitude)
+      && longitude >= -180
+      && longitude <= 180
+      && latitude >= -90
+      && latitude <= 90
+    ));
+}
+
 export class BrowserMapPort implements StopMapPort {
   private container?: HTMLElement;
   private map?: import('maplibre-gl').Map;
@@ -40,7 +88,15 @@ export class BrowserMapPort implements StopMapPort {
   private ready = false;
   private stopSelected?: (stopId: string) => void;
   private chooserRequested?: (stopIds: string[]) => void;
+  private lineRoute: SelectedLineRouteDisplay | null = null;
   private reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
+  constructor(
+    private readonly mapFactory: MapFactory = async (container, style) => {
+      const maplibre = await import('maplibre-gl');
+      return new maplibre.Map({ container, style, center: [-8.72, 42.24], zoom: 12, attributionControl: false });
+    }
+  ) {}
 
   mount(container: HTMLElement, options: { theme: 'light' | 'dark' }): void {
     this.container = container;
@@ -60,9 +116,8 @@ export class BrowserMapPort implements StopMapPort {
 
   private async loadMap(container: HTMLElement, theme: 'light' | 'dark'): Promise<void> {
     try {
-      const maplibre = await import('maplibre-gl');
       if (!this.container) return;
-      this.map = new maplibre.Map({ container, style: styles[theme], center: [-8.72, 42.24], zoom: 12, attributionControl: false });
+      this.map = await this.mapFactory(container, styles[theme]);
       const mapCanvas = container.querySelector<HTMLCanvasElement>('.maplibregl-canvas');
       mapCanvas?.setAttribute('aria-hidden', 'true');
       mapCanvas?.setAttribute('tabindex', '-1');
@@ -77,9 +132,30 @@ export class BrowserMapPort implements StopMapPort {
           clusterMaxZoom: CLUSTER_MAX_ZOOM,
           promoteId: 'stopId'
         });
+        this.map.addSource(ROUTE_SOURCE_ID, {
+          type: 'geojson',
+          data: routeFeatureCollection(this.lineRoute)
+        });
         const mapStop = getComputedStyle(document.documentElement).getPropertyValue('--map-stop').trim() || '#9B2F3B';
         const mapHalo = getComputedStyle(document.documentElement).getPropertyValue('--map-halo').trim() || '#FFFFFF';
         const selectionRing = getComputedStyle(document.documentElement).getPropertyValue('--map-selection-ring').trim() || '#7D2230';
+        const mapRoute = getComputedStyle(document.documentElement).getPropertyValue('--map-route').trim() || '#174EA6';
+        this.map.addLayer({
+          id: ROUTE_DIRECTION_0_LAYER_ID,
+          type: 'line',
+          source: ROUTE_SOURCE_ID,
+          filter: ['==', ['get', 'direction'], 0],
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': mapRoute, 'line-width': 5, 'line-opacity': 0.95 }
+        });
+        this.map.addLayer({
+          id: ROUTE_DIRECTION_1_LAYER_ID,
+          type: 'line',
+          source: ROUTE_SOURCE_ID,
+          filter: ['==', ['get', 'direction'], 1],
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': mapRoute, 'line-width': 5, 'line-opacity': 0.95, 'line-dasharray': [2, 1] }
+        });
         this.map.addLayer({
           id: CLUSTER_LAYER_ID,
           type: 'circle',
@@ -133,7 +209,8 @@ export class BrowserMapPort implements StopMapPort {
         this.map.on('mouseleave', STOP_HIT_LAYER_ID, () => { if (this.map) this.map.getCanvas().style.cursor = ''; });
         this.refreshSelectionRing();
         this.ready = true;
-        if (this.focusedStopId) this.applyFocus();
+        if (routeFeatureCollection(this.lineRoute).features.length > 0) this.fitLineRoute();
+        else if (this.focusedStopId) this.applyFocus();
         else this.fitStops(this.stops);
       });
     } catch {
@@ -188,6 +265,14 @@ export class BrowserMapPort implements StopMapPort {
     this.refreshSelectionRing();
   }
 
+  setLineRoute(route: SelectedLineRouteDisplay | null): void {
+    this.lineRoute = route;
+    this.updateLineRouteAttributes();
+    const source = this.map?.getSource(ROUTE_SOURCE_ID) as import('maplibre-gl').GeoJSONSource | undefined;
+    source?.setData(routeFeatureCollection(route));
+    if (this.ready && routeFeatureCollection(route).features.length > 0) this.fitLineRoute();
+  }
+
   setSelectedStop(stopId: string | null): void {
     this.selectedStopId = stopId;
     this.container?.setAttribute('data-selection-motion', this.reducedMotion ? 'instant' : 'standard');
@@ -238,6 +323,74 @@ export class BrowserMapPort implements StopMapPort {
       [[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]],
       { padding: 48, maxZoom: 15, duration: this.reducedMotion ? 0 : 300 }
     );
+  }
+
+  private fitLineRoute(): void {
+    if (!this.map || !this.container) return;
+    const coordinates = routeFeatureCollection(this.lineRoute).features.flatMap((feature) => (
+      feature.geometry.type === 'LineString' ? feature.geometry.coordinates : []
+    ));
+    if (coordinates.length === 0) return;
+    const longitudes = coordinates.map(([longitude]) => longitude);
+    const latitudes = coordinates.map(([, latitude]) => latitude);
+    this.container.setAttribute('data-route-fit-motion', this.reducedMotion ? 'instant' : 'standard');
+    this.map.fitBounds(
+      [[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]],
+      { padding: this.getLineRoutePadding(), maxZoom: 15, duration: this.reducedMotion ? 0 : 300 }
+    );
+  }
+
+  private getLineRoutePadding(): import('maplibre-gl').PaddingOptions {
+    const padding = { top: 48, right: 48, bottom: 48, left: 48 };
+    const panel = document.querySelector<HTMLElement>('.destination-view');
+    if (!panel || !this.container) return padding;
+    const mapBounds = this.container.getBoundingClientRect();
+    const panelBounds = panel.getBoundingClientRect();
+    if (
+      panelBounds.width <= 0
+      || panelBounds.height <= 0
+      || panelBounds.right <= mapBounds.left
+      || panelBounds.left >= mapBounds.right
+      || panelBounds.bottom <= mapBounds.top
+      || panelBounds.top >= mapBounds.bottom
+    ) {
+      return padding;
+    }
+    if (panelBounds.width >= mapBounds.width * 0.8) {
+      if (panelBounds.top <= mapBounds.top + mapBounds.height / 2) {
+        padding.top = Math.min(
+          Math.max(padding.top, panelBounds.bottom - mapBounds.top + 24),
+          mapBounds.height * 0.75
+        );
+      } else {
+        padding.bottom = Math.min(
+          Math.max(padding.bottom, mapBounds.bottom - panelBounds.top + 24),
+          mapBounds.height * 0.75
+        );
+      }
+    } else if (panelBounds.left <= mapBounds.left + mapBounds.width / 2) {
+      padding.left = Math.min(
+        Math.max(padding.left, panelBounds.right - mapBounds.left + 24),
+        mapBounds.width * 0.75
+      );
+    } else {
+      padding.right = Math.min(
+        Math.max(padding.right, mapBounds.right - panelBounds.left + 24),
+        mapBounds.width * 0.75
+      );
+    }
+    return padding;
+  }
+
+  private updateLineRouteAttributes(): void {
+    if (!this.container) return;
+    const source = routeFeatureCollection(this.lineRoute);
+    this.container.dataset.routeLine = this.lineRoute?.lineCode ?? '';
+    this.container.dataset.routeCount = String(source.features.length);
+    this.container.dataset.routeShapes = source.features
+      .map((feature) => String(feature.properties?.['shapeId'] ?? ''))
+      .filter(Boolean)
+      .join(',');
   }
 
   zoomIn(): void {
