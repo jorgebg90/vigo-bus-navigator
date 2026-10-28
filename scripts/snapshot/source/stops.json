@@ -1,0 +1,5 @@
+[
+  {"id":"stop-1001","code":"1001","vitrasaId":"1001","name":"Praza de América","lat":42.231,"lon":-8.722,"lineIds":["l4a"]},
+  {"id":"stop-1002","code":"1002","vitrasaId":"1002","name":"Bouzas","lat":42.223,"lon":-8.743,"lineIds":["l4a"]},
+  {"id":"stop-2001","code":"2001","vitrasaId":null,"name":"Coia","lat":42.218,"lon":-8.735,"lineIds":["l7"]}
+]

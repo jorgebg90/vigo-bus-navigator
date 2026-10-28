@@ -1,0 +1,6 @@
+{
+  "lineId": "l7",
+  "byDayType": {
+    "weekday": {"firstDeparture":390,"lastDeparture":1350,"bands":[{"startMinute":390,"endMinute":1350,"intervalMinutes":15}],"stopIds":["stop-2001"]}
+  }
+}

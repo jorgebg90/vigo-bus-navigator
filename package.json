@@ -1,0 +1,56 @@
+{
+  "name": "vigo-bus-navigator",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "frontend",
+    "worker"
+  ],
+  "scripts": {
+    "dev": "vite --config frontend/vite.config.ts --mode development",
+    "dev:worker": "wrangler dev --local --cwd worker",
+    "dev:worker:live": "wrangler dev --local --cwd worker --var DEPLOYMENT_ENV:development --var UPSTREAM_FIXTURES:false",
+    "build": "vite build --config frontend/vite.config.ts --mode production",
+    "preview": "vite preview --config frontend/vite.config.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p worker/tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "lint": "tsc --noEmit",
+    "lint:openapi": "spectral lint specs/002-realtime-bus-api/contracts/realtime-arrivals.openapi.yaml specs/003-improve-frontend-design/contracts/realtime-api-v4.openapi.yaml specs/004-vigo-jsp-transit-api/contracts/municipal-transit-v5.openapi.yaml",
+    "validate:feature004-contract": "tsx scripts/validate-feature004-contract.ts",
+    "validate:production-artifact": "tsx scripts/validate-production-artifact.ts",
+    "smoke:municipal-live": "tsx scripts/smoke-municipal-live.ts",
+    "test:contract": "vitest run --config worker/vitest.config.ts",
+    "test:load": "vitest run --config worker/vitest.load.config.ts",
+    "size": "size-limit && tsx scripts/check-payload-budget.ts",
+    "snapshot:generate": "tsx scripts/snapshot/generate.ts",
+    "catalog:generate": "tsx scripts/catalog/generate.ts"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.2.5",
+    "maplibre-gl": "^5.6.2"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@cloudflare/workers-types": "^4.20250415.0",
+    "@playwright/test": "^1.55.0",
+    "@size-limit/file": "^11.2.0",
+    "@stoplight/spectral-cli": "^6.15.0",
+    "@types/node": "^22.15.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "ajv": "^8.17.1",
+    "csv-parse": "^7.0.3",
+    "fflate": "^0.8.3",
+    "happy-dom": "^17.6.3",
+    "lighthouse": "^12.8.2",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0",
+    "vite-plugin-pwa": "^1.0.0",
+    "vitest": "^3.2.4",
+    "yaml": "^2.9.1"
+  }
+}

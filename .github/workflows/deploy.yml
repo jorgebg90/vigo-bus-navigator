@@ -1,0 +1,34 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_PROFILE: production
+          VITE_MUNICIPAL_PROFILE: production
+          VITE_BASE_PATH: /vigo-bus-navigator/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy-pages:
+    needs: frontend
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/deploy-pages@v4

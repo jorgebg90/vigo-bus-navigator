@@ -1,0 +1,9 @@
+{
+  "name": "vigo-bus-navigator-worker",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.9.0",
+    "wrangler": "^4.0.0"
+  }
+}

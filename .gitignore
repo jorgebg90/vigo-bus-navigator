@@ -1,5 +1,17 @@
 # macOS
 .DS_Store
+node_modules/
+dist/
+build/
+coverage/
+*.log
+.env*
+!.env.example
+!frontend/.env.development
+.wrangler/
+playwright-report/
+test-results/
+/.github/apk/
 
 # Editor
 .vscode/*
@@ -12,3 +24,7 @@ node_modules/
 # Local env files
 .env
 .env.local
+.idea/
+Thumbs.db
+*.tmp
+*.swp
