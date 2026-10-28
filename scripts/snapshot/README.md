@@ -1,6 +1,14 @@
 # Schedule Snapshot Pipeline
 
-Update the human-readable files under `scripts/snapshot/source/`, run `npm run snapshot:generate`, validate the generated JSON, and review dataset validity dates before committing `worker/src/schedule-data/`. The frontend gets schedule data only through the Worker API; generated schedules are not published as frontend static files.
+Update the human-readable files under `scripts/snapshot/source/`, run
+`npm run snapshot:generate`, validate the generated JSON, and review dataset
+validity dates before committing the generated data under
+`scripts/snapshot/generated/`.
 
-The generated manifest is the freshness label shown in the UI. Snapshot files
-must contain only public schedule data and no user-specific information.
+The generated schedules are a dated, non-exhaustive migration snapshot. They
+are not evidence of live municipal service and must not be presented as a
+current complete timetable. Keep the source inputs and generated artifacts
+until weekday, Saturday, and Sunday/holiday coverage and parity are verified.
+
+Snapshot files contain only public schedule data and no user-specific
+information.

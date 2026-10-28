@@ -18,12 +18,7 @@ test-results/
 !.vscode/extensions.json
 !.vscode/settings.json
 
-# Node (if tooling is added later)
-node_modules/
-
-# Local env files
-.env
-.env.local
+# Local tooling
 .idea/
 Thumbs.db
 *.tmp

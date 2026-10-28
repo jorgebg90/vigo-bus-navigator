@@ -183,11 +183,6 @@ export interface LineRoutePattern {
   stops: Stop[];
 }
 
-export interface LineDetails {
-  timetable?: Timetable;
-  patterns: LineRoutePattern[];
-}
-
 export interface Arrival {
   lineCode: string;
   destination: string;
@@ -211,13 +206,4 @@ export interface UserPreferences {
   language: Language;
   lastLineId?: string;
   recentViews: RecentView[];
-}
-
-export interface DatasetManifest {
-  datasetVersion: string;
-  validFrom: string;
-  validUntil: string;
-  generatedAt: string;
-  holidays: string[];
-  lines: Array<Line & { file: string; size: number; sha: string }>;
 }

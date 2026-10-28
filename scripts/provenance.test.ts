@@ -28,8 +28,7 @@ function files(path: string): string[] {
 describe('current provenance cleanup', () => {
   it('removes old source references from current code, notices, docs, contracts, and tests', () => {
     const currentPaths = [
-      resolve(root, 'worker/src'), resolve(root, 'frontend/src'),
-      resolve(root, 'worker/test'), resolve(root, 'worker/unit'),
+      resolve(root, 'frontend/src'),
       resolve(root, 'frontend/tests'), resolve(root, 'scripts'),
       resolve(root, 'NOTICE'), resolve(root, 'README.md'),
       resolve(root, 'docs/quality.md'), resolve(root, 'docs/harness-charter.md'),

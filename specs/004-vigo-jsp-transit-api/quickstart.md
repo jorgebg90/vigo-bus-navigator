@@ -60,7 +60,7 @@ npm run typecheck
 git diff --check
 ```
 
-Import [the Postman collection](../../postman/vigo-bus-navigator-worker.postman_collection.json)
+Import [the Postman collection](../../postman/vigo-bus-navigator-municipal.postman_collection.json)
 to call the municipal JSP directly. Seven general source actions are enabled
 without candidate parameters; the four candidate actions are separately
 restricted to exact product-owner-approved line-A samples in both live

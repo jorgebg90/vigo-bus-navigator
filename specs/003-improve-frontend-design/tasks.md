@@ -32,7 +32,7 @@
 - [X] T008 [P] Extend `worker/test/contract.test.ts` first (red): an unlocated stop in `GET /stops` and in `GET /lines/{lineCode}` (nested `NetworkStop`) matches v4 with `lat` and `lon` both null; mixed pair never emitted. Needs: T007. Verify: `npm run test:contract` -> red.
 - [X] T009 Update `worker/src/types.ts`, `worker/src/catalog.ts`, `worker/src/index.ts` for nullable coordinates and API version 4.0.0; located stops behave as in v3. Needs: T008. Verify: `npm run test:contract` -> green.
 - [X] T010 [P] Extend `worker/test/stale.test.ts` with boundaries at 29, 30, 299, 300 s (fresh under 30 s; stale only after upstream failure and under 300 s; unavailable at 300 s); record red or green; fix `worker/src/cache.ts` only if red. Verify: `npm run test:contract` -> green.
-- [X] T011 [P] Update `postman/vigo-bus-navigator-worker.postman_collection.json` for v4 null coordinates. Verify: `npx vitest run scripts/openapi-regression.test.ts` -> green; JSON parses (`node -e "JSON.parse(require('fs').readFileSync('postman/vigo-bus-navigator-worker.postman_collection.json'))"`).
+- [X] T011 [P] Update `postman/vigo-bus-navigator-municipal.postman_collection.json` for v4 null coordinates. Verify: `npx vitest run scripts/openapi-regression.test.ts` -> green; JSON parses (`node -e "JSON.parse(require('fs').readFileSync('postman/vigo-bus-navigator-municipal.postman_collection.json'))"`).
 
 ### Frontend domain and application
 

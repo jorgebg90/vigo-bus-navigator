@@ -83,7 +83,7 @@ An explicit, conservative filesystem search was performed for the "APK/base" dec
 
 ## 2. POC reviewed
 
-- `frontend/poc-vigo-jsp.html:1-27` and `frontend/poc-vigo-jsp.js:1-61` — static-only browser harness. Fixed `endpoint = 'https://datos.vigo.org/vci_api_app/api2.jsp'`; builds requests with `{ tipo, id, ttl }` query params for `TRANSPORTE_PARADA_ID` and `TRANSPORTE-ESTIMACION-PARADA` (GET via `URLSearchParams`, and an alternate POST multipart/`FormData` path for the same two actions), `mode:'cors'`, `credentials:'omit'`. No other actions are exercised by this harness; it only supports the two actions above, which matches what `spec.md:26` already documents as POC-tested. Nothing new was learned from the POC code itself beyond what `spec.md` already states; it was read only to confirm the exact request shape (plain `URL.searchParams`, not JSON body) and that credentials are genuinely omitted client-side.
+- The temporary `frontend/poc-vigo-jsp.html` and `frontend/poc-vigo-jsp.js` browser harnesses were removed during repository cleanup after their findings had been recorded here and in the feature specification. The historical harness used the fixed JSP endpoint, `URLSearchParams` GET requests, an exploratory POST multipart path, and omitted credentials; it covered stop detail and arrival estimates only. No current application or CI workflow depended on either file.
 
 ## 3. Live bounded probe results (verified facts)
 

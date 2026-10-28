@@ -1,8 +1,6 @@
 import type {
   Arrival,
-  DatasetManifest,
   Favorite,
-  LineDetails,
   Line,
   NetworkStop,
   ArrivalReceipt,
@@ -24,13 +22,6 @@ import type {
 } from '../domain/types';
 import type { MunicipalFailureReason } from '../domain/municipal-failures';
 import type { MapStop } from '../domain/map-stops';
-
-export interface ScheduleRepository {
-  getManifest(): Promise<DatasetManifest>;
-  listLines(): Promise<Line[]>;
-  listStops(): Promise<Stop[]>;
-  getLineDetails(lineId: string): Promise<LineDetails>;
-}
 
 export type MunicipalOperationResult<T> =
   | { kind: 'success'; value: T }
