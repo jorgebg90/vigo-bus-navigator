@@ -11,6 +11,7 @@ coverage/
 .wrangler/
 playwright-report/
 test-results/
+/.github/apk/
 
 # Editor
 .vscode/*
