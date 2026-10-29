@@ -49,6 +49,21 @@ supported. Rendered elements retain stable pointers to source fields so tests
 can compare source coverage with output. Contract-derived text and attributes
 are HTML-escaped.
 
+## Source-and-Preview Workspace
+
+- On wide screens, the page presents the canonical YAML source in a read-only
+  code pane beside the rendered contract documentation.
+- The source pane is labeled as YAML and read-only; it is not editable,
+  submitted, or executed. The source text is escaped and selectable.
+- The rendered documentation remains complete and generated from the same
+  validated source as the adjacent YAML.
+- On narrow screens, the source and rendered documentation stack vertically.
+  The source pane has bounded height and remains scrollable; the contract
+  content remains directly reachable without page-level horizontal overflow.
+- The visual treatment may take inspiration from Swagger Editor's editor and
+  preview layout, but must not use its branded assets or suggest this is an
+  interactive API or editor.
+
 ## Build and Failure Behavior
 
 - The page is generated deterministically during the static build.
@@ -72,6 +87,8 @@ are HTML-escaped.
 
 - Use semantic document landmarks, ordered headings, meaningful link names, and
   keyboard-operable native controls with visible, unobscured focus.
+- Give the source pane an accessible name and `pre`/`code` structure; preserve
+  selectable source text and readable access on narrow screens.
 - Every rendered operation and schema must be reachable through the document
   structure and assistive technology; controls must expose accessible names and
   state.

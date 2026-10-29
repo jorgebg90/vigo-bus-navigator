@@ -17,8 +17,9 @@ describe('OpenAPI documentation generator', () => {
     try {
       await generateOpenApiDocs({ contractPath: canonicalPath, outputPath: output, distOutputPath: distOutput });
       const html = await readFile(output, 'utf8');
-      const document = parse(await readFile(canonicalPath, 'utf8')) as Record<string, unknown>;
-      expect(html).toBe(renderOpenApiDocument(document));
+      const source = await readFile(canonicalPath, 'utf8');
+      const document = parse(source) as Record<string, unknown>;
+      expect(html).toBe(renderOpenApiDocument(document, source));
       expect(html.length).toBeGreaterThan(0);
     } finally {
       await rm(directory, { recursive: true, force: true });

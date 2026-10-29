@@ -1,7 +1,10 @@
+import { stringify } from 'yaml';
+
 type OpenApiObject = Record<string, unknown>;
 
 const httpMethods = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'] as const;
 const sourcePath = 'specs/004-vigo-jsp-transit-api/contracts/municipal-transit-v5.openapi.yaml';
+const yamlIndent = 2;
 
 function escapeHtml(value: string): string {
   return value
@@ -145,8 +148,12 @@ function renderOperations(document: OpenApiObject): string {
     );
     const operations = entries.filter((entry) => entry.path === path).map(({ method, pointer, operation }) => {
       const operationId = idFor('operation', `${method}-${path}`);
-      return `<article class="operation" id="${escapeHtml(operationId)}" data-contract-pointer="${escapeHtml(pointer)}">
-        <h3>${escapeHtml(`${method.toUpperCase()} ${path}`)}</h3>
+      const summary = typeof operation.summary === 'string'
+        ? `<p class="operation-summary">${escapeHtml(operation.summary)}</p>`
+        : '';
+      return `<article class="operation method-${escapeHtml(method)}" id="${escapeHtml(operationId)}" data-contract-pointer="${escapeHtml(pointer)}">
+        <h3><span class="method-badge">${escapeHtml(method.toUpperCase())}</span><code>${escapeHtml(path)}</code></h3>
+        ${summary}
         ${renderFields(operation, pointer, document)}
       </article>`;
     }).join('');
@@ -180,11 +187,12 @@ function renderSchemas(document: OpenApiObject): string {
   return `<div data-contract-pointer="#/components">${entries}${otherSections}</div>`;
 }
 
-export function renderOpenApiDocument(document: OpenApiObject): string {
+export function renderOpenApiDocument(document: OpenApiObject, sourceText?: string): string {
   const info = document.info as OpenApiObject;
   const operations = operationEntries(document);
   const schemas = schemaEntries(document);
   const infoTitle = typeof info.title === 'string' ? info.title : 'OpenAPI contract';
+  const source = sourceText ?? stringify(document, { indent: yamlIndent });
   const infoPointer = renderFields(info, '#/info', document);
   const rootMetadata = Object.fromEntries(
     Object.entries(document).filter(([key]) => key !== 'info' && key !== 'paths' && key !== 'components')
@@ -197,23 +205,51 @@ export function renderOpenApiDocument(document: OpenApiObject): string {
   <meta name="color-scheme" content="light">
   <title>${escapeHtml(infoTitle)} — OpenAPI documentation</title>
   <style>
-    :root { color-scheme: light; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #332321; background: #fff; line-height: 1.6; }
+    :root { color-scheme: light; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #332321; background: #f3f5f7; line-height: 1.5; }
     * { box-sizing: border-box; }
-    body { margin: 0; overflow-wrap: anywhere; }
-    .page { width: min(100% - 2rem, 76ch); margin-inline: auto; padding-block: 1.5rem 3rem; }
-    a { color: #9b2f3b; text-decoration-thickness: .12em; text-underline-offset: .15em; }
-    a:hover { color: #541723; }
-    a:focus-visible { outline: 3px solid #7d2230; outline-offset: 2px; }
-    .skip-link { position: absolute; inset-inline-start: .5rem; inset-block-start: .5rem; z-index: 1; padding: .65rem .8rem; transform: translateY(-180%); background: #fff; border: 2px solid #7d2230; }
+    body { margin: 0; overflow: hidden; overflow-wrap: anywhere; }
+    a { color: #376e9b; text-decoration-thickness: .1em; text-underline-offset: .15em; }
+    a:hover { color: #164b78; }
+    a:focus-visible, button:focus-visible { outline: 3px solid #9b2f3b; outline-offset: 2px; }
+    .source-pane:focus-visible, .source-code:focus-visible { outline: 3px solid #85b849; outline-offset: -3px; }
+    .skip-link { position: fixed; inset-inline-start: .5rem; inset-block-start: .5rem; z-index: 5; padding: .65rem .8rem; transform: translateY(-180%); background: #fff; border: 2px solid #7d2230; }
     .skip-link:focus { transform: translateY(0); }
+    .app-bar { display: flex; align-items: center; gap: 1rem; min-height: 3.5rem; padding: .45rem 1rem; background: #1b1b1b; color: #fff; border-bottom: 3px solid #85b849; }
+    .brand { color: #fff; font-weight: 700; text-decoration: none; }
+    .app-bar-label { color: #d7d7d7; font-size: .9rem; }
+    .workspace { display: grid; grid-template-columns: minmax(19rem, .88fr) minmax(0, 1.12fr); height: calc(100dvh - 3.5rem); min-height: 0; }
+    .source-pane, .docs-pane { min-width: 0; min-height: 0; overflow: auto; }
+    .source-pane { background: #1e1e1e; color: #d4d4d4; border-right: 1px solid #343434; }
+    .pane-heading { position: sticky; inset-block-start: 0; z-index: 2; display: flex; justify-content: space-between; gap: 1rem; align-items: center; margin: 0; padding: .75rem 1rem; color: #f4f4f4; background: #252526; border-bottom: 1px solid #3c3c3c; font-size: .9rem; }
+    .pane-heading small { color: #a7a7a7; font-weight: 400; }
+    .source-code { margin: 0; padding: 1rem 1.25rem 2rem; color: #d4d4d4; font: .82rem/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2; white-space: pre; overflow-wrap: normal; }
+    .docs-pane { background: #fff; }
+    .docs-page { max-width: 68rem; margin-inline: auto; padding: 1.25rem clamp(1rem, 3vw, 2.25rem) 3rem; }
+    .docs-intro { margin: .4rem 0 1.25rem; color: #4b5560; }
+    .contract-info { padding: .25rem .9rem; border: 1px solid #d5d9de; background: #f8fafb; }
     header, nav, section, article { min-width: 0; }
-    header { border-bottom: 1px solid #8a6f6b; margin-bottom: 1.5rem; padding-bottom: 1rem; }
-    nav { border: 1px solid #8a6f6b; padding: .75rem 1rem; margin-block: 1.5rem; }
-    nav ul { list-style: none; padding: 0; margin: .25rem 0 1rem; }
-    .index-heading { margin-block: .75rem .25rem; font-weight: 650; }
-    nav li { margin-block: .2rem; }
-    nav a, .home-link, .contract-value a { display: inline-block; min-height: 44px; padding: .55rem .4rem; }
-    .path-group, .operation, .schema { border-top: 1px solid #8a6f6b; margin-block: 1.25rem; padding-top: .75rem; }
+    .docs-header { margin-bottom: 1rem; }
+    nav { border: 1px solid #d5d9de; border-radius: .25rem; padding: .7rem 1rem; margin-block: 1rem; background: #f8fafb; }
+    nav h2 { margin: .1rem 0 .4rem; font-size: 1rem; }
+    nav ul { display: flex; flex-wrap: wrap; gap: .25rem .65rem; list-style: none; padding: 0; margin: .15rem 0 .5rem; }
+    .index-heading { margin-block: .5rem .15rem; font-weight: 650; }
+    nav li { min-width: 0; }
+    nav a, .brand, .contract-value a { display: inline-block; min-height: 44px; padding: .55rem .4rem; }
+    .path-group { margin-block: 1rem; }
+    .operation, .schema { border: 1px solid #c8d7e2; border-radius: .25rem; margin-block: .7rem; background: #fbfcfd; overflow: clip; }
+    .operation h3 { display: flex; align-items: center; gap: .8rem; margin: 0; padding: .75rem .85rem; background: #f1f7fa; border-bottom: 1px solid #c8d7e2; }
+    .operation h3 code { font-size: 1rem; }
+    .operation-summary { margin: .6rem .9rem; color: #42505b; }
+    .method-badge { flex: 0 0 4.25rem; padding: .2rem .35rem; border-radius: .2rem; text-align: center; background: #61affe; color: #102a3c; font: 700 .78rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .method-post .method-badge { background: #49cc90; }
+    .method-put .method-badge { background: #fca130; color: #32220d; }
+    .method-delete .method-badge { background: #f93e3e; color: #fff; }
+    .method-patch .method-badge { background: #50e3c2; }
+    .method-head .method-badge, .method-options .method-badge { background: #9012fe; color: #fff; }
+    .operation > .fields, .schema > .fields, .schema > h3 { margin-inline: .9rem; }
+    .path-heading { display: none; }
+    .schema { padding: .2rem .9rem .8rem; }
+    .schema h3 { margin-block: .75rem; }
     .fields { margin: 0; }
     .field { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); gap: .25rem 1rem; border-bottom: 1px solid #e6dddb; padding-block: .55rem; }
     .field > dt, .field > dd { min-width: 0; overflow-wrap: anywhere; }
@@ -223,24 +259,49 @@ export function renderOpenApiDocument(document: OpenApiObject): string {
     .values { padding-inline-start: 1.5rem; }
     .contract-value { white-space: pre-wrap; overflow-wrap: anywhere; }
     h1, h2, h3, h4 { line-height: 1.25; overflow-wrap: anywhere; }
-    h1 { font-size: clamp(1.7rem, 4vw, 2.4rem); }
-    h2 { margin-top: 2rem; }
-    h3 { margin-top: 1.25rem; }
-    footer { border-top: 1px solid #8a6f6b; margin-top: 2rem; padding-top: 1rem; color: #5a4947; }
-    @media (max-width: 36rem) { .page { width: min(100% - 1.25rem, 76ch); padding-top: .75rem; } .field { grid-template-columns: minmax(0, 1fr); gap: .1rem; } }
+    h1 { margin-block: .5rem; font-size: clamp(1.5rem, 3vw, 2rem); }
+    h2 { margin-top: 1.5rem; }
+    h3 { margin-top: .9rem; }
+    footer { border-top: 1px solid #d5d9de; margin-top: 2rem; padding-top: 1rem; color: #5a4947; }
+    @media (max-width: 58rem) {
+      body { overflow: auto; }
+      .workspace { grid-template-columns: minmax(0, 1fr); height: auto; }
+      .source-pane, .docs-pane { overflow: visible; }
+      .source-pane { max-height: 42vh; border-right: 0; border-bottom: 2px solid #343434; }
+      .source-code { max-height: calc(42vh - 3rem); overflow: auto; }
+      .docs-page { padding-top: 1rem; }
+    }
+    @media (max-width: 36rem) {
+      .app-bar { min-height: 3.25rem; }
+      .app-bar-label { font-size: .8rem; }
+      .source-pane { max-height: 35vh; }
+      .source-code { max-height: calc(35vh - 3rem); padding-inline: .8rem; }
+      .workspace { min-height: calc(100dvh - 3.25rem); }
+      .field { grid-template-columns: minmax(0, 1fr); gap: .1rem; }
+      .operation h3 { align-items: flex-start; gap: .5rem; }
+      .method-badge { flex-basis: 3.8rem; }
+    }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
   </style>
 </head>
 <body>
-  <a class="skip-link" href="#contract-content">Skip to contract content</a>
-  <div class="page">
-    <header>
-      <a class="home-link" href="../../">Vigo Bus Navigator</a>
-      <p>Static documentation generated from the canonical municipal transit contract. This page documents a source contract; it is not a hosted API, backend, or transit proxy.</p>
-    </header>
-    <main id="contract-content">
+  <a class="skip-link" href="#contract-content">Skip to rendered documentation</a>
+  <header class="app-bar">
+    <a class="brand" href="../../">Vigo Bus Navigator</a>
+    <span class="app-bar-label">OpenAPI Editor</span>
+  </header>
+  <div class="workspace">
+    <aside class="source-pane" aria-label="OpenAPI source, read only" tabindex="0">
+      <div class="pane-heading"><strong>Source</strong><small>YAML · read only</small></div>
+      <pre class="source-code" tabindex="0" aria-label="Canonical OpenAPI YAML"><code>${escapeHtml(source)}</code></pre>
+    </aside>
+    <main class="docs-pane" id="contract-content">
+      <div class="docs-page">
+      <header class="docs-header">
       <h1>Municipal transit API contract</h1>
-      <section aria-labelledby="contract-info-heading">
+      <p class="docs-intro">Static documentation generated from the canonical municipal transit contract. This page documents a source contract; it is not a hosted API, backend, or transit proxy.</p>
+      </header>
+      <section class="contract-info" aria-labelledby="contract-info-heading">
         <h2 id="contract-info-heading">Contract information</h2>
         ${infoPointer}
         ${Object.keys(rootMetadata).length ? `<h3>Contract metadata and extensions</h3>${renderFields(rootMetadata, '#', document)}` : ''}
@@ -254,11 +315,12 @@ export function renderOpenApiDocument(document: OpenApiObject): string {
         <h2 id="schemas-heading">Component schemas</h2>
         ${renderSchemas(document)}
       </section>
-    </main>
-    <footer>
+      <footer>
       <p>Canonical source: <code>${escapeHtml(sourcePath)}</code></p>
       <p><a href="../../">Return to Vigo Bus Navigator</a></p>
-    </footer>
+      </footer>
+      </div>
+    </main>
   </div>
 </body>
 </html>
