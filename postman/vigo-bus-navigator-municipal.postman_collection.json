@@ -1,0 +1,301 @@
+{
+  "info": {
+    "name": "Vigo Bus Navigator - Municipal JSP",
+    "description": "Final, ordered Postman requests for municipal JSP actions enabled by the application. Includes the eight general actions, online schedule/geometry/trip-stop requests using identifiers from returned schedule rows, and the one restricted line-stop mapping (municipal stop 2789, line A, min=0). No exploratory or unapproved requests are included. Postman does not validate browser CORS behavior.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "endpoint",
+      "value": "https://datos.vigo.org/vci_api_app/api2.jsp",
+      "type": "string"
+    },
+    {
+      "key": "stopId",
+      "value": "2789",
+      "type": "string"
+    },
+    {
+      "key": "vitrasaId",
+      "value": "90",
+      "type": "string"
+    },
+    {
+      "key": "lineCode",
+      "value": "A",
+      "type": "string"
+    },
+    {
+      "key": "dayCode",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "shapeId",
+      "value": "Route_1005",
+      "type": "string"
+    },
+    {
+      "key": "tripId",
+      "value": "A  02LP000_008002_4",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Catalogs, stops and arrivals",
+      "description": "Eight generally enabled source actions for local-live and production. Use municipal stop IDs and Vitrasa IDs only for their documented, distinct purposes.",
+      "item": [
+        {
+          "name": "01 - GET - Lines catalog (Spanish / English locale)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{endpoint}}?tipo=TRANSPORTE_LINEAS_ES"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns a JSON line catalog', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - GET - Lines catalog (Galician locale)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{endpoint}}?tipo=TRANSPORTE_LINEAS_GA"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns a JSON line catalog', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - GET - Line service metadata (Spanish)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{endpoint}}?tipo=TRANSPORTE_LINEAS_SERVICIOS_ES"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns JSON service metadata', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - GET - Line service metadata (Galician)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{endpoint}}?tipo=TRANSPORTE_LINEAS_SERVICIOS_GA"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns JSON service metadata', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - GET - Stop detail by Vitrasa ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{endpoint}}?tipo=TRANSPORTE_PARADA_ID&id={{vitrasaId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns JSON stop detail', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - GET - Lines serving a municipal stop",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{endpoint}}?tipo=TRANSPORTE_LINEAS_PARADA&id={{stopId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns JSON serving lines', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 - GET - Online stop catalog (all stops)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Official-app stop list used for stop search. stop_id is the municipal code, id is the Vitrasa ID, lineas lists public line codes.",
+            "url": "{{endpoint}}?tipo=TRANSPORTE_PARADAS"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns the online stop catalog', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "  pm.expect(pm.response.json().length).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 - GET - Arrivals by Vitrasa ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{endpoint}}?tipo=TRANSPORTE-ESTIMACION-PARADA&id={{vitrasaId}}&ttl=5"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns JSON arrivals payload', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Online schedules and route data",
+      "description": "These three requests are enabled for public line codes and schedule-derived trip_id/shape_id values. Start with a schedule request, then use identifiers from its returned rows for route geometry and trip stops.",
+      "item": [
+        {
+          "name": "09 - GET - Schedule by public line code",
+          "request": {
+            "method": "GET",
+            "description": "Use the public line code (for example A, C1, 4C) as id. The app keeps every returned row like the official app; trip_id prefixes are internal block codes, not line identity. Departure times are separated by ', '.",
+            "header": [],
+            "url": "{{endpoint}}?tipo=TRANSPORTE_LINEA_HORARIOS_EXTEND&id={{lineCode}}&dia={{dayCode}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('returns schedule rows', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 - GET - Route geometry by schedule shape_id",
+          "request": {
+            "method": "GET",
+            "description": "Use a shape_id from a schedule row. The app draws the shape of the first representative trip.",
+            "header": [],
+            "url": "{{endpoint}}?tipo=TRANSPORTE_LINEA_GEOJSON&id={{shapeId}}"
+          }
+        },
+        {
+          "name": "11 - GET - Trip stops by schedule trip_id",
+          "request": {
+            "method": "GET",
+            "description": "Use a trip_id from a schedule row. The app requests one representative trip per direction (active first, then most departures).",
+            "header": [],
+            "url": "{{endpoint}}?tipo=TRANSPORTE_PARADAS_TRIP&id={{tripId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Restricted line-stop detail",
+      "description": "This request is enabled only for municipal stop 2789, public line A, and min=0 in local-live and production. Do not change these parameters; other mappings are not enabled.",
+      "item": [
+        {
+          "name": "12 - GET - Stop 2789 / line A / min 0",
+          "request": {
+            "method": "GET",
+            "description": "Only this exact approved mapping is enabled. The application does not expose a configurable min threshold.",
+            "header": [],
+            "url": "{{endpoint}}?tipo=TRANSPORTE_LINEA_INFO_PARADA&stop_id=2789&linea=A&min=0"
+          }
+        }
+      ]
+    }
+  ]
+}

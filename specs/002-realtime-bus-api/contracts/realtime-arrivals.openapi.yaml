@@ -1,0 +1,510 @@
+openapi: 3.1.0
+x-superseding-correction: >-
+  Superseding correction (2026-10-26): Feature 003 uses the fixed public Vitrasa InfoBus source and Vigo municipal/GTFS catalog data. The planned dependency was not adopted. Current normalization is independently authored from the source contract and observed outputs; this artifact records the earlier feature-002 plan only.
+info:
+  title: Vigo Bus Navigator — Real-Time Arrivals API
+  version: 3.0.0
+  description: >-
+    The official Vigo network catalog and real-time arrival estimates for a
+    bus stop, served by the Cloudflare Worker edge service. The catalog is
+    generated from the municipal stop data, GTFS feed, and line GeoJSON.
+    Arrivals use the Vitrasa stop identifier from that catalog. The
+    integration is based on the code of VigoBusAPI
+    (https://github.com/David-Lor/VigoBusAPI, Apache-2.0) for normalization.
+    Live arrivals are adapted from the fixed public Vitrasa InfoBus WebForms
+    page; pagination and source session state remain internal to the Worker.
+    The browser-facing arrivals schema is unchanged. Supersedes v1 stop-arrivals.openapi.yaml (REST→SOAP
+    proxy, never deployed). Contract-first per constitution Principle V:
+    frontend client and Worker MUST both conform; breaking changes require a
+    version bump and G3-gate review.
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+  contact:
+    name: Vigo Bus Navigator
+servers:
+  - url: https://vigo-bus-proxy.example.workers.dev
+    description: Production Cloudflare Worker
+  - url: http://localhost:8787
+    description: Local/development (wrangler dev --local, fixture or live mode)
+tags:
+  - name: catalog
+    description: Official versioned line and stop catalog
+  - name: arrivals
+    description: Real-time stop arrival estimates
+  - name: meta
+    description: Service metadata
+paths:
+  /lines:
+    get:
+      tags: [catalog]
+      operationId: listLines
+      summary: List official bus lines
+      description: >-
+        Returns line metadata from the versioned official network snapshot
+        generated from Vigo open data.
+      responses:
+        '200':
+          description: Official line catalog and snapshot metadata.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: 'public, max-age=86400'
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+                enum: ['*']
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [datasetVersion, generatedAt, scheduleMetadata, lines]
+                properties:
+                  datasetVersion:
+                    type: string
+                  generatedAt:
+                    type: string
+                    format: date-time
+                  scheduleMetadata:
+                    $ref: '#/components/schemas/ScheduleManifest'
+                  lines:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NetworkLineSummary'
+  /lines/{lineCode}:
+    get:
+      tags: [catalog]
+      operationId: getLine
+      summary: Get a line, ordered GTFS route patterns, and any published timetable
+      parameters:
+        - name: lineCode
+          in: path
+          required: true
+          schema:
+            type: string
+          example: 4A
+      responses:
+        '200':
+          description: Official line detail with ordered stops per GTFS pattern and an optional published timetable.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: 'public, max-age=86400'
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+                enum: ['*']
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkLineDetail'
+        '404':
+          description: Unknown line code.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /stops:
+    get:
+      tags: [catalog]
+      operationId: listStops
+      summary: List stops in the official Vigo network catalog
+      description: >-
+        Each stop includes both its municipal GTFS identifier and its Vitrasa
+        identifier. They are distinct namespaces; Vitrasa identifiers are used
+        for live arrival lookups.
+      responses:
+        '200':
+          description: Official stop catalog and snapshot metadata.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [datasetVersion, generatedAt, stops]
+                properties:
+                  datasetVersion:
+                    type: string
+                  generatedAt:
+                    type: string
+                    format: date-time
+                  stops:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NetworkStop'
+  /stops/{stopCode}/arrivals:
+    get:
+      tags: [arrivals]
+      operationId: getStopArrivalsByCode
+      summary: Get live arrivals for a stop
+      parameters:
+        - name: stopCode
+          in: path
+          required: true
+          description: >-
+            Numeric Vitrasa stop identifier, commonly obtained from the
+            catalog's vitrasaId field. Catalog membership is not required;
+            the Worker forwards this identifier unchanged to the fixed source.
+          schema:
+            type: string
+            pattern: '^[0-9]{1,6}$'
+          example: '1001'
+      responses:
+        '200':
+          description: >-
+            Arrival estimates with an explicit freshness status. An empty
+            `arrivals` array with `dataStatus: "empty"` means no upcoming
+            buses, not an error. A `dataStatus: "stale"` payload is the last
+            known result from before an upstream failure; `generatedAt` is
+            the original store time and is never relabeled as current.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: ['public, max-age=30', 'no-store']
+              description: >-
+                `public, max-age=30` for `current` and `empty` responses;
+                `no-store` for stale responses.
+            Age:
+              schema:
+                type: integer
+                minimum: 0
+              description: >-
+                Present on stale responses only; seconds elapsed since the
+                last-known result was stored, below the 300 second maximum.
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+                enum: ['*']
+            x-edge-stored-at:
+              schema:
+                type: string
+                format: date-time
+              description: Server-side store timestamp for deterministic TTL checks.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArrivalsResponse'
+        '400':
+          description: Invalid stop code.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The stop does not exist upstream.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed — only GET and OPTIONS are supported.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Upstream rate limit reached without a last-known result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Upstream failure without a last-known result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: No current or cached arrival data is available.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '504':
+          description: Upstream timeout without a last-known result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    options:
+      tags: [arrivals]
+      operationId: preflightStopArrivals
+      summary: CORS preflight
+      parameters:
+        - name: stopCode
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^\d{1,6}$'
+      responses:
+        '204':
+          description: Preflight accepted.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+                enum: ['*']
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+                example: 'GET, OPTIONS'
+  /health:
+    get:
+      tags: [meta]
+      operationId: getHealth
+      summary: Liveness probe
+      responses:
+        '200':
+          description: The Worker is running.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+                enum: ['*']
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+              example:
+                status: ok
+components:
+  schemas:
+    NetworkLineSummary:
+      type: object
+      required: [id, code, name, color, stopCount, patternCount]
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        color:
+          type: [string, 'null']
+        stopCount:
+          type: integer
+          minimum: 0
+        patternCount:
+          type: integer
+          minimum: 0
+    NetworkLineDetail:
+      allOf:
+        - $ref: '#/components/schemas/NetworkLineSummary'
+        - type: object
+          required: [patterns]
+          properties:
+            patterns:
+              type: array
+              items:
+                type: object
+                required: [id, headsign, stopIds, stops]
+                properties:
+                  id:
+                    type: string
+                  headsign:
+                    type: string
+                  stopIds:
+                    type: array
+                    items:
+                      type: string
+                  stops:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NetworkStop'
+            timetable:
+              $ref: '#/components/schemas/Timetable'
+              description: Present only when a timetable is published for this line.
+    ScheduleManifest:
+      type: object
+      required: [datasetVersion, validFrom, validUntil, generatedAt, holidays, lines]
+      properties:
+        datasetVersion:
+          type: string
+        validFrom:
+          type: string
+          format: date
+        validUntil:
+          type: string
+          format: date
+        generatedAt:
+          type: string
+          format: date-time
+        holidays:
+          type: array
+          items:
+            type: string
+            format: date
+        lines:
+          type: array
+          items:
+            type: object
+            required: [id, code, name, color, file, size, sha]
+            properties:
+              id:
+                type: string
+              code:
+                type: string
+              name:
+                type: string
+              color:
+                type: string
+              file:
+                type: string
+              size:
+                type: integer
+                minimum: 0
+              sha:
+                type: string
+    Timetable:
+      type: object
+      required: [lineId, byDayType]
+      properties:
+        lineId:
+          type: string
+        byDayType:
+          type: object
+          properties:
+            weekday:
+              $ref: '#/components/schemas/DayService'
+            saturday:
+              $ref: '#/components/schemas/DayService'
+            sunday_holiday:
+              $ref: '#/components/schemas/DayService'
+    DayService:
+      type: object
+      required: [firstDeparture, lastDeparture, bands, stopIds]
+      properties:
+        firstDeparture:
+          type: integer
+          minimum: 0
+          maximum: 1439
+        lastDeparture:
+          type: integer
+          minimum: 0
+          maximum: 1439
+        bands:
+          type: array
+          items:
+            type: object
+            required: [startMinute, endMinute, intervalMinutes]
+            properties:
+              startMinute:
+                type: integer
+                minimum: 0
+                maximum: 1439
+              endMinute:
+                type: integer
+                minimum: 0
+                maximum: 1439
+              intervalMinutes:
+                type: integer
+                minimum: 1
+        stopIds:
+          type: array
+          items:
+            type: string
+    NetworkStop:
+      type: object
+      required: [id, code, municipalCode, vitrasaId, name, lat, lon, lineIds]
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+          description: Catalog stop code. Use `vitrasaId` for live-arrivals requests; do not substitute this field when `vitrasaId` is null.
+        municipalCode:
+          type: [string, 'null']
+          description: GTFS stop_id used to join schedules and municipal stop data.
+        vitrasaId:
+          type: [string, 'null']
+          description: Numeric Vitrasa identifier used unchanged by the live-arrivals endpoint; null means live arrivals are unavailable for this stop.
+        name:
+          type: string
+        lat:
+          type: number
+          minimum: 42.10
+          maximum: 42.32
+        lon:
+          type: number
+          minimum: -8.85
+          maximum: -8.60
+        lineIds:
+          type: array
+          items:
+            type: string
+    Arrival:
+      type: object
+      required: [lineCode, destination, minutes, eta]
+      properties:
+        lineCode:
+          type: string
+          minLength: 1
+          description: Complete public line code as displayed by the Vitrasa stop page.
+          example: 4A
+        destination:
+          type: string
+          minLength: 1
+          description: Route/destination after mojibake repair.
+          example: Praza de América
+        minutes:
+          type: integer
+          minimum: 0
+          maximum: 1440
+          example: 4
+        eta:
+          type: string
+          format: date-time
+          description: generatedAt + minutes, UTC.
+          example: '2026-10-25T18:34:00Z'
+    DataStatus:
+      type: string
+      enum: [current, stale, empty]
+      description: >-
+        `current`: freshly fetched. `stale`: last known result served during
+        an upstream failure; `generatedAt` is the original store time.
+        `empty`: upstream confirmed no upcoming buses.
+    ArrivalsResponse:
+      type: object
+      required: [stopId, generatedAt, dataStatus, arrivals]
+      properties:
+        stopId:
+          type: string
+          pattern: '^\d{1,6}$'
+        generatedAt:
+          type: string
+          format: date-time
+        dataStatus:
+          $ref: '#/components/schemas/DataStatus'
+        arrivals:
+          type: array
+          items:
+            $ref: '#/components/schemas/Arrival'
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - VALIDATION_ERROR
+                - STOP_NOT_EXIST
+                - NOT_FOUND
+                - METHOD_NOT_ALLOWED
+                - RATE_LIMITED
+                - UPSTREAM_ERROR
+                - STALE_UNAVAILABLE
+                - UPSTREAM_TIMEOUT
+            message:
+              type: string

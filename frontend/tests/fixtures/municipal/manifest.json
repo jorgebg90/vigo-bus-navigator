@@ -1,0 +1,100 @@
+{
+  "fixtures": [
+    {
+      "action": "TRANSPORTE_LINEAS_ES",
+      "classification": "synthetic",
+      "file": "line-catalog-es.json",
+      "encoding": "UTF-8",
+      "sha256": "5c9391fd56f2e74064d1421e0a784774631de6118fcbd73fccfd118804f05a57",
+      "evidence": "Synthetic contract-shaped example; not provider evidence."
+    },
+    {
+      "action": "TRANSPORTE_LINEAS_GA",
+      "classification": "synthetic",
+      "file": "line-catalog-ga.json",
+      "encoding": "UTF-8",
+      "sha256": "5c9391fd56f2e74064d1421e0a784774631de6118fcbd73fccfd118804f05a57",
+      "evidence": "Synthetic contract-shaped example; not provider evidence."
+    },
+    {
+      "action": "TRANSPORTE_LINEAS_SERVICIOS_ES",
+      "classification": "synthetic",
+      "file": "services-es.json",
+      "encoding": "UTF-8",
+      "sha256": "ed5049222feaad84ef676a597c9d08580e2df1e4b9c5f5b38e0c9a9ce4be7ef4",
+      "evidence": "Synthetic contract-shaped example; not provider evidence."
+    },
+    {
+      "action": "TRANSPORTE_LINEAS_SERVICIOS_GA",
+      "classification": "synthetic",
+      "file": "services-ga.json",
+      "encoding": "UTF-8",
+      "sha256": "ed5049222feaad84ef676a597c9d08580e2df1e4b9c5f5b38e0c9a9ce4be7ef4",
+      "evidence": "Synthetic contract-shaped example; not provider evidence."
+    },
+    {
+      "action": "TRANSPORTE_PARADA_ID",
+      "classification": "synthetic",
+      "file": "stop-detail.json",
+      "encoding": "UTF-8",
+      "sha256": "fe2dde2c7a4017221a049b556bf3197dcab5f3076c437e674b50e79647d8d890",
+      "evidence": "Synthetic contract-shaped example; not provider evidence."
+    },
+    {
+      "action": "TRANSPORTE_LINEAS_PARADA",
+      "classification": "synthetic",
+      "file": "serving-lines.json",
+      "encoding": "UTF-8",
+      "sha256": "c2eaaa5f4f2b4ea177e38420cddfe304d3ca52220b48fe9e120142ca885c2676",
+      "evidence": "Synthetic contract-shaped example; not provider evidence."
+    },
+    {
+      "action": "TRANSPORTE_PARADAS",
+      "classification": "synthetic",
+      "file": "stop-catalog.json",
+      "encoding": "UTF-8",
+      "sha256": "3a81a27753d0330fbd6f829c4a941f50ff08ee33021e4ee08fc229edf53559e8",
+      "evidence": "Synthetic contract-shaped example; not provider evidence."
+    },
+    {
+      "action": "TRANSPORTE-ESTIMACION-PARADA",
+      "classification": "synthetic",
+      "file": "arrivals.json",
+      "encoding": "UTF-8",
+      "sha256": "93569c876fc2af416938a41bb4bb91591eec05aba4de71731c095201e6335b85",
+      "evidence": "Synthetic contract-shaped example; not provider evidence."
+    },
+    {
+      "action": "TRANSPORTE_LINEA_HORARIOS_EXTEND",
+      "classification": "synthetic",
+      "file": "schedule.json",
+      "encoding": "UTF-8",
+      "sha256": "035f6e956f1d66fd567e29de82fcd419c79807e136333e7c2500eae3c1ae17c0",
+      "evidence": "Synthetic contract-shaped example; not provider evidence."
+    },
+    {
+      "action": "TRANSPORTE_LINEA_GEOJSON",
+      "classification": "synthetic",
+      "file": "route-geometry.json",
+      "encoding": "UTF-8",
+      "sha256": "ef90f4fe902ad9650b79abb479b4f10cbb70746b24f4a821743feb5868ff5635",
+      "evidence": "Synthetic contract-shaped example; not provider evidence."
+    },
+    {
+      "action": "TRANSPORTE_PARADAS_TRIP",
+      "classification": "synthetic",
+      "file": "trip-stops.json",
+      "encoding": "UTF-8",
+      "sha256": "05af951623d59efcd41e77cb4c3f331de94ac7a662c20be3b345d1b853cdcc04",
+      "evidence": "Synthetic contract-shaped example; not provider evidence."
+    },
+    {
+      "action": "TRANSPORTE_LINEA_INFO_PARADA",
+      "classification": "synthetic",
+      "file": "line-stop-detail.json",
+      "encoding": "UTF-8",
+      "sha256": "426c23a93e325eace0a1cff0094d58ec0f9685f37eaac04c9fca85bf85184204",
+      "evidence": "Synthetic contract-shaped example; not provider evidence."
+    }
+  ]
+}
