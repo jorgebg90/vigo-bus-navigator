@@ -62,11 +62,15 @@ describe('OpenAPI static HTML template', () => {
   it('renders semantic navigation, operation and schema content, bodies and responses', () => {
     const html = renderOpenApiDocument(fixture);
 
-    expect(html).toContain('<main id="contract-content">');
+    expect(html).toContain('<main class="docs-pane" id="contract-content">');
     expect(html).toContain('<nav aria-label="On this page">');
-    expect(html).toContain('Skip to contract content');
+    expect(html).toContain('Skip to rendered documentation');
+    expect(html).toContain('YAML · read only');
+    expect(html).toContain('Transit &lt;Contract&gt;');
     expect(html).toContain('GET /routes/{routeId}');
     expect(html).toContain('POST /routes/{routeId}');
+    expect(html).toContain('class="method-badge">GET</span><code>/routes/{routeId}</code>');
+    expect(html).toContain('Read one route');
     expect(html).toContain('Parameters');
     expect(html).toContain('Request body');
     expect(html).toContain('Responses');
@@ -103,6 +107,16 @@ describe('OpenAPI static HTML template', () => {
     expect(html).toContain('Route &lt;details&gt;');
     expect(html).toContain('visible &amp; safe');
     expect(html).not.toContain('<title>Transit <Contract>');
+  });
+
+  it('renders the original contract source read-only and escapes its contents', () => {
+    const source = `info:
+  title: "<unsafe>"
+`;
+    const html = renderOpenApiDocument(fixture, source);
+
+    expect(html).toContain('<pre class="source-code" tabindex="0" aria-label="Canonical OpenAPI YAML"><code>info:\n  title: &quot;&lt;unsafe&gt;&quot;\n</code></pre>');
+    expect(html).not.toContain('<unsafe>');
   });
 
   it('produces byte-for-byte deterministic output', () => {

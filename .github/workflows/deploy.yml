@@ -4,6 +4,13 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
 jobs:
   frontend:
     runs-on: ubuntu-latest
@@ -14,21 +21,69 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run lint:openapi
+      - run: npm run validate:feature004-contract
       - run: npm run build
         env:
           VITE_PROFILE: production
           VITE_MUNICIPAL_PROFILE: production
           VITE_BASE_PATH: /vigo-bus-navigator/
+      - run: npm run validate:production-artifact
       - uses: actions/upload-pages-artifact@v3
+        id: pages-artifact
         with:
           path: dist
+      - name: Summarize frontend release checks
+        if: always()
+        run: |
+          {
+            echo "## GitHub Pages build"
+            echo
+            echo "- Source revision: \`${GITHUB_SHA}\`"
+            echo "- Build and validation: \`${FRONTEND_OUTCOME}\`"
+            echo "- Pages artifact upload: \`${ARTIFACT_OUTCOME}\`"
+            if [ "$FRONTEND_OUTCOME" != "success" ]; then
+              echo "- Failure details: inspect the failed validation, build, or artifact-upload step in this job."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          FRONTEND_OUTCOME: ${{ job.status }}
+          ARTIFACT_OUTCOME: ${{ steps.pages-artifact.outcome || 'not-run' }}
   deploy-pages:
     needs: frontend
     permissions:
+      contents: read
       pages: write
       id-token: write
     environment:
       name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/deploy-pages@v4
+        id: deployment
+      - name: Verify published routes
+        id: verify-pages
+        run: npx tsx scripts/pages-smoke-check.ts
+        env:
+          PAGES_SITE_URL: ${{ steps.deployment.outputs.page_url }}
+      - name: Summarize deployment
+        if: always()
+        run: |
+          {
+            echo "## GitHub Pages deployment"
+            echo
+            echo "- Source revision: \`${GITHUB_SHA}\`"
+            echo "- Deployment action: \`${DEPLOYMENT_OUTCOME}\`"
+            echo "- Route verification: \`${VERIFICATION_OUTCOME}\`"
+            if [ -n "$PAGES_SITE_URL" ]; then
+              echo "- Published site: [$PAGES_SITE_URL]($PAGES_SITE_URL)"
+            else
+              echo "- Published site URL: unavailable"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          DEPLOYMENT_OUTCOME: ${{ steps.deployment.outcome || 'not-run' }}
+          VERIFICATION_OUTCOME: ${{ steps.verify-pages.outcome || 'not-run' }}
+          PAGES_SITE_URL: ${{ steps.deployment.outputs.page_url }}

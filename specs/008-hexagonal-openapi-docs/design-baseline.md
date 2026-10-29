@@ -1,7 +1,7 @@
 # G3 UX Design Baseline — Feature 008
 
 **Date**: 2026-10-28
-**Status**: Design baseline for review
+**Status**: Revised visual baseline — static source-and-preview workspace
 **Scope**: Static HTML OpenAPI documentation page and README information
 hierarchy. This is a reviewable experience specification, not implementation
 code.
@@ -36,29 +36,42 @@ request, remote script, font, CDN, tracking, or user-data collection.
 
 ### Information hierarchy and page outline
 
-Use one document title and one visible `h1`. Keep the page a single readable
-document; the operation/schema indexes are in-page navigation, not a second
-application shell.
+Use one document title and one visible `h1`. On wide screens, present a
+Swagger Editor-inspired split workspace: a read-only canonical YAML source pane
+on the left and the rendered contract documentation on the right. This is a
+visual reference only; do not copy the editor's branded assets or imply that
+the source can be edited or submitted. At narrow widths, stack the source pane
+above the rendered documentation and constrain its height so it does not
+displace the contract content.
 
 ```text
-Skip to contract content
-Header: Vigo Bus Navigator / OpenAPI documentation
-  Breadcrumb or home link (base-path aware)
-Main
-  h1: Municipal transit API contract
-  Intro: canonical contract, purpose, and no-backend boundary
-  Contract metadata, when defined by the source
-  On this page
+Skip to rendered documentation
+Header: Vigo Bus Navigator / OpenAPI Editor
+Workspace
+  Read-only source pane
+    Canonical OpenAPI YAML
+  Rendered documentation pane
+    h1: Municipal transit API contract
+    Intro: canonical contract, purpose, and no-backend boundary
+    Contract metadata, when defined by the source
+    On this page
+      Operations
+        links to contract-defined operation entries
+      Schemas
+        links to contract-defined component schemas
     Operations
-      links to contract-defined operation entries
+      operation entry for each source operation
     Schemas
-      links to contract-defined component schemas
-  Operations
-    operation entry for each source operation
-  Schemas
-    component schema entry for each source component
-Footer: canonical source reference and project link
+      component schema entry for each source component
+    Footer: canonical source reference and project link
 ```
+
+Label the source pane **“YAML · read only”**. Render the canonical source as
+escaped text in a selectable, wrapping monospace code block; never use an
+editable control or execute/submit source from the page. The source panel and
+rendered documentation are independently scrollable on wide screens. On small
+screens, source text remains available without trapping keyboard focus or
+causing page-level horizontal overflow.
 
 The intro identifies this as documentation of the currently supported
 municipal transit contract. Show contract-derived title/version or other
@@ -109,7 +122,8 @@ solely to style text.
 
 ### Controls and navigation
 
-- Include a first-focusable “Skip to contract content” link, visible on focus.
+- Include a first-focusable “Skip to rendered documentation” link, visible on
+  focus.
 - Use a semantic `nav` with a programmatic label for the in-page index. Links
   have concise, unique names derived from the operation path/method or schema
   name and target stable section headings.
@@ -128,18 +142,18 @@ solely to style text.
 
 ### Responsive layout and reflow
 
-Use a single-column document at all widths. On wide screens, constrain the
-reading measure to approximately 70–80 characters, align the index and content
-to a common left edge, and use whitespace and subtle borders to distinguish
-operation/schema groups. Do not rely on a fixed-width sidebar.
+Use a responsive two-pane workspace on wide screens, with the source taking
+approximately 45% of the width and the rendered documentation 55%. Each pane
+has a visible heading, and both remain independently scrollable. Keep operation
+cards compact, method labels explicit in text, and content measure readable.
 
-At narrow widths, place the index before the contract content and allow it to
-wrap naturally. Use fluid page gutters and `min-width: 0` behavior for all
-content regions. Tables, if retained, must reflow or become individually
-scrollable without creating page-level horizontal scrolling or hiding data;
-prefer stacked labeled records for parameter and response details. Code and
-schema content wraps and remains selectable. No information or control is
-available only by hover.
+At narrow widths, stack the source pane first and rendered contract second.
+Bound the source pane's height while keeping its content scrollable. Use fluid
+gutters and `min-width: 0` behavior for all content regions. Tables, if
+retained, must reflow or become individually scrollable without creating
+page-level horizontal scrolling or hiding data; prefer stacked labeled
+records for parameter and response details. Code and schema content wraps and
+remains selectable. No information or control is available only by hover.
 
 At 320 CSS pixels and at 200% text zoom, all content and controls remain
 available without page-level horizontal overflow or loss of functionality.

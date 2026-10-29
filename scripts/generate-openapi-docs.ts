@@ -12,7 +12,7 @@ const schemaId = 'https://vigo-bus-navigator.invalid/openapi-docs-contract';
 const httpMethods = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
 
 type OpenApiDocument = Record<string, unknown>;
-type Renderer = (document: OpenApiDocument) => string;
+type Renderer = (document: OpenApiDocument, source?: string) => string;
 
 export interface GenerateOpenApiDocsOptions {
   contractPath?: string;
@@ -261,7 +261,7 @@ export async function generateOpenApiDocs(options: GenerateOpenApiDocsOptions = 
 
   let html: string;
   try {
-    html = (options.renderer ?? renderOpenApiDocument)(document);
+    html = (options.renderer ?? renderOpenApiDocument)(document, source);
     if (typeof html !== 'string' || html.trim().length === 0) throw new Error('Renderer returned empty HTML.');
   } catch (error) {
     throw fail('render-error', `Could not render the validated contract: ${error instanceof Error ? error.message : String(error)}.`, error);

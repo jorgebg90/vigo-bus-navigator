@@ -10,8 +10,10 @@ test('OpenAPI documentation is semantic, keyboard navigable, and has visible foc
   await expect(page).toHaveTitle(/OpenAPI documentation/);
   await expect(page.getByRole('main')).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'On this page' })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'OpenAPI source, read only' })).toBeVisible();
+  await expect(page.getByText('YAML · read only')).toBeVisible();
 
-  const skipLink = page.getByRole('link', { name: 'Skip to contract content' });
+  const skipLink = page.getByRole('link', { name: 'Skip to rendered documentation' });
   if (test.info().project.name === 'ios-safari') await skipLink.focus();
   else await page.keyboard.press('Tab');
   await expect(skipLink).toBeFocused();

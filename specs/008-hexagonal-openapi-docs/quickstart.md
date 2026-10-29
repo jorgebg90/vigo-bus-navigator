@@ -74,6 +74,9 @@ npm test -- scripts/openapi-docs-template.test.ts scripts/generate-openapi-docs.
 Expected results:
 
 - Repeated generation from the same input produces identical output.
+- The generated page shows the exact canonical YAML in a read-only source pane
+  beside the rendered contract on wide screens, and stacks both panes on narrow
+  screens.
 - For missing/unreadable input, invalid YAML/OpenAPI, unresolved references, and
   rendering errors, seed stale output in both the intermediate and `dist`,
   invoke the generator/build, and assert a nonzero result, a diagnostic naming
