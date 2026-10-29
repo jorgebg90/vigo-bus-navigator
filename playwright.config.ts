@@ -1,16 +1,18 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const basePath = process.env.VITE_BASE_PATH || '/';
+
 export default defineConfig({
   testDir: './frontend/tests/e2e',
   fullyParallel: true,
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: `http://127.0.0.1:4173${basePath}`,
     trace: 'on-first-retry'
   },
   webServer: [
     {
-      command: 'VITE_PROFILE=production VITE_MUNICIPAL_PROFILE=fixture vite build --config frontend/vite.config.ts --mode test && vite preview --host 127.0.0.1',
-      url: 'http://127.0.0.1:4173',
+      command: 'VITE_PROFILE=production VITE_MUNICIPAL_PROFILE=fixture npm run build -- --mode test && tsx scripts/static-preview.ts',
+      url: `http://127.0.0.1:4173${basePath}`,
       reuseExistingServer: false
     }
   ],

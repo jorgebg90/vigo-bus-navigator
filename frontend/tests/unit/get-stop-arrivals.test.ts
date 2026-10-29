@@ -21,6 +21,12 @@ const receipt = (overrides: Partial<ArrivalReceipt> = {}): ArrivalReceipt => ({
   provenance: { kind: 'fixture', sourceName: 'Synthetic fixture', fetchedAt: '2026-01-01T10:00:00.000Z' },
   ...overrides
 });
+const intervals = {
+  start(callback: () => void, intervalMs: number) {
+    const timer = setInterval(callback, intervalMs);
+    return () => clearInterval(timer);
+  }
+};
 
 afterEach(() => vi.useRealTimers());
 
@@ -99,7 +105,7 @@ describe('getStopArrivals', () => {
       dataStatus: 'current' as const,
       fetchedAt: 'now'
     }));
-    const stopPolling = startStopArrivalsRefresh(load, visibility, 1_000);
+    const stopPolling = startStopArrivalsRefresh(load, visibility, intervals, 1_000);
 
     await vi.advanceTimersByTimeAsync(3_000);
     expect(load).toHaveBeenCalledTimes(3);

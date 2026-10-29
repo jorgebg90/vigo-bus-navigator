@@ -10,7 +10,7 @@ export function renderMap(root: HTMLElement, map: StopMapPort, stops: Stop[], th
   const container = document.createElement('div');
   container.className = 'map-container';
   root.append(container);
-  map.mount(container, { theme });
+  map.mount(container, { theme, ariaLabel: translateCurrent('mapLabel') });
   map.setStops(mappable);
   map.setSelectedStop(null);
   map.fitToStops();
@@ -24,7 +24,7 @@ export function renderMap(root: HTMLElement, map: StopMapPort, stops: Stop[], th
     retry.dataset.mapRetry = 'true';
     retry.textContent = translateCurrent('mapRetry');
     retry.addEventListener('click', () => {
-      map.mount(container, { theme });
+      map.mount(container, { theme, ariaLabel: translateCurrent('mapLabel') });
       map.setStops(mappable);
       map.setSelectedStop(null);
       map.fitToStops();

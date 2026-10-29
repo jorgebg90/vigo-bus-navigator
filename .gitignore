@@ -12,6 +12,7 @@ coverage/
 playwright-report/
 test-results/
 /.github/apk/
+/frontend/public/docs/openapi/index.html
 
 # Editor
 .vscode/*

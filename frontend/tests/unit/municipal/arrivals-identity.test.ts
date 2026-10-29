@@ -29,7 +29,7 @@ describe('municipal arrivals identity boundary', () => {
     const adapter = new MunicipalArrivalsAdapter(client, clock, 'fixture');
     const result = await adapter.getArrivals(stop);
 
-    expect(client.get).toHaveBeenCalledWith('TRANSPORTE-ESTIMACION-PARADA', { id: '90' }, undefined);
+    expect(client.get).toHaveBeenCalledWith('TRANSPORTE-ESTIMACION-PARADA', { id: '90' });
     expect(client.get).not.toHaveBeenCalledWith(expect.anything(), { id: '2789' }, expect.anything());
     expect(client.get).not.toHaveBeenCalledWith(expect.anything(), { id: 'display-90' }, expect.anything());
     expect(result).toMatchObject({
@@ -66,8 +66,7 @@ describe('municipal arrivals identity boundary', () => {
     });
     expect(client.get).toHaveBeenCalledWith(
       'TRANSPORTE-ESTIMACION-PARADA',
-      { id: '90' },
-      undefined
+      { id: '90' }
     );
   });
 });

@@ -17,8 +17,7 @@ export class MunicipalArrivalsAdapter implements MunicipalArrivalsGateway {
   ) {}
 
   async getArrivals(
-    stop: NetworkStop,
-    signal?: AbortSignal
+    stop: NetworkStop
   ): Promise<MunicipalOperationResult<ArrivalReceipt>> {
     if (!stop.vitrasaId) return { kind: 'unavailable', reason: 'identity-unverified' };
     const action = 'TRANSPORTE-ESTIMACION-PARADA';
@@ -27,7 +26,7 @@ export class MunicipalArrivalsAdapter implements MunicipalArrivalsGateway {
     }
 
     try {
-      const payload = await this.client.get(action, { id: stop.vitrasaId }, signal);
+      const payload = await this.client.get(action, { id: stop.vitrasaId });
       const fetchedAt = this.clock.now().toISOString();
       const receipt: ArrivalReceipt = {
         stopId: stop.id,

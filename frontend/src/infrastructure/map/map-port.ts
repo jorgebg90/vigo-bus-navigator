@@ -1,7 +1,6 @@
 import type { LocationDisplayResult, StopMapPort } from '../../application/ports';
 import type { MapStop } from '../../domain/map-stops';
 import type { CurrentLocation, DirectionalRoute, SelectedLineRouteDisplay } from '../../domain/types';
-import { translateCurrent } from '../../i18n';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 const SOURCE_ID = 'bus-stops';
@@ -123,7 +122,9 @@ export class BrowserMapPort implements StopMapPort {
     }
   ) {}
 
-  mount(container: HTMLElement, options: { theme: 'light' | 'dark' }): void {
+  mount(target: object, options: { theme: 'light' | 'dark'; ariaLabel?: string }): void {
+    if (!(target instanceof HTMLElement)) throw new TypeError('Map mount target must be an HTMLElement');
+    const container = target;
     this.container = container;
     container.dataset.theme = options.theme;
     container.dataset.mapStyle = styles[options.theme];
@@ -131,7 +132,7 @@ export class BrowserMapPort implements StopMapPort {
     container.dataset.motion = this.reducedMotion ? 'instant' : 'standard';
     this.updateStopAttributes();
     container.setAttribute('role', 'region');
-    container.setAttribute('aria-label', translateCurrent('mapLabel'));
+    container.setAttribute('aria-label', options.ariaLabel ?? 'Map');
     const canvas = document.createElement('div');
     canvas.className = 'map-canvas';
     container.append(canvas);

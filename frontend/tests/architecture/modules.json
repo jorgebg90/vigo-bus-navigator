@@ -1,0 +1,358 @@
+[
+  {
+    "path": "frontend/src/application/get-bundled-schedule-fallback.ts",
+    "responsibility": "application-use-case",
+    "rules": ["request bundled schedules only when the online schedule is unavailable"],
+    "isolatedTests": ["frontend/tests/unit/get-bundled-schedule-fallback.test.ts"]
+  },
+  {
+    "path": "frontend/src/application/load-line-view.ts",
+    "responsibility": "application-use-case",
+    "rules": ["load line schedule, route data, and offline snapshot fallback through repository ports"],
+    "isolatedTests": ["frontend/tests/unit/load-line-view.test.ts"]
+  },
+  {
+    "path": "frontend/src/application/load-stop-serving-lines.ts",
+    "responsibility": "application-use-case",
+    "rules": ["load serving lines and their stop-specific details through repository ports"],
+    "isolatedTests": ["frontend/tests/unit/load-stop-serving-lines.test.ts"]
+  },
+  {
+    "path": "frontend/src/application/load-transit-catalog.ts",
+    "responsibility": "application-use-case",
+    "rules": ["load the line and stop discovery catalogs through repository ports"],
+    "isolatedTests": ["frontend/tests/unit/load-transit-catalog.test.ts"]
+  },
+  {
+    "path": "frontend/src/application/get-stop-arrivals.ts",
+    "responsibility": "application-use-case",
+    "rules": ["validate arrival receipts, cache complete receipts, and control polling"],
+    "isolatedTests": ["frontend/tests/unit/get-stop-arrivals.test.ts"]
+  },
+  {
+    "path": "frontend/src/application/ports.ts",
+    "responsibility": "application-port"
+  },
+  {
+    "path": "frontend/src/application/request-version.ts",
+    "responsibility": "application-use-case",
+    "rules": ["invalidate stale asynchronous request versions"],
+    "isolatedTests": ["frontend/tests/unit/request-version.test.ts"]
+  },
+  {
+    "path": "frontend/src/application/select-stop.ts",
+    "responsibility": "application-use-case",
+    "rules": ["manage selected-stop state and discard stale arrival results"],
+    "isolatedTests": ["frontend/tests/unit/select-stop.test.ts"]
+  },
+  {
+    "path": "frontend/src/application/toggle-favorite.ts",
+    "responsibility": "application-use-case",
+    "rules": ["load and toggle favorites through the storage port"],
+    "isolatedTests": ["frontend/tests/unit/toggle-favorite.test.ts"]
+  },
+  {
+    "path": "frontend/src/application/update-user-preferences.ts",
+    "responsibility": "application-use-case",
+    "rules": ["load and update preferences and record recent views through the storage port"],
+    "isolatedTests": ["frontend/tests/unit/update-user-preferences.test.ts"]
+  },
+  {
+    "path": "frontend/src/domain/arrival-state.ts",
+    "responsibility": "domain",
+    "rules": ["derive arrival display status and reject invalid or expired receipts"],
+    "isolatedTests": ["frontend/tests/unit/municipal/arrival-receipt.test.ts"]
+  },
+  {
+    "path": "frontend/src/domain/day-type.ts",
+    "responsibility": "domain",
+    "rules": ["derive service day type from date and holidays"],
+    "isolatedTests": ["frontend/tests/unit/day-type.test.ts"]
+  },
+  {
+    "path": "frontend/src/domain/favorites.ts",
+    "responsibility": "domain",
+    "rules": ["create default preferences, toggle favorites, and retain recent views"],
+    "isolatedTests": ["frontend/tests/unit/favorites.test.ts"]
+  },
+  {
+    "path": "frontend/src/domain/frequency.ts",
+    "responsibility": "domain",
+    "rules": ["read and validate published service frequency"],
+    "isolatedTests": ["frontend/tests/unit/frequency.test.ts"]
+  },
+  {
+    "path": "frontend/src/domain/freshness.ts",
+    "responsibility": "domain",
+    "rules": ["derive data freshness and arrival-change announcements"],
+    "isolatedTests": ["frontend/tests/unit/freshness-labels.test.ts"]
+  },
+  {
+    "path": "frontend/src/domain/map-stops.ts",
+    "responsibility": "domain",
+    "rules": ["validate current location and convert stops into map coordinates"],
+    "isolatedTests": ["frontend/tests/unit/map-stops.test.ts"]
+  },
+  {
+    "path": "frontend/src/domain/municipal-contract.ts",
+    "responsibility": "domain",
+    "rules": ["validate receipt timestamp consistency"],
+    "isolatedTests": ["frontend/tests/unit/municipal/normalized-contract.test.ts"]
+  },
+  {
+    "path": "frontend/src/domain/municipal-failures.ts",
+    "responsibility": "domain",
+    "rules": ["preserve classified municipal operation failures"],
+    "isolatedTests": ["frontend/tests/unit/municipal-failures.test.ts"]
+  },
+  {
+    "path": "frontend/src/domain/types.ts",
+    "responsibility": "domain"
+  },
+  {
+    "path": "frontend/src/i18n/en.ts",
+    "responsibility": "presentation-localization",
+    "rationale": "Presentation copy is selected at the inbound UI boundary and is not an application/domain dependency."
+  },
+  {
+    "path": "frontend/src/i18n/es.ts",
+    "responsibility": "presentation-localization",
+    "rationale": "Presentation copy is selected at the inbound UI boundary and is not an application/domain dependency."
+  },
+  {
+    "path": "frontend/src/i18n/gl.ts",
+    "responsibility": "presentation-localization",
+    "rationale": "Presentation copy is selected at the inbound UI boundary and is not an application/domain dependency."
+  },
+  {
+    "path": "frontend/src/i18n/index.ts",
+    "responsibility": "presentation-localization",
+    "rationale": "This module binds localized presentation text to browser document language."
+  },
+  {
+    "path": "frontend/src/infrastructure/config.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/map/map-port.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/action-readiness.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/arrival-cache.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/arrivals-adapter.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/arrivals-normalizer.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/bundled-discovery-catalog.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/default-fixture-client.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/fixture-transport.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/http-client.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/line-catalog-adapter.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/line-id.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/line-schedule-adapter.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/line-stop-adapter.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/online-stop-catalog.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/public-response-cache.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/request-builder.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/request-scheduler.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/request-validation.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/response-decoder.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/route-shape-adapter.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/service-catalog-adapter.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/serving-lines-adapter.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/stop-detail-adapter.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/municipal/trip-stop-adapter.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/schedule/bundled-schedule-snapshot.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/schedule/municipal-schedule-repository.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/storage/local-storage-adapter.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/system/browser-geolocation.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/system/clock.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/system/interval-scheduler.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/system/visibility.ts",
+    "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/main.ts",
+    "responsibility": "composition",
+    "rationale": "This is the single browser composition root: it constructs adapters and binds application use cases; architecture tests prohibit direct or extracted schedule repository method references."
+  },
+  {
+    "path": "frontend/src/sw/offline.ts",
+    "responsibility": "service-worker",
+    "rationale": "This module executes in the service-worker context and is isolated from window-bound UI composition."
+  },
+  {
+    "path": "frontend/src/ui/favorite-toggle.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/home/favorites.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/i18n-renderer.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/icons.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/line/frequency-view.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/line/lines-list.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/line-badge.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/map/location-status.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/map/map-toolbar.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/map/map-view.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/map/stop-chooser.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/offline-status.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/panel/sheet.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/privacy/privacy-view.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/search/stop-search.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/settings/settings-menu.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/settings/storage-notice.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/shell.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/stop/serving-lines-view.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/stop/stop-arrivals-view.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/stop/stop-view.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/theme.ts",
+    "responsibility": "inbound-adapter"
+  }
+]

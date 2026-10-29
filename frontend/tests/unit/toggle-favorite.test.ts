@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toggleFavoriteForTarget } from '../../src/application/toggle-favorite';
+import { loadUserFavorites, toggleFavoriteForTarget } from '../../src/application/toggle-favorite';
 import type { StoragePort } from '../../src/application/ports';
 import type { UserPreferences } from '../../src/domain/types';
 
@@ -8,6 +8,7 @@ describe('toggle favorite use case', () => {
     let favorites: StoragePort['loadFavorites'] extends () => infer T ? T : never = [];
     const preferences: UserPreferences = { theme: 'light', language: 'es', recentViews: [] };
     const storage: StoragePort = { persisted: false, loadFavorites: () => favorites, saveFavorites: (value) => { favorites = value; }, loadPreferences: () => preferences, savePreferences: () => undefined };
+    expect(loadUserFavorites(storage)).toEqual([]);
     expect(toggleFavoriteForTarget(storage, { type: 'stop', targetId: 'stop-1' })).toHaveLength(1);
     expect(toggleFavoriteForTarget(storage, { type: 'stop', targetId: 'stop-1' })).toEqual([]);
     expect(storage.persisted).toBe(false);
