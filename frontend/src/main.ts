@@ -1,11 +1,14 @@
 import { createStopSelection, type StopSelection } from './application/select-stop';
 import { RequestVersion } from './application/request-version';
-import { getBundledScheduleFallback } from './application/get-bundled-schedule-fallback';
+import { loadLineView, loadOnlineLineRoute } from './application/load-line-view';
+import { loadServingLineDetails, loadStopServingLines } from './application/load-stop-serving-lines';
+import { loadTransitCatalog } from './application/load-transit-catalog';
 import { renderLineFrequency } from './ui/line/frequency-view';
 import { renderLinesList } from './ui/line/lines-list';
 import { renderStopSearch } from './ui/search/stop-search';
-import { MunicipalScheduleRepository, type OnlineLineRoute } from './infrastructure/schedule/municipal-schedule-repository';
+import { MunicipalScheduleRepository } from './infrastructure/schedule/municipal-schedule-repository';
 import { SystemClock } from './infrastructure/system/clock';
+import { SystemIntervalScheduler } from './infrastructure/system/interval-scheduler';
 import { DocumentVisibility } from './infrastructure/system/visibility';
 import { MunicipalArrivalsAdapter } from './infrastructure/municipal/arrivals-adapter';
 import { MunicipalLineCatalogAdapter } from './infrastructure/municipal/line-catalog-adapter';
@@ -33,15 +36,17 @@ import { renderMap } from './ui/map/map-view';
 import './ui/styles.css';
 import { applyTheme } from './ui/theme';
 import { renderFavorites } from './ui/home/favorites';
-import { toggleFavoriteForTarget } from './application/toggle-favorite';
-import { recordRecentView } from './domain/favorites';
-import { deriveDayType } from './domain/day-type';
+import { loadUserFavorites, toggleFavoriteForTarget } from './application/toggle-favorite';
+import {
+  loadUserPreferences,
+  recordUserView
+} from './application/update-user-preferences';
 import type { DayType, Favorite, Line, NetworkStop, Provenance, RecentView, SelectedLineRouteDisplay } from './domain/types';
 import { onLanguageChange, setDocumentLanguage, translateCurrent } from './i18n';
 import { createShell, type Destination } from './ui/shell';
 import { createStopChooser } from './ui/map/stop-chooser';
 import { renderMapToolbar } from './ui/map/map-toolbar';
-import type { GeolocationPort, StopMapPort } from './application/ports';
+import type { GeolocationPort, OnlineLineRoute, ScheduleRepositoryV5, StopMapPort } from './application/ports';
 import { showStorageNotice } from './ui/settings/storage-notice';
 import { renderMapAttribution } from './ui/privacy/privacy-view';
 import { BrowserGeolocation } from './infrastructure/system/browser-geolocation';
@@ -53,11 +58,12 @@ const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing app root');
 
 const clock = new SystemClock();
+const intervals = new SystemIntervalScheduler();
 const onlineCatalogEvidenceRef = 'official-app-online-catalog-2026-10-28';
 const visibility = new DocumentVisibility();
 const storage = new LocalStorageAdapter();
 applyTheme();
-setDocumentLanguage(storage.loadPreferences().language);
+setDocumentLanguage(loadUserPreferences(storage).language);
 const shell = createShell(app);
 const view = shell.main;
 let mapCleanup: (() => void) | undefined;
@@ -78,7 +84,7 @@ let selectedLineRoute: SelectedLineRouteDisplay | null = null;
 let selection: StopSelection | undefined;
 let lines: Line[] = [];
 let stops: NetworkStop[] = [];
-let schedule: MunicipalScheduleRepository | undefined;
+let schedule: ScheduleRepositoryV5 | undefined;
 let discoveryProvenance: Provenance | undefined;
 let lineCatalogUnavailable = false;
 let activeServingLinesRequest = 0;
@@ -240,10 +246,10 @@ async function bootstrap(): Promise<void> {
   );
   const arrivals = new MunicipalArrivalsAdapter(municipalClient, clock, municipalConfig.profile);
   const arrivalCache = new ArrivalCache(() => clock.now().getTime());
-  const [lineCatalogResult, discovery] = await Promise.all([
-    schedule.getMunicipalLineCatalog(storage.loadPreferences().language),
-    schedule.getStopDiscoveryCatalog()
-  ]);
+  const { lineCatalog: lineCatalogResult, discovery } = await loadTransitCatalog(
+    schedule,
+    loadUserPreferences(storage).language
+  );
   stops = discovery.stops;
   discoveryProvenance = discovery.provenance;
   lineCatalogUnavailable = lineCatalogResult.kind === 'unavailable';
@@ -255,14 +261,14 @@ async function bootstrap(): Promise<void> {
         color: line.color
       }))
     : [];
-  selection = createStopSelection({ stops, arrivals, clock, visibility, cache: arrivalCache });
+  selection = createStopSelection({ stops, arrivals, clock, visibility, intervals, cache: arrivalCache });
   unsubscribeSelection = selection.subscribe((model) => {
     if (model.selectedStopId) activeMap?.setSelectedStop(model.selectedStopId);
     else activeMap?.setSelectedStop(null);
     if (model.stop && model.arrivals && model.stop.id === activePanelStopId && activePanelContent) {
       const currentSelection = selection;
       renderStopArrivals(activePanelContent, model.arrivals, () => { void currentSelection?.refresh(); }, {
-        saved: storage.loadFavorites().some((favorite) => favorite.type === 'stop' && favorite.targetId === model.stop?.id),
+        saved: loadUserFavorites(storage).some((favorite) => favorite.type === 'stop' && favorite.targetId === model.stop?.id),
         onToggle: () => {
           toggleFavoriteForTarget(storage, { type: 'stop', targetId: model.stop!.id });
           notifyStorageFailure();
@@ -276,11 +282,7 @@ async function bootstrap(): Promise<void> {
     if (currentDestination === 'saved') renderDestination();
   };
   const remember = (type: 'line' | 'stop', targetId: string) => {
-    const preferences = storage.loadPreferences();
-    storage.savePreferences({
-      ...preferences,
-      recentViews: recordRecentView(preferences.recentViews, { type, targetId }, clock.now())
-    });
+    recordUserView(storage, { type, targetId }, clock.now());
     refreshFavorites();
   };
   const notifyStorageFailure = () => {
@@ -304,16 +306,13 @@ async function bootstrap(): Promise<void> {
     shell.openPanel(stop.name, content, opener);
     void selection.selectStop(stop.id);
     const requestId = ++activeServingLinesRequest;
+    const repository = schedule;
+    if (!repository) return;
     renderServingLinesLoading(servingLinesContent);
-    void schedule?.getMunicipalServingLines(stop).then(async (result) => {
+    void loadStopServingLines(repository, stop).then(async (result) => {
       if (requestId !== activeServingLinesRequest || activePanelStopId !== stop.id) return;
-      const lineStopResults = result.kind === 'success'
-        ? await Promise.all(result.value.lines.map((line) => schedule!.getLineStopDetail(stop, line.code)))
-        : [];
+      const provisionalDetails = await loadServingLineDetails(repository, stop, result);
       if (requestId !== activeServingLinesRequest || activePanelStopId !== stop.id) return;
-      const provisionalDetails = lineStopResults
-        .filter((detail) => detail.kind === 'success')
-        .map((detail) => detail.value);
       renderServingLines(servingLinesContent, result, (lineCode) => {
         const line = lines.find((candidate) => candidate.code === lineCode);
         if (line) void showLine(line);
@@ -434,8 +433,8 @@ async function bootstrap(): Promise<void> {
     if (!activeMap) mountBaseMap();
 
     if (currentDestination === 'saved') {
-      renderFavorites(view, storage.loadFavorites(), lines, stops, openSavedItem, {
-        recentViews: storage.loadPreferences().recentViews,
+      renderFavorites(view, loadUserFavorites(storage), lines, stops, openSavedItem, {
+        recentViews: loadUserPreferences(storage).recentViews,
         persisted: storage.persisted,
         onRemove: (favorite) => {
           toggleFavoriteForTarget(storage, { type: favorite.type, targetId: favorite.targetId });
@@ -455,7 +454,7 @@ async function bootstrap(): Promise<void> {
       renderStopSearch(view, {
         stops,
         discoveryProvenance,
-        favoriteStopIds: storage.loadFavorites().filter((favorite) => favorite.type === 'stop').map((favorite) => favorite.targetId),
+        favoriteStopIds: loadUserFavorites(storage).filter((favorite) => favorite.type === 'stop').map((favorite) => favorite.targetId),
         onSelect: showStopOnMap,
         onFavoriteToggle: (stopId) => {
           toggleFavoriteForTarget(storage, { type: 'stop', targetId: stopId });
@@ -496,26 +495,10 @@ async function bootstrap(): Promise<void> {
     selectedLineRoute = null;
     activeMap?.setLineRoute(null);
     remember('line', line.id);
-    const dayType = requestedDayType ?? deriveDayType(clock.now(), []);
     const requestVersion = lineViewRequests.next();
-    const [scheduleResult, patterns, routeShapeResult, tripStopsResult] = await Promise.all([
-      navigator.onLine
-        ? repository.getPublishedLineSchedule(line.code, dayType)
-        : Promise.resolve({ kind: 'unavailable' as const, reason: 'offline' as const }),
-      repository.getRoutePatterns(line.id),
-      repository.getRouteShape(line.code),
-      repository.getTripStops(line.code, dayType)
-    ]);
+    const lineView = await loadLineView(repository, line, requestedDayType, navigator.onLine, clock.now());
     if (!lineViewRequests.isCurrent(requestVersion) || currentDestination !== 'lines') return;
-    const snapshotFallback = await getBundledScheduleFallback(
-      repository,
-      line,
-      dayType,
-      patterns,
-      navigator.onLine,
-      scheduleResult
-    );
-    if (!lineViewRequests.isCurrent(requestVersion) || currentDestination !== 'lines') return;
+    const { dayType, scheduleResult, patterns, routeShapeResult, tripStopsResult, snapshotFallback } = lineView;
     const publishedSchedule = scheduleResult.kind === 'success' ? scheduleResult.value : undefined;
     const getSelectedRoute = (onlineRoute?: OnlineLineRoute): SelectedLineRouteDisplay | null => {
       if (onlineRoute?.directionalRoutes?.length) {
@@ -554,7 +537,7 @@ async function bootstrap(): Promise<void> {
       patterns: onlineRoute?.patterns.length ? onlineRoute.patterns : patterns,
       routeProvenance: onlineRoute?.patterns.length ? onlineRoute.provenance : discoveryProvenance,
       lines,
-      favoriteStopIds: storage.loadFavorites().filter((favorite) => favorite.type === 'stop').map((favorite) => favorite.targetId),
+      favoriteStopIds: loadUserFavorites(storage).filter((favorite) => favorite.type === 'stop').map((favorite) => favorite.targetId),
       dayType,
       onDayTypeChange: (dayType) => { void showLine(line, dayType); },
       onStopSelect: showStopOnMap,
@@ -568,7 +551,7 @@ async function bootstrap(): Promise<void> {
     const hasOnlineTrips = Boolean(publishedSchedule?.trips?.length);
     render(undefined, !hasOnlineTrips);
     if (!hasOnlineTrips || !publishedSchedule) return;
-    const onlineRoute = await repository.getOnlineLineRoute(publishedSchedule);
+    const onlineRoute = await loadOnlineLineRoute(repository, publishedSchedule);
     if (!lineViewRequests.isCurrent(requestVersion) || currentDestination !== 'lines') return;
     render(onlineRoute, true);
   }

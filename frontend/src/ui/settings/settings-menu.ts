@@ -1,5 +1,6 @@
 import type { Language } from '../../domain/types';
 import type { StoragePort } from '../../application/ports';
+import { loadUserPreferences, setPreferredLanguage } from '../../application/update-user-preferences';
 import { applyLanguage } from '../i18n-renderer';
 import { onLanguageChange, translateCurrent } from '../../i18n';
 import { setIconButton } from '../icons';
@@ -53,11 +54,11 @@ export function createSettingsMenu(
   };
 
   const render = () => {
-    const preferences = storage.loadPreferences();
+    const preferences = loadUserPreferences(storage);
     setIconButton(trigger, 'language', translateCurrent('language'));
     menu.replaceChildren();
     addLanguageOptions(preferences.language, (language) => {
-      storage.savePreferences({ ...storage.loadPreferences(), language });
+      setPreferredLanguage(storage, language);
       applyLanguage(language);
       render();
       close(true);

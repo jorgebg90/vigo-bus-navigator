@@ -3,6 +3,7 @@ import type {
   MunicipalLineCatalogReceipt,
   MunicipalOperationResult,
   MunicipalServingLinesReceipt,
+  OnlineLineRoute,
   ScheduleRepositoryV5,
   StopDiscoveryCatalog
 } from '../../application/ports';
@@ -36,13 +37,6 @@ import { BundledScheduleSnapshotCatalog } from './bundled-schedule-snapshot';
 export interface OnlineCatalogOptions {
   stopCatalog: OnlineStopCatalog;
   evidenceRef: string;
-}
-
-export interface OnlineLineRoute {
-  patterns: LineRoutePattern[];
-  directionalRoutes?: DirectionalRoute[];
-  routeShape?: RouteShapeReceipt;
-  provenance?: TripStopSequence['provenance'];
 }
 
 export class MunicipalScheduleRepository implements ScheduleRepositoryV5 {

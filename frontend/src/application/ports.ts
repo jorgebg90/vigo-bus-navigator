@@ -11,6 +11,7 @@ import type {
   LineRoutePattern,
   NetworkLineSummary,
   PublishedLineSchedule,
+  DirectionalRoute,
   RouteShapeReceipt,
   SelectedLineRouteDisplay,
   TripStopSequence,
@@ -76,10 +77,18 @@ export interface ScheduleRepositoryV5 {
     stop: NetworkStop,
     lineCode: string
   ): Promise<MunicipalOperationResult<LineStopDetail>>;
+  getOnlineLineRoute(schedule: PublishedLineSchedule): Promise<OnlineLineRoute>;
+}
+
+export interface OnlineLineRoute {
+  patterns: LineRoutePattern[];
+  directionalRoutes?: DirectionalRoute[];
+  routeShape?: RouteShapeReceipt;
+  provenance?: TripStopSequence['provenance'];
 }
 
 export interface MunicipalArrivalsGateway {
-  getArrivals(stop: NetworkStop, signal?: AbortSignal): Promise<MunicipalOperationResult<ArrivalReceipt>>;
+  getArrivals(stop: NetworkStop): Promise<MunicipalOperationResult<ArrivalReceipt>>;
 }
 
 export interface LineScheduleGateway {
@@ -112,6 +121,10 @@ export interface VisibilityPort {
   onVisibilityChange(listener: (visible: boolean) => void): () => void;
 }
 
+export interface IntervalPort {
+  start(callback: () => void, intervalMs: number): () => void;
+}
+
 export type GeolocationResult =
   | { kind: 'success'; location: CurrentLocation }
   | { kind: 'unavailable'; reason: 'unsupported' | 'denied' | 'timeout' | 'error' | 'invalid' };
@@ -126,7 +139,7 @@ export interface LocationDisplayResult {
 }
 
 export interface StopMapPort {
-  mount(container: HTMLElement, options: { theme: 'light' | 'dark' }): void;
+  mount(container: object, options: { theme: 'light' | 'dark'; ariaLabel?: string }): void;
   setTheme(theme: 'light' | 'dark'): void;
   unmount(): void;
   setStops(stops: MapStop[]): void;

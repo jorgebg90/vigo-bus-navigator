@@ -13,6 +13,12 @@ const unlocatedStop: NetworkStop = {
 const fetchedAt = '2026-10-26T12:00:00.000Z';
 const clock = { now: () => new Date(fetchedAt), onDateChange: () => () => undefined };
 const visibility = { visible: false, onVisibilityChange: () => () => undefined };
+const intervals = {
+  start(callback: () => void, intervalMs: number) {
+    const timer = setInterval(callback, intervalMs);
+    return () => clearInterval(timer);
+  }
+};
 const receipt = (stop: NetworkStop, destination: string): ArrivalReceipt => ({
   stopId: stop.id,
   vitrasaId: stop.vitrasaId!,
@@ -31,7 +37,8 @@ describe('createStopSelection', () => {
       stops: [stopWithoutVitrasaId],
       arrivals: { getArrivals },
       clock,
-      visibility
+      visibility,
+      intervals
     });
 
     await selection.selectStop(stopWithoutVitrasaId.id);
@@ -46,7 +53,7 @@ describe('createStopSelection', () => {
     const getArrivals = vi.fn((stop: NetworkStop) => stop.id === 'stop-a'
       ? new Promise<{ kind: 'success'; value: ArrivalReceipt }>((resolve) => { resolveFirst = resolve; })
       : Promise.resolve({ kind: 'success' as const, value: receipt(stop, 'New destination') }));
-    const selection = createStopSelection({ stops: [locatedStop, unlocatedStop], arrivals: { getArrivals }, clock, visibility });
+    const selection = createStopSelection({ stops: [locatedStop, unlocatedStop], arrivals: { getArrivals }, clock, visibility, intervals });
     const observed: string[] = [];
     selection.subscribe((model) => { if (model.arrivals) observed.push(model.arrivals.arrivals[0]?.destination ?? ''); });
 
@@ -70,7 +77,8 @@ describe('createStopSelection', () => {
       stops: [locatedStop],
       arrivals: { getArrivals },
       clock,
-      visibility
+      visibility,
+      intervals
     });
     await selection.selectStop('stop-a');
     const before = selection.getSnapshot();
@@ -101,7 +109,8 @@ describe('createStopSelection', () => {
       stops: [locatedStop],
       arrivals: { getArrivals },
       clock,
-      visibility: visiblePort
+      visibility: visiblePort,
+      intervals
     });
 
     await selection.selectStop(locatedStop.id);
@@ -122,7 +131,7 @@ describe('createStopSelection', () => {
 
   it('selects a stop with null coordinates from a non-map entry point', async () => {
     const getArrivals = vi.fn(async (stop: NetworkStop) => ({ kind: 'success' as const, value: receipt(stop, 'Centro') }));
-    const selection = createStopSelection({ stops: [unlocatedStop], arrivals: { getArrivals }, clock, visibility });
+    const selection = createStopSelection({ stops: [unlocatedStop], arrivals: { getArrivals }, clock, visibility, intervals });
 
     await selection.selectStop('stop-b');
 
@@ -140,7 +149,8 @@ describe('createStopSelection', () => {
       arrivals: { getArrivals: vi.fn(async () => ({ kind: 'unavailable' as const, reason: 'http' as const })) },
       cache: { get: () => undefined, set: () => true },
       clock,
-      visibility
+      visibility,
+      intervals
     });
 
     await selection.selectStop('stop-a');

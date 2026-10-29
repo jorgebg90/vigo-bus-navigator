@@ -1,6 +1,7 @@
 import type { Arrival, ArrivalReceipt, NetworkStop, Provenance } from '../domain/types';
 import type {
   ClockPort,
+  IntervalPort,
   MunicipalArrivalCachePort,
   MunicipalArrivalsGateway,
   VisibilityPort
@@ -24,17 +25,18 @@ export function pendingStopArrivals(stop: NetworkStop): StopArrivalsResult {
 export function startStopArrivalsRefresh(
   load: () => Promise<StopArrivalsResult>,
   visibility: VisibilityPort,
+  intervals: IntervalPort,
   intervalMs = 30_000
 ): () => void {
-  let timer: ReturnType<typeof setInterval> | undefined;
+  let stopInterval: (() => void) | undefined;
   const refresh = () => { if (visibility.visible) void load(); };
   const schedule = (visible: boolean) => {
-    if (timer) clearInterval(timer);
-    timer = visible ? setInterval(refresh, intervalMs) : undefined;
+    stopInterval?.();
+    stopInterval = visible ? intervals.start(refresh, intervalMs) : undefined;
   };
   const unsubscribe = visibility.onVisibilityChange(schedule);
   schedule(visibility.visible);
-  return () => { if (timer) clearInterval(timer); unsubscribe(); };
+  return () => { stopInterval?.(); unsubscribe(); };
 }
 
 export async function getStopArrivals(

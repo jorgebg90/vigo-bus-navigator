@@ -1,5 +1,5 @@
 import { getStopArrivals, pendingStopArrivals, startStopArrivalsRefresh, type StopArrivalsResult } from './get-stop-arrivals';
-import type { ClockPort, MunicipalArrivalCachePort, MunicipalArrivalsGateway, VisibilityPort } from './ports';
+import type { ClockPort, IntervalPort, MunicipalArrivalCachePort, MunicipalArrivalsGateway, VisibilityPort } from './ports';
 import { getFreshnessState } from '../domain/freshness';
 import type { NetworkStop } from '../domain/types';
 
@@ -14,6 +14,7 @@ export interface StopSelectionDependencies {
   arrivals: MunicipalArrivalsGateway;
   clock: ClockPort;
   visibility: VisibilityPort;
+  intervals: IntervalPort;
   cache?: MunicipalArrivalCachePort;
 }
 
@@ -68,7 +69,7 @@ export function createStopSelection(dependencies: StopSelectionDependencies): St
       publish();
       await loadSelected();
       if (!disposed && token === requestToken) {
-        stopRefresh = startStopArrivalsRefresh(loadSelected, dependencies.visibility);
+        stopRefresh = startStopArrivalsRefresh(loadSelected, dependencies.visibility, dependencies.intervals);
       }
     },
     async refresh() {
