@@ -97,7 +97,7 @@ and test harness.
 
 ## Phase 6: User Story 4 - Open a line route from a selected stop (Priority: P1)
 
-**Goal**: Make catalog-backed line icons beside stop arrivals open the existing route flow, without changing informational icons elsewhere.
+**Goal**: Make catalog-backed line icons beside stop arrivals and badges beside route stops open the existing route flow, without changing informational icons elsewhere.
 
 **Independent Test**: Open a stop with an arrival for a catalog-backed line, activate its line icon by pointer and keyboard, and verify that the selected line route is displayed.
 
@@ -106,21 +106,48 @@ and test harness.
 > Write these tests first and confirm they fail before implementation.
 
 - [X] T016 [P] [US4] Add DOM coverage for localized, keyboard-operable arrival line icons in `frontend/tests/dom/stop-view.test.ts`
-- [X] T017 [P] [US4] Add browser coverage for keyboard activation of an arrival line icon and route navigation in `frontend/tests/e2e/municipal-catalog.spec.ts`
+- [X] T017 [P] [US4] Add DOM coverage for localized, keyboard-operable route-stop line badges in `frontend/tests/dom/us1-line-frequency.test.ts`
+- [X] T018 [P] [US4] Add browser coverage for line-icon activation and navigation to the matching route in `frontend/tests/e2e/municipal-catalog.spec.ts` and `frontend/tests/e2e/search-lines.spec.ts`
 
 ### Implementation for User Story 4
 
-- [X] T018 [US4] Render catalog-backed arrival icons and stop-summary badges as accessible route buttons and wire them to the existing `showLine` flow in `frontend/src/ui/stop/stop-arrivals-view.ts` and `frontend/src/main.ts`; localize and style the controls in the existing i18n and CSS files
+- [X] T019 [US4] Render catalog-backed arrival icons, stop-summary badges, and route-stop line badges as accessible route buttons and wire them to the existing `showLine` flow in `frontend/src/ui/stop/stop-arrivals-view.ts`, `frontend/src/ui/line-badge.ts`, `frontend/src/ui/line/frequency-view.ts`, and `frontend/src/main.ts`; localize and style the controls in the existing i18n and CSS files
 
 **Checkpoint**: An arrival line icon opens the matching route; icons without a catalog line remain informational, and icons in other views are unchanged.
 
 ---
 
-## Phase 7: Polish & Cross-Cutting Validation
+## Phase 7: User Story 5 - Use the full screen for line details on portrait mobile layouts (Priority: P1)
+
+**Goal**: Keep selected-line details readable across viewports: full-width on phones and portrait tablets, with compact route headings on desktop.
+
+**Independent Test**: Open a line at 390 × 844 and 768 × 1024 portrait viewports and verify that the detail panel fills the viewport width and the route stops remain within it.
+
+- [X] T020 [P] [US5] Add responsive browser coverage at 390 px and 768 px portrait widths in `frontend/tests/e2e/municipal-line-service.spec.ts`
+- [X] T021 [US5] Apply the full-width bottom-panel layout throughout the portrait-mobile breakpoint and compact route-heading styles at all widths in `frontend/src/ui/styles.css`
+
+**Checkpoint**: Line details fill the viewport width in supported portrait mobile layouts without horizontal overflow.
+
+---
+
+## Phase 8: User Story 6 - Choose a supported interface language (Priority: P2)
+
+**Goal**: Offer only Castellano and Galego and migrate an existing English preference to Castellano.
+
+**Independent Test**: Open language settings, verify both supported choices, and load a preference saved as English to verify migration to Castellano.
+
+- [X] T022 [P] [US6] Add coverage for the supported language choices and English-preference migration in `frontend/tests/dom/settings-menu.test.ts`
+- [X] T023 [US6] Limit language choices to Castellano and Galego and normalize saved English preferences to Castellano in `frontend/src/ui/settings/settings-menu.ts` and `frontend/src/application/update-user-preferences.ts`
+
+**Checkpoint**: The settings menu exposes only supported languages and no saved preference leaves the interface in English.
+
+---
+
+## Phase 9: Polish & Cross-Cutting Validation
 
 **Purpose**: Verify the integrated stories and preserve existing behavior.
 
-- [X] T019 Run the focused DOM and Playwright scenarios, TypeScript typecheck, and validation steps in `specs/010-mobile-map-usability/quickstart.md`; fix only regressions introduced by this feature
+- [X] T024 Run the focused DOM and Playwright scenarios, TypeScript typecheck, and validation steps in `specs/010-mobile-map-usability/quickstart.md`; fix only regressions introduced by this feature
 
 ---
 
@@ -133,8 +160,10 @@ and test harness.
 - **US1 (Phase 3)**: Starts independently; it is the recommended MVP.
 - **US2 (Phase 4)**: Follows US1 because both change the selected-line view, its close lifecycle, and `municipal-line-service.spec.ts`.
 - **US3 (Phase 5)**: Independent of US1 and US2; can be implemented in parallel after the existing project context is understood.
-- **US4 (Phase 6)**: Follows initial integration because it changes stop-arrival presentation, main navigation flow, and stop-view browser tests.
-- **Polish (Phase 7)**: Depends on all selected stories being complete.
+- **US4 (Phase 6)**: Follows initial integration because it changes stop-arrival and route-stop presentation, main navigation flow, and related tests.
+- **US5 (Phase 7)**: Follows the line-view integration and checks both phone and portrait-tablet widths.
+- **US6 (Phase 8)**: Independent of the map and line-view stories.
+- **Polish (Phase 9)**: Depends on all selected stories being complete.
 
 ### User Story Dependencies
 
@@ -142,6 +171,8 @@ and test harness.
 - **US2 (P1)**: Depends on US1 implementation to avoid conflicting edits to the selected-line view, main flow, and line-service browser tests.
 - **US3 (P2)**: No dependency on US1 or US2; can proceed in parallel with either story.
 - **US4 (P1)**: Depends on the existing selected-line route flow from US2.
+- **US5 (P1)**: Depends on the selected-line view from US1 and US2.
+- **US6 (P2)**: No dependency on another feature story.
 
 ### Within Each User Story
 
@@ -155,7 +186,9 @@ and test harness.
 - **US1**: T001 and T002 edit different test files and can be prepared in parallel.
 - **US2**: T006, T007, and T008 edit different test files and can be prepared in parallel after US1's test changes are integrated.
 - **US3**: T013 and T014 edit different test files and can be prepared in parallel; the whole US3 implementation can run alongside US1/US2 because it changes location-status files only.
-- **US4**: T016 and T017 edit different test files and can be prepared in parallel; T018 follows both.
+- **US4**: T016, T017, and T018 edit different test files and can be prepared in parallel; T019 follows all three.
+- **US5**: T020 precedes T021.
+- **US6**: T022 precedes T023.
 - Do not parallelize US1 and US2 implementation because their source and end-to-end test tasks share files.
 
 ## Parallel Example: User Story 3
@@ -178,11 +211,13 @@ Task: Add mobile location outcome browser tests in frontend/tests/e2e/mobile-loc
 1. Complete US1 and validate the close-to-map flow.
 2. Complete US2 and validate line loading, route outcomes, stale selections, and reduced motion.
 3. Complete US3 independently and validate location-message behavior across mobile and non-mobile viewports.
-4. Complete US4 and verify navigation from an arrival line icon to its route.
-5. Run T019 for the selected stories and review the quickstart criteria.
+4. Complete US4 and verify navigation from arrival and route-stop line icons.
+5. Complete US5 and verify full-width line details on portrait mobile viewports.
+6. Complete US6 and verify the supported language choices and preference migration.
+7. Run T024 for the selected stories and review the quickstart criteria.
 
 ## Notes
 
 - `[P]` marks tasks that edit separate files and have no prerequisite on an incomplete task.
-- `[US1]`, `[US2]`, `[US3]`, and `[US4]` map to the corresponding stories in `spec.md`.
+- `[US1]` through `[US6]` map to the corresponding stories in `spec.md`.
 - No tasks are included for project scaffolding, new dependencies, or a public API because the existing application already supplies these capabilities.

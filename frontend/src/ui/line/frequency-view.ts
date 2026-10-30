@@ -33,6 +33,7 @@ export interface FrequencyViewOptions {
   tripStops?: TripStopSequence;
   patterns?: LineRoutePattern[];
   lines?: Line[];
+  onSelectLine?: (line: Line) => void;
   favoriteStopIds?: string[];
   dayType: DayType;
   onClose?: () => void;
@@ -101,7 +102,7 @@ export function renderLineFrequency(root: HTMLElement, options: FrequencyViewOpt
         open.className = 'stop-open';
         open.textContent = stop.name;
         open.addEventListener('click', () => options.onStopSelect?.(stop.id));
-        info.append(open, createLineBadges(stop.lineIds, options.lines ?? []));
+        info.append(open, createLineBadges(stop.lineIds, options.lines ?? [], options.onSelectLine));
         item.append(info);
         if (options.onStopFavoriteToggle) {
           const favorite = document.createElement('div');

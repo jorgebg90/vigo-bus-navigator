@@ -54,7 +54,29 @@ municipal action, or persisted interface is added.
 - Keep arrival icons informational when matching line details are unavailable;
   do not expose a no-op control.
 - Catalog-backed badges in the stop summary may open the same route.
-- Do not change line icons in other views.
+- In route-stop rows, make a line badge an accessible button only when the
+  corresponding line exists in the loaded catalog; activating it opens that
+  line's existing route flow.
+- Keep route-stop badges informational when matching line details are
+  unavailable. Do not change line badges in other views.
+
+## Supported Interface Languages
+
+- Offer only Castellano (`es`) and Galego (`gl`) in the language selector.
+- When loading a saved English (`en`) preference from an older version, replace
+  it with Castellano and persist the normalized preference.
+- Continue to load municipal line catalogs using the selected Spanish or
+  Galician language.
+
+## Portrait Line Details
+
+- In portrait mobile layouts up to 1023 px wide, display selected-line details
+  as a full-width bottom panel and place the stop list within the panel.
+- Keep the map usable above the panel and avoid horizontal overflow.
+- Retain the existing narrower-phone layout and the desktop side-panel layout.
+- Use the compact line-view heading style for route directions at every
+  viewport size; do not allow browser-default heading size or margins to
+  dominate the route list.
 
 ## Responsive and Accessibility Requirements
 

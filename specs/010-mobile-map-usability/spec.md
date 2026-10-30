@@ -53,7 +53,7 @@ As a person using the app on a mobile device, I want to keep using the map when 
 2. **Given** location is unavailable, **When** the user interacts with other map or line controls, **Then** those controls remain visible and usable.
 3. **Given** location becomes available after initially being unavailable, **When** the user requests or enables location again, **Then** the map can use the location without requiring a page reload.
 
-### User Story 4 - Open a route from a stop's arrival line icon (Priority: P1)
+### User Story 4 - Open a route from a stop's line icon (Priority: P1)
 
 As a person viewing a stop's arrivals, I want to open a line's route by activating its line icon, so the arrival I am checking takes me directly to that line.
 
@@ -65,6 +65,32 @@ As a person viewing a stop's arrivals, I want to open a line's route by activati
 2. **Given** an arrival line icon has keyboard focus, **When** the user activates it with the keyboard, **Then** the same route opens and the icon has a localized accessible name.
 3. **Given** line details are unavailable in the catalog, **When** arrivals are displayed, **Then** their line icons remain informational and do not imply an unavailable action.
 4. **Given** a stop summary shows a catalog-backed line badge, **When** the user activates it, **Then** the same line route opens.
+5. **Given** a route stop lists a catalog-backed line badge, **When** the user activates it, **Then** the view switches to that line's route.
+6. **Given** a route-stop badge has keyboard focus, **When** the user activates it, **Then** the same route opens with a localized accessible name.
+
+### User Story 5 - Use the full screen for line details on portrait mobile layouts (Priority: P1)
+
+As a person browsing a line on a phone or portrait tablet, I want the line details and stop list to span the available screen width, so they do not appear in a narrow panel offset to the side.
+
+**Independent Test**: Open a line at 390 × 844 and 768 × 1024 portrait viewports and verify that the line panel spans the viewport and its stop list remains within the panel.
+
+**Acceptance Scenarios**:
+
+1. **Given** a line is open at a viewport up to 599 px wide, **When** its route and stops are displayed, **Then** the line panel spans the full viewport width.
+2. **Given** a line is open in portrait orientation up to 1023 px wide, **When** its route and stops are displayed, **Then** the line panel spans the full viewport width and the map remains usable above it.
+3. **Given** route stops are displayed in either layout, **When** the user scrolls the line details, **Then** the stop list remains within the panel without horizontal overflow.
+4. **Given** a line is open on desktop, **When** a route direction is displayed, **Then** its heading uses the compact line-view heading style instead of oversized browser defaults.
+
+### User Story 6 - Choose a supported interface language (Priority: P2)
+
+As a person using the application, I want the language selector to offer only Castellano and Galego, so I am not offered an English interface that the product does not support.
+
+**Independent Test**: Open language settings and verify that only Castellano and Galego are offered; load a saved English preference and verify that the application uses and saves Castellano instead.
+
+**Acceptance Scenarios**:
+
+1. **Given** the user opens language settings, **When** the language choices are displayed, **Then** only Castellano and Galego are offered.
+2. **Given** a saved preference from an older version specifies English, **When** preferences are loaded, **Then** the application migrates that preference to Castellano.
 
 ### Edge Cases
 
@@ -76,6 +102,8 @@ As a person viewing a stop's arrivals, I want to open a line's route by activati
 - The viewport is narrow or the device uses text zoom, increasing the space occupied by controls.
 - The user has enabled reduced motion.
 - A stop lists a line whose route details are unavailable in the loaded catalog.
+- The viewport is portrait and wider than 599 px but no wider than 1023 px.
+- A previously saved preference specifies the removed English locale.
 
 ## Requirements
 
@@ -92,6 +120,10 @@ As a person viewing a stop's arrivals, I want to open a line's route by activati
 - **FR-009**: The absence of a location-unavailable message MUST NOT prevent the user from browsing the map, lines, or other available transit information.
 - **FR-010**: Location-related messaging on non-mobile viewports MUST retain its existing behavior unless changed by a separately approved requirement.
 - **FR-011**: A line icon beside an arrival MUST open that line's route when the line is present in the loaded catalog; the control MUST be keyboard-operable and have a localized accessible name. Catalog-backed line badges in the stop summary MUST provide the same navigation.
+- **FR-012**: A line badge beside a stop in a selected line's route MUST open the matching line route when that line is present in the loaded catalog; the badge MUST be keyboard-operable and have a localized accessible name.
+- **FR-013**: In the mobile responsive layout, including portrait viewports up to 1023 px wide, selected-line details MUST use the full available viewport width and keep the stop list within the panel without horizontal overflow.
+- **FR-014**: The language selector MUST offer only Castellano and Galego. A saved English language preference MUST be migrated to Castellano when user preferences are loaded.
+- **FR-015**: Route-direction headings MUST use the compact line-view heading style at all viewport sizes and MUST NOT retain oversized browser-default margins.
 
 ### Key Entities
 
@@ -99,7 +131,8 @@ As a person viewing a stop's arrivals, I want to open a line's route by activati
 - **Line Route Loading State**: The user-visible state between selecting a line and displaying its route or reporting an outcome.
 - **Location Availability**: Whether the application can currently use the device's location, independently of the user's ability to browse transit information.
 - **Map View**: The visible and interactive map area, including its full mobile view when no line detail panel is open.
-- **Stop Line Route Link**: An accessible action on an arrival's line icon or a selected stop's line badge that opens the corresponding catalog line route.
+- **Stop Line Route Link**: An accessible action on an arrival's line icon, a selected stop's line badge, or a route stop's line badge that opens the corresponding catalog line route.
+- **Supported Interface Language**: Castellano or Galego, the two language choices exposed by the application.
 
 ## Success Criteria
 
@@ -111,6 +144,10 @@ As a person viewing a stop's arrivals, I want to open a line's route by activati
 - **SC-004**: In 100% of tested mobile cases where location is denied, unavailable, or outside the supported map area, no location-unavailable message occupies the map view, and line and map browsing remain usable.
 - **SC-005**: In all tested reduced-motion scenarios, essential state changes remain perceivable without non-essential motion.
 - **SC-006**: In all tested stop arrivals with catalog-backed lines, activating the line icon opens the matching route; catalog-missing icons remain non-interactive.
+- **SC-007**: In all tested route stops with catalog-backed line badges, activating the badge opens the matching route; catalog-missing badges remain informational.
+- **SC-008**: At tested 390 px and 768 px portrait viewports, selected-line details span the viewport width and the stop list stays within the panel.
+- **SC-009**: The language menu exposes exactly Castellano and Galego, and a legacy English preference is migrated to Castellano.
+- **SC-010**: Route-direction headings use the defined 18 px line-view style with zero default margins on desktop and mobile.
 
 ## Assumptions
 
@@ -119,4 +156,4 @@ As a person viewing a stop's arrivals, I want to open a line's route by activati
 - A message that reports no nearby stops after a usable location has been applied is not an unavailable-location message and remains in scope only for its existing behavior.
 - The route transition should communicate progress without blocking map or line interactions.
 - Existing non-mobile location messaging remains unchanged to limit the scope to the mobile space constraint described by the user.
-- This feature includes the three original mobile usability issues and direct stop-to-line route navigation; unrelated frontend improvements will be specified separately.
+- This feature includes the three original mobile usability issues, direct stop-to-line route navigation, responsive line-panel sizing, and the two supported interface languages; unrelated frontend improvements will be specified separately.

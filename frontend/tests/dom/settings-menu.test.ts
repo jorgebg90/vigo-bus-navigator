@@ -12,7 +12,7 @@ beforeEach(() => {
 });
 
 describe('settings menu', () => {
-  it('provides localized language/theme radios and persists choices without a privacy action', () => {
+  it('offers only Castellano and Galego and migrates an old English preference', () => {
     let preferences: UserPreferences = { theme: 'light', language: 'en', recentViews: [] };
     const storage: StoragePort = {
       persisted: true,
@@ -29,9 +29,11 @@ describe('settings menu', () => {
     expect(trigger.textContent).toBe('');
     trigger.click();
 
-    expect(root.querySelectorAll('[role="menuitemradio"][data-language]')).toHaveLength(3);
+    expect(root.querySelectorAll('[role="menuitemradio"][data-language]')).toHaveLength(2);
     expect(root.querySelectorAll('[role="menuitemradio"][data-theme]')).toHaveLength(0);
-    expect([...root.querySelectorAll('[data-language]')].map((item) => item.textContent)).toEqual(['Castellano', 'Galego', 'English']);
+    expect([...root.querySelectorAll('[data-language]')].map((item) => item.textContent)).toEqual(['Castellano', 'Galego']);
+    expect(preferences.language).toBe('es');
+    expect(root.querySelector('[data-language="es"]')?.getAttribute('aria-checked')).toBe('true');
     expect(root.querySelector('[role="menuitem"][data-action="privacy"]')).toBeNull();
     expect(root.querySelector('[role="menuitem"][data-action="about"]')).toBeNull();
 

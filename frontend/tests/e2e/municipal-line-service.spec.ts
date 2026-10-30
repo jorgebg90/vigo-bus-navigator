@@ -13,6 +13,10 @@ test('shows clearly labeled provisional fixture times and route data without con
   await expect(lineButton).toBeVisible();
   await lineButton.click();
 
+  const routeHeading = page.locator('[data-route-pattern] h2').first();
+  await expect(routeHeading).toBeVisible({ timeout: 15_000 });
+  await expect(routeHeading).toHaveCSS('font-size', '18px');
+  await expect(routeHeading).toHaveCSS('margin-block-start', '0px');
   await expect(page.locator('[data-schedule-provenance="provisional-fixture"]')).toContainText('Synthetic provisional schedule evaluation fixture');
   await expect(page.locator('[data-provisional-warning]').first()).toContainText(/Provisional data|Datos provisionales|Datos provisorios/);
   const scheduleDisclosure = page.locator('[data-schedule-disclosure]');
@@ -166,6 +170,33 @@ test('shows a selected line route on the map and clears it before independent st
   await expect(page.locator('aside[aria-label="Details"] h2')).toContainText('Aeroporto de Peinador');
   await expect(map).toHaveAttribute('data-route-count', '0');
   expect(requests).toEqual([]);
+});
+
+test('fills portrait mobile width with the selected line and its stop list', async ({ page }) => {
+  await useMunicipalProfile(page);
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 768, height: 1024 }
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+    await page.getByRole('button', { name: /Lines|Líneas|Liñas/ }).click();
+    await page.getByRole('searchbox', { name: /Search lines|Buscar líneas|Buscar liñas/ }).fill('A');
+    await page.getByRole('button', { name: 'A Synthetic line A' }).click();
+
+    const lineDetails = page.locator('.destination-view[data-destination="lines"]');
+    const routePattern = page.locator('#line-day-panel [data-route-pattern]').first();
+    await expect(routePattern).toBeVisible();
+    const panelBox = await lineDetails.boundingBox();
+    const patternBox = await routePattern.boundingBox();
+    expect(panelBox).not.toBeNull();
+    expect(patternBox).not.toBeNull();
+    expect(panelBox!.x).toBeCloseTo(0, 0);
+    expect(panelBox!.width).toBeCloseTo(viewport.width, 0);
+    expect(patternBox!.x).toBeGreaterThanOrEqual(panelBox!.x);
+    expect(patternBox!.x + patternBox!.width).toBeLessThanOrEqual(panelBox!.x + panelBox!.width);
+  }
 });
 
 test('shows no fabricated route for missing or invalid fixture geometry', async ({ page }) => {

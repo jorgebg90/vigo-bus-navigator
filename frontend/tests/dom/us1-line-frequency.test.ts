@@ -190,6 +190,36 @@ describe('US1 line frequency view', () => {
     expect(selectStop).toHaveBeenCalledWith('stop-1');
   });
 
+  it('opens the matching line from a badge inside a route stop', () => {
+    const root = document.createElement('main');
+    const selectLine = vi.fn();
+    renderLineFrequency(root, {
+      lineCode: '4A',
+      dayType: 'weekday',
+      lines: testLines,
+      patterns: [{
+        id: 'outbound',
+        headsign: 'Urzáiz',
+        stopIds: ['stop-1'],
+        stops: [{
+          id: 'stop-1',
+          code: '101',
+          vitrasaId: null,
+          name: 'Praza de América',
+          lat: 42,
+          lon: -8,
+          lineIds: ['l7']
+        }]
+      }],
+      onSelectLine: selectLine
+    });
+
+    const lineLink = root.querySelector<HTMLButtonElement>('[data-route-stop="stop-1"] [data-line-route="7"]');
+    expect(lineLink?.getAttribute('aria-label')).toBe('Open route for line 7');
+    lineLink?.click();
+    expect(selectLine).toHaveBeenCalledWith(testLines[1]);
+  });
+
   it('renders every API route direction in order with a favorite toggle on each stop', () => {
     const root = document.createElement('main');
     const toggleStop = vi.fn();

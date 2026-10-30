@@ -11,8 +11,7 @@ export interface SettingsMenuController {
 
 const languages: Array<{ value: Language; label: string }> = [
   { value: 'es', label: 'Castellano' },
-  { value: 'gl', label: 'Galego' },
-  { value: 'en', label: 'English' }
+  { value: 'gl', label: 'Galego' }
 ];
 export function createSettingsMenu(
   root: HTMLElement,

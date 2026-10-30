@@ -52,4 +52,10 @@ test('keyboard flow searches a stop and browses lines without opening the map', 
   await expect(page.locator('[data-route-provenance="bundled-catalog"]')).toContainText('2026-10-26');
   const stop = page.locator('[data-route-stop]').first();
   await expect(stop.locator('.stop-open')).not.toContainText(/stop-/i);
+  const relatedLineIcon = stop.locator('[data-line-route]').first();
+  await expect(relatedLineIcon).toBeVisible();
+  const relatedLineCode = await relatedLineIcon.getAttribute('data-line-route');
+  expect(relatedLineCode).toBeTruthy();
+  await relatedLineIcon.click();
+  await expect(page.locator('.line-view-header h1 .line-badge')).toHaveText(relatedLineCode ?? '');
 });

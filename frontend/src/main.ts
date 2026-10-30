@@ -555,6 +555,7 @@ async function bootstrap(): Promise<void> {
       onClose: () => shell.navigate('map'),
       onDayTypeChange: (dayType) => { void showLine(line, dayType); },
       onStopSelect: showStopOnMap,
+      onSelectLine: (relatedLine) => { void showLine(relatedLine); },
       onStopFavoriteToggle: (stopId) => {
         toggleFavoriteForTarget(storage, { type: 'stop', targetId: stopId });
         notifyStorageFailure();
