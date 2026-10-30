@@ -288,6 +288,10 @@
     "responsibility": "inbound-adapter"
   },
   {
+    "path": "frontend/src/ui/line/line-loading-view.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
     "path": "frontend/src/ui/line/lines-list.ts",
     "responsibility": "inbound-adapter"
   },
