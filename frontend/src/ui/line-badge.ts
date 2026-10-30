@@ -1,4 +1,5 @@
 import type { Line } from '../domain/types';
+import { translateCurrent } from '../i18n';
 
 const FALLBACK_COLOR = '#595959';
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
@@ -31,12 +32,28 @@ export function createLineBadge(line: { code: string; color?: string | null }): 
   return badge;
 }
 
-export function createLineBadges(lineIds: string[], lines: Line[]): HTMLSpanElement {
+export function createLineBadges(
+  lineIds: string[],
+  lines: Line[],
+  onSelectLine?: (line: Line) => void
+): HTMLSpanElement {
   const group = document.createElement('span');
   group.className = 'line-badges';
   for (const lineId of lineIds) {
     const line = lines.find((candidate) => candidate.id === lineId);
-    group.append(createLineBadge(line ?? { code: lineCodeFromId(lineId) }));
+    const badge = createLineBadge(line ?? { code: lineCodeFromId(lineId) });
+    if (line && onSelectLine) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'line-route-link';
+      button.dataset.lineRoute = line.code;
+      button.setAttribute('aria-label', translateCurrent('openLineRoute', { line: line.code }));
+      button.append(badge);
+      button.addEventListener('click', () => onSelectLine(line));
+      group.append(button);
+    } else {
+      group.append(badge);
+    }
   }
   return group;
 }

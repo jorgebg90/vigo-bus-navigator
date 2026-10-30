@@ -28,4 +28,35 @@ describe('location status', () => {
     renderLocationStatus(root, null);
     expect(root.querySelector('[data-location-status]')).toBeNull();
   });
+
+  it.each(['unavailable', 'outside-coverage'] as const)(
+    'suppresses %s on mobile',
+    (status) => {
+      const root = document.createElement('section');
+
+      renderLocationStatus(root, status, { mobile: true });
+
+      expect(root.querySelector('[data-location-status]')).toBeNull();
+    }
+  );
+
+  it('retains the no-nearby message on mobile', () => {
+    const root = document.createElement('section');
+
+    renderLocationStatus(root, 'no-nearby-stops', { mobile: true });
+
+    expect(root.querySelector('[data-location-status="no-nearby-stops"]')?.textContent)
+      .toBe('No nearby bus stops are shown.');
+  });
+
+  it.each(['unavailable', 'outside-coverage'] as const)(
+    'retains %s on non-mobile viewports',
+    (status) => {
+      const root = document.createElement('section');
+
+      renderLocationStatus(root, status, { mobile: false });
+
+      expect(root.querySelector(`[data-location-status="${status}"]`)).not.toBeNull();
+    }
+  );
 });

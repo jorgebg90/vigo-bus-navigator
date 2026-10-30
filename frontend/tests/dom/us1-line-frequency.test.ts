@@ -76,6 +76,20 @@ describe('US1 line frequency view', () => {
     expect(root.querySelector('[data-line-map-status="unavailable"]')?.textContent)
       .toBe('No hay un recorrido verificado disponible para esta línea.');
   });
+
+  it('announces a pending route without reporting it unavailable', () => {
+    const root = document.createElement('main');
+
+    renderLineFrequency(root, { lineCode: '4A', dayType: 'weekday', routePending: true });
+
+    expect(root.querySelector('.line-route-loading-overlay')).not.toBeNull();
+    const status = root.querySelector('[data-line-route-loading]');
+    expect(status?.getAttribute('role')).toBe('status');
+    expect(status?.getAttribute('aria-live')).toBe('polite');
+    expect(status?.textContent).toBe('Loading route…');
+    expect(root.querySelector('[data-line-map-status="unavailable"]')).toBeNull();
+  });
+
   it('renders day type and frequency without technical dataset metadata', () => {
     const root = document.createElement('main');
     renderLineFrequency(root, {
@@ -174,6 +188,36 @@ describe('US1 line frequency view', () => {
     expect(stopList?.textContent).not.toContain('stop-1');
     stopList?.querySelector<HTMLButtonElement>('li button')?.click();
     expect(selectStop).toHaveBeenCalledWith('stop-1');
+  });
+
+  it('opens the matching line from a badge inside a route stop', () => {
+    const root = document.createElement('main');
+    const selectLine = vi.fn();
+    renderLineFrequency(root, {
+      lineCode: '4A',
+      dayType: 'weekday',
+      lines: testLines,
+      patterns: [{
+        id: 'outbound',
+        headsign: 'Urzáiz',
+        stopIds: ['stop-1'],
+        stops: [{
+          id: 'stop-1',
+          code: '101',
+          vitrasaId: null,
+          name: 'Praza de América',
+          lat: 42,
+          lon: -8,
+          lineIds: ['l7']
+        }]
+      }],
+      onSelectLine: selectLine
+    });
+
+    const lineLink = root.querySelector<HTMLButtonElement>('[data-route-stop="stop-1"] [data-line-route="7"]');
+    expect(lineLink?.getAttribute('aria-label')).toBe('Open route for line 7');
+    lineLink?.click();
+    expect(selectLine).toHaveBeenCalledWith(testLines[1]);
   });
 
   it('renders every API route direction in order with a favorite toggle on each stop', () => {
@@ -373,5 +417,21 @@ describe('US1 line frequency view', () => {
     expect(root.querySelector('[role="tabpanel"]')?.getAttribute('aria-labelledby')).toBe('line-day-tab-weekday');
     expect(root.textContent).toContain('Provisional fixture evaluation');
     expect(root.textContent).not.toContain('Published departures');
+  });
+
+  it('renders a localized close control and invokes its callback', () => {
+    const root = document.createElement('main');
+    const onClose = vi.fn();
+
+    renderLineFrequency(root, {
+      lineCode: 'A',
+      dayType: 'weekday',
+      onClose
+    });
+
+    const close = root.querySelector<HTMLButtonElement>('[data-line-detail-close]');
+    expect(close?.getAttribute('aria-label')).toBe('Close');
+    close?.click();
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });

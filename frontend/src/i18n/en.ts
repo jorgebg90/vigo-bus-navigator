@@ -69,10 +69,12 @@ export const messages = {
 	liveUnavailable: 'Live arrivals are unavailable for this stop',
 	servingLines: 'Lines serving this stop',
 	lineFrequencies: 'View line frequencies',
+	openLineRoute: 'Open route for line {line}',
 	mapRetry: 'Retry map',
 	useSearch: 'Use search',
 	mapControls: 'Map controls',
-	stopsHere: 'Stops here ({count})'
+	stopsHere: 'Stops here ({count})',
+	loadingLineRoute: 'Loading line route…'
 	,saveFavorite: 'Save {name} to favorites'
 	,removeFavoriteNamed: 'Remove {name} from favorites'
 	,savedEmpty: 'No favorites saved yet'
@@ -100,6 +102,7 @@ export const messages = {
 	,routeShapeStopsAlternative: 'The stop lists for each direction describe this shape.'
 	,lineMapDefaultDirection: 'Route'
 	,lineMapUnavailable: 'No verified route is available for this line.'
+	,loadingLineMapRoute: 'Loading route…'
 	,tripStopSequence: 'Provisional ordered trip stops'
 	,lineStopDepartures: 'Provisional departures for line {line}'
 	,bundledDiscoveryNotice: 'General stop search and route-pattern summaries still use the bundled discovery catalog captured on {date}; it may not be exhaustive.'

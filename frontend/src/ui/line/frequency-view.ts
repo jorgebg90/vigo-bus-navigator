@@ -14,6 +14,7 @@ import type {
 import type { MunicipalFailureReason } from '../../domain/municipal-failures';
 import { translateCurrent } from '../../i18n';
 import { renderFavoriteToggle } from '../favorite-toggle';
+import { setIconButton } from '../icons';
 import { createLineBadge, createLineBadges } from '../line-badge';
 
 export interface FrequencyViewOptions {
@@ -27,12 +28,15 @@ export interface FrequencyViewOptions {
   routeProvenance?: Provenance;
   routeShape?: RouteShapeReceipt;
   mapRoute?: SelectedLineRouteDisplay;
+  routePending?: boolean;
   mapRouteUnavailable?: boolean;
   tripStops?: TripStopSequence;
   patterns?: LineRoutePattern[];
   lines?: Line[];
+  onSelectLine?: (line: Line) => void;
   favoriteStopIds?: string[];
   dayType: DayType;
+  onClose?: () => void;
   onDayTypeChange?: (dayType: DayType) => void;
   onStopSelect?: (stopId: string) => void;
   onStopFavoriteToggle?: (stopId: string) => void;
@@ -54,11 +58,30 @@ export function renderLineFrequency(root: HTMLElement, options: FrequencyViewOpt
     && document.activeElement?.getAttribute('role') === 'tab';
   const service = options.timetable ? getDayService(options.timetable, options.dayType) : undefined;
   root.replaceChildren();
+  root.classList.remove('line-loading-view');
+  root.removeAttribute('aria-busy');
   root.classList.add('line-view');
+  const header = document.createElement('div');
+  header.className = 'line-view-header';
   const heading = document.createElement('h1');
   heading.append(createLineBadge({ code: options.lineCode, color: options.lineColor }));
-  root.append(heading);
-  appendMapRouteStatus(root, options.mapRoute, options.mapRouteUnavailable ?? false);
+  header.append(heading);
+  if (options.onClose) {
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'line-view-close';
+    close.dataset.lineDetailClose = 'true';
+    setIconButton(close, 'close', translateCurrent('close'));
+    close.addEventListener('click', options.onClose);
+    header.append(close);
+  }
+  root.append(header);
+  appendMapRouteStatus(
+    root,
+    options.mapRoute,
+    options.routePending ?? false,
+    options.mapRouteUnavailable ?? false
+  );
   const appendPatterns = () => {
     for (const pattern of options.patterns ?? []) {
       const direction = document.createElement('section');
@@ -79,7 +102,7 @@ export function renderLineFrequency(root: HTMLElement, options: FrequencyViewOpt
         open.className = 'stop-open';
         open.textContent = stop.name;
         open.addEventListener('click', () => options.onStopSelect?.(stop.id));
-        info.append(open, createLineBadges(stop.lineIds, options.lines ?? []));
+        info.append(open, createLineBadges(stop.lineIds, options.lines ?? [], options.onSelectLine));
         item.append(info);
         if (options.onStopFavoriteToggle) {
           const favorite = document.createElement('div');
@@ -417,9 +440,22 @@ function appendProvisionalCandidateDetails(root: HTMLElement, options: Frequency
 function appendMapRouteStatus(
   root: HTMLElement,
   route: SelectedLineRouteDisplay | undefined,
+  pending: boolean,
   unavailable: boolean
 ): void {
   if (route?.directions.length) return;
+  if (pending) {
+    const overlay = document.createElement('div');
+    overlay.className = 'line-route-loading-overlay';
+    const status = document.createElement('p');
+    status.dataset.lineRouteLoading = 'true';
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    status.textContent = translateCurrent('loadingLineMapRoute');
+    overlay.append(status);
+    root.append(overlay);
+    return;
+  }
   if (!unavailable) return;
   const status = document.createElement('p');
   status.dataset.lineMapStatus = 'unavailable';

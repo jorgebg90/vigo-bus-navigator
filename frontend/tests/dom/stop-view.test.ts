@@ -29,6 +29,49 @@ function result(dataStatus: StopArrivalsResult['dataStatus']): StopArrivalsResul
 describe('stop panel presentation', () => {
   beforeEach(() => setDocumentLanguage('en'));
 
+  it('opens a line route from its badge in the selected stop summary', () => {
+    const root = document.createElement('main');
+    const line: Line = { id: 'line-A', code: 'A', name: 'Airport', color: '#007FFF' };
+    const onSelectLine = vi.fn();
+    renderStopArrivals(
+      root,
+      { ...result('current'), stop: { ...stop, lineIds: [line.id] } },
+      undefined,
+      undefined,
+      [line],
+      undefined,
+      onSelectLine
+    );
+
+    const lineLink = root.querySelector<HTMLButtonElement>('[data-stop-line="A"]');
+    expect(lineLink?.getAttribute('aria-label')).toBe('Open route for line A');
+    lineLink?.click();
+    expect(onSelectLine).toHaveBeenCalledWith(line);
+  });
+
+  it('opens the matching route from a line icon beside an arrival', () => {
+    const root = document.createElement('main');
+    const line: Line = { id: 'line-C1', code: 'C1', name: 'Circular', color: '#007FFF' };
+    const onSelectLine = vi.fn();
+    renderStopArrivals(
+      root,
+      {
+        ...result('current'),
+        arrivals: [{ lineCode: 'C1', destination: 'Praza América', minutes: 4 }]
+      },
+      undefined,
+      undefined,
+      [line],
+      undefined,
+      onSelectLine
+    );
+
+    const lineLink = root.querySelector<HTMLButtonElement>('[data-arrival-line="C1"]');
+    expect(lineLink?.getAttribute('aria-label')).toBe('Open route for line C1');
+    lineLink?.click();
+    expect(onSelectLine).toHaveBeenCalledWith(line);
+  });
+
   it('does not expose network implementation details or a privacy link', () => {
     const root = document.createElement('main');
     renderStopArrivals(root, result('loading'));
