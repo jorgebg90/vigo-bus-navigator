@@ -61,10 +61,10 @@ const contract = document.toJSON() as {
   };
 };
 if (contract.openapi !== '3.1.0' || contract.info?.version !== '5.0.0') {
-  throw new Error('Feature 004 contract must remain OpenAPI 3.1.0, normalized contract version 5.0.0');
+  throw new Error('Municipal API contract must remain OpenAPI 3.1.0, normalized contract version 5.0.0');
 }
 if (Object.keys(contract.paths ?? {}).length !== 1 || !contract.paths?.['/vci_api_app/api2.jsp']) {
-  throw new Error('Feature 004 contract must describe only the fixed municipal JSP endpoint');
+  throw new Error('Municipal API contract must describe only the fixed municipal JSP endpoint');
 }
 
 const actionNames = Object.keys(contract['x-source-actions'] ?? {}).sort();

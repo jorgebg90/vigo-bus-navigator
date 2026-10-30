@@ -110,7 +110,7 @@
 - There is no workflow-level concurrency group.
 - The production build runs OpenAPI generation through `npm run build`.
   Existing relevant gates are `npm run lint:openapi`,
-  `npm run validate:feature004-contract`, and
+  `npm run validate:municipal-api-contract`, and
   `npm run validate:production-artifact`.
 - Repository Pages publishing-source settings and availability of the public
   URL cannot be proven from the checked-in workflow; they remain live

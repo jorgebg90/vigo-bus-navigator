@@ -11,7 +11,7 @@ iOS. Run `npm run test:e2e` after installing the required browsers.
   and the current municipal browser contract.
 - `npm run test` runs deterministic frontend, domain, and script tests without
   municipal network traffic.
-- `npm run validate:feature004-contract` and
+- `npm run validate:municipal-api-contract` and
   `npm run validate:production-artifact` validate the current browser-facing
   source contract and production artifact.
 - Snapshot generation fails when any stop coordinate falls outside the Vigo

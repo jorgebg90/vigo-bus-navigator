@@ -1,55 +1,113 @@
-# Vigo Bus Navigator
+| **Castellano** | [Galego](README.gl.md) | [English](README.en.md) |
+| --- | --- | --- |
 
-> Explore Vigo bus lines, stops, published schedules, and arrivals in a static,
-> offline-friendly web app. The browser reads public municipal data directly.
+# Navegador de autobuses de Vigo
 
-## Purpose and boundaries
+> Explora líneas, paradas, horarios publicados y llegadas de autobuses de Vigo
+> en una aplicación web estática que puede funcionar sin conexión. El navegador
+> consulta directamente los datos públicos municipales.
 
-Vigo Bus Navigator is a community-built, browser-first PWA for urban transit in
-Vigo, Spain. It supports line and stop discovery, service by weekday/Saturday/
-Sunday and holidays, arrivals where available, and locally saved favorites.
+## Propósito y límites
 
-The project is static and client-only: it has no application backend, transit
-proxy, account system, or application-level activity tracking. When a live
-profile is enabled, the browser makes fixed, credential-free GET requests to
-the municipal service. This is not an official Vitrasa service.
+Navegador de autobuses de Vigo es una PWA comunitaria, centrada en el navegador,
+para el transporte urbano de Vigo. Permite buscar líneas y paradas, consultar
+los servicios de días laborables, sábados, domingos y festivos, ver llegadas
+cuando están disponibles y guardar favoritos localmente.
 
-## Architecture
+El proyecto es estático y solo funciona en el cliente: no tiene backend de
+aplicación, proxy de transporte, cuentas de usuario ni seguimiento de la
+actividad. Cuando se activa un perfil con datos en directo, el navegador hace
+peticiones GET fijas y sin credenciales al servicio municipal. No es un
+servicio oficial de Vitrasa.
 
-Runtime code follows hexagonal boundaries: domain and application modules own
-rules and use cases; browser, municipal, storage, and mapping integrations are
-adapters; [the composition root](./frontend/src/main.ts) wires them together.
-The maintained source inventory and dependency rules are checked in tests.
+## Arquitectura
 
-- [Runtime architecture and local checks](./docs/architecture.md)
-- [Architecture inventory and isolated-test mappings](./frontend/tests/architecture/modules.json)
-- [Harness Charter](./docs/harness-charter.md), authoritative for project agents
-  and required review gates
+El código de ejecución sigue límites hexagonales: el dominio y la aplicación
+contienen las reglas y los casos de uso; las integraciones con el navegador,
+los datos municipales, el almacenamiento y el mapa actúan como adaptadores; y
+la [raíz de composición](./frontend/src/main.ts) los conecta. Los tests
+comprueban el inventario del código fuente y las reglas de dependencias.
 
-## OpenAPI documentation
+```mermaid
+flowchart LR
+  visitor((Persona usuaria))
 
-Read the [municipal transit OpenAPI contract](https://jorgebg90.github.io/vigo-bus-navigator/docs/openapi/).
-The page is generated at build time from the canonical
-[OpenAPI YAML contract](./specs/004-vigo-jsp-transit-api/contracts/municipal-transit-v5.openapi.yaml).
-For a local preview, run `npm run build` and `npm run preview`, then open
-[`/docs/openapi/`](http://127.0.0.1:4173/docs/openapi/). It is static contract
-documentation—not a hosted API, backend, or transit proxy.
+  subgraph pwa["PWA estática en el navegador"]
+    ui["Interfaz y eventos<br/>Adaptadores de entrada"]
+    root["Raíz de composición<br/>frontend/src/main.ts"]
 
-## Get started
+    subgraph core["Núcleo hexagonal"]
+      usecases["Casos de uso de la aplicación"]
+      domain["Reglas y tipos del dominio"]
+      ports["Puertos de la aplicación"]
+      usecases --> domain
+      usecases --> ports
+    end
 
-Requirements: Node.js 22 and npm.
+    subgraph adapters["Adaptadores de salida"]
+      municipal["Adaptadores HTTP y horarios municipales"]
+      storage["Adaptador de almacenamiento del navegador"]
+      system["Geolocalización, reloj y visibilidad"]
+      map["Adaptador de MapLibre"]
+      bundled["Catálogos y horarios incluidos"]
+    end
+
+    worker["Service worker<br/>almacena en caché recursos estáticos"]
+  end
+
+  visitor --> ui
+  ui --> root
+  root --> ui
+  root -. conecta .-> usecases
+  root -. crea .-> municipal
+  root -. crea .-> storage
+  root -. crea .-> system
+  root -. crea .-> map
+  root -. crea .-> bundled
+  root -. registra .-> worker
+
+  municipal -. implementa .-> ports
+  storage -. implementa .-> ports
+  system -. implementa .-> ports
+  map -. implementa .-> ports
+  bundled -. implementa .-> ports
+  municipal --> municipalService["Servicio municipal de Vigo"]
+  storage --> localStorage[(localStorage)]
+  system --> browserApi["APIs del navegador"]
+  map --> maplibre["MapLibre GL JS"]
+  worker --> staticCache[(Caché de recursos estáticos)]
+```
+
+- [Arquitectura de ejecución y comprobaciones locales](./docs/architecture.md)
+- [Inventario de arquitectura y pruebas aisladas](./frontend/tests/architecture/modules.json)
+- [Carta del arnés de agentes](./docs/harness-charter.md), documento de referencia
+  para los agentes del proyecto y las revisiones obligatorias
+
+## Documentación OpenAPI
+
+Consulta el [contrato OpenAPI del transporte municipal](https://jorgebg90.github.io/vigo-bus-navigator/docs/openapi/).
+La página se genera durante la compilación a partir del
+[contrato OpenAPI en YAML](./specs/004-vigo-jsp-transit-api/contracts/municipal-transit-v5.openapi.yaml).
+Para verla localmente, ejecuta `npm run build` y `npm run preview`; después
+abre [`/docs/openapi/`](http://127.0.0.1:4173/docs/openapi/). Es documentación
+HTML estática del contrato, no una API alojada, un backend ni un proxy de
+transporte.
+
+## Primeros pasos
+
+Requisitos: Node.js 22 y npm.
 
 ```bash
 npm ci
 npm run dev
 ```
 
-`npm run dev` uses the `local-live` municipal profile configured in
-`frontend/.env.development`; it calls the fixed municipal source directly from
-the browser. Set `VITE_MUNICIPAL_PROFILE=fixture` to use synthetic responses
-without municipal network traffic.
+`npm run dev` usa el perfil municipal `local-live` configurado en
+`frontend/.env.development`; consulta la fuente municipal directamente desde
+el navegador. Define `VITE_MUNICIPAL_PROFILE=fixture` para usar respuestas
+sintéticas sin tráfico de red municipal.
 
-## Validation
+## Validación
 
 ```bash
 npm run typecheck
@@ -57,107 +115,118 @@ npm test
 npm run test:coverage
 npm run test:e2e
 npm run lint:openapi
-npm run validate:feature004-contract
+npm run validate:municipal-api-contract
 npm run build
 npm run size
 ```
 
-The test and browser profiles use fixtures and do not call the municipal
-service. Run `npm run build` before `npm run size`; the latter enforces the
-first-map and per-file budgets. For base-path checks, use
-`VITE_BASE_PATH=/ npm run build` or
-`VITE_BASE_PATH=/vigo-bus-navigator/ npm run build`. The deployed GitHub Pages
-build uses the latter path.
+Las pruebas y los perfiles de navegador usan datos de prueba y no consultan el
+servicio municipal. Ejecuta `npm run build` antes de `npm run size`; el segundo
+comando comprueba los límites de tamaño del primer mapa y de cada archivo. Para
+probar una ruta base, usa `VITE_BASE_PATH=/ npm run build` o
+`VITE_BASE_PATH=/vigo-bus-navigator/ npm run build`. La compilación que se
+despliega en GitHub Pages usa esta última ruta.
+Ejecuta la suite E2E de Playwright localmente durante el desarrollo; no forma
+parte de la validación de las PR en GitHub Actions.
 
-## Data sources and availability
+## Fuentes de datos y disponibilidad
 
-The municipal integration lives in
+La integración municipal está en
 [`frontend/src/infrastructure/municipal`](./frontend/src/infrastructure/municipal)
-and is coordinated by the frontend schedule repository. It owns the fixed
-action allowlist, bounded GET transport, source normalization, identity checks,
-provenance, and local cache behavior. It is browser code, not a Cloudflare
-Worker, serverless function, or separately hosted API.
+y se coordina mediante el repositorio de horarios de la aplicación. Se
+encarga de la lista permitida de acciones, del transporte GET limitado, de la
+normalización de la fuente, de las comprobaciones de identidad, de la
+procedencia y de la caché local. Es código del navegador, no un Worker de
+Cloudflare, una función serverless ni una API alojada por separado.
 
-| Municipal profile | Behavior |
+| Perfil municipal | Comportamiento |
 | --- | --- |
-| `fixture` | Deterministic synthetic responses; no municipal traffic. |
-| `local-live` | Fixed-origin browser GETs with credentials omitted. |
-| `production` | Direct browser GETs for the supported municipal action allowlist. |
+| `fixture` | Respuestas sintéticas deterministas; no consulta el servicio municipal. |
+| `local-live` | Peticiones GET desde el navegador a un origen fijo, sin credenciales. |
+| `production` | Peticiones GET directas del navegador para las acciones municipales permitidas. |
 
-Tests and E2E builds select `fixture` explicitly. `VITE_PROFILE=production` and
-`VITE_MUNICIPAL_PROFILE=production` select the static-host build profile. No
-separately hosted transit URL is accepted by configuration.
+Las pruebas y las compilaciones E2E seleccionan explícitamente `fixture`.
+`VITE_PROFILE=production` y `VITE_MUNICIPAL_PROFILE=production` seleccionan el
+perfil de compilación para alojamiento estático. La configuración no admite
+ninguna URL de transporte alojada por separado.
 
-The bundled open-data/GTFS catalog is a dated, non-exhaustive discovery seed
-for stops and ordered textual route alternatives; it is not represented as a
-live municipal response. Live municipal line/service catalogs, serving lines,
-and arrivals show source provenance. Fixture timetables are synthetic and
-labeled as such. In live profiles, real timetables remain unavailable until a
-source schedule-ID/day-code mapping exists; the app does not infer them from
-service metadata. Route geometry, trip sequencing, and detailed stop data also
-remain unavailable until their respective mappings are implemented. Failed
-source requests or invalid source semantics produce unavailable states rather
-than an unverified timetable fallback.
+El catálogo GTFS/de datos abiertos incluido es una semilla de descubrimiento
+fechada y no exhaustiva para paradas y alternativas textuales ordenadas de
+recorrido; no se presenta como una respuesta municipal en directo. Los
+catálogos municipales de líneas y servicios, las líneas que sirven una parada
+y las llegadas en directo muestran la procedencia de la fuente. Los horarios
+de prueba son sintéticos y se identifican como tales. En los perfiles en
+directo, los horarios reales siguen sin estar disponibles hasta que exista
+una correspondencia entre los identificadores de horario y los códigos de
+días de servicio; la aplicación no la deduce de los metadatos del servicio.
+La geometría de los recorridos, la secuencia de viajes y los detalles de las
+paradas también siguen sin estar disponibles hasta que se implementen las
+correspondencias necesarias. Las peticiones fallidas o los datos de origen no
+válidos producen estados de indisponibilidad, no horarios sin verificar.
 
-## Privacy and security
+## Privacidad y seguridad
 
-Favorites and settings stay in browser `localStorage`; there are no user
-profiles, credentials, or accounts. The app does not send precise location or
-user activity to its transit source. In `local-live` and `production`, the
-municipal service receives the browser's network request and public transit
-identifiers. Vigo and the static hosting provider may process connection
-metadata under their own policies.
+Los favoritos y la configuración se guardan en el `localStorage` del
+navegador; no hay perfiles de usuario, credenciales ni cuentas. La aplicación
+no envía la ubicación precisa ni la actividad de las personas usuarias a la
+fuente de transporte. En los perfiles `local-live` y `production`, el servicio
+municipal recibe la petición de red del navegador e identificadores públicos
+del transporte. Vigo y el proveedor de alojamiento estático pueden procesar
+metadatos de conexión según sus propias políticas.
 
-The service worker caches static frontend assets and the generated OpenAPI
-document, not municipal API responses. No secrets or backend URL are required.
+El service worker almacena en caché recursos estáticos de la interfaz y el
+documento OpenAPI generado, pero no las respuestas de la API municipal. No
+hacen falta secretos ni una URL de backend.
 
-## Project workflow
+## Flujo de trabajo del proyecto
 
-The repository uses Spec-Driven Development with GitHub Spec Kit, plus a
-project-agent harness that reviews design, implementation, accessibility, and
-acceptance at defined gates. The charter is the source of truth for all eight
-agents and gate assignments; use it rather than an abbreviated actor list.
+El repositorio utiliza Spec-Driven Development con GitHub Spec Kit y un arnés
+de agentes del proyecto que revisa el diseño, la implementación, la
+accesibilidad y la aceptación en etapas definidas. La carta es la fuente de
+referencia para los ocho agentes y sus revisiones; úsala en lugar de una lista
+abreviada de roles.
 
-The Spec Kit command flow is:
+El flujo de comandos de Spec Kit es:
 
 ```text
-/speckit-constitution → /speckit-specify → /speckit-clarify (optional)
-→ /speckit-plan → /speckit-tasks → /speckit-analyze (optional)
+/speckit-constitution → /speckit-specify → /speckit-clarify (opcional)
+→ /speckit-plan → /speckit-tasks → /speckit-analyze (opcional)
 → /speckit-implement → /speckit-converge
 ```
 
-The charter assigns G1 to all actors; G2 to Stakeholder, QA Tester, UX
-Designer, and Frontend Developer; G3 to Software Architect, Backend Developer,
-UX Designer, and Frontend Developer; G4 to QA Tester, UX Designer, and
-Frontend Developer; and G5 to QA Tester, Stakeholder, UX Designer, Frontend
-Developer, and Software Architect. G6 is the Communicator review of each
-phase's blog documentation, not a phase assigned to `/speckit-converge`.
+La carta asigna G1 a todos los agentes; G2 a Stakeholder, QA Tester, UX
+Designer y Frontend Developer; G3 a Software Architect, Backend Developer,
+UX Designer y Frontend Developer; G4 a QA Tester, UX Designer y Frontend
+Developer; y G5 a QA Tester, Stakeholder, UX Designer, Frontend Developer y
+Software Architect. G6 es la revisión del Communicator de la documentación
+del blog de cada fase, no una fase asignada a `/speckit-converge`.
 
-Feature specifications, plans, tasks, and gate verdicts live under `specs/`;
-custom agents and skills are in `.github/agents/` and `.github/skills/`.
-Operational details and review ownership are documented in the
-[Harness Charter](./docs/harness-charter.md).
+Las especificaciones, los planes, las tareas y los resultados de las
+revisiones están bajo `specs/`; los agentes y las habilidades personalizadas
+están en `.github/agents/` y `.github/skills/`. Los detalles operativos y la
+responsabilidad de las revisiones están en la
+[Carta del arnés](./docs/harness-charter.md).
 
-## Repository layout
+## Estructura del repositorio
 
 ```text
-.specify/           Spec Kit templates, scripts, and constitution
-.github/agents/     Project custom agents
-.github/skills/     Spec Kit workflows
-docs/               Architecture, harness charter, and blog series
-frontend/           Static browser application and tests
-scripts/            Contract checks, generators, and build tooling
-postman/            Manual municipal-source request collection
-specs/              Feature specs, plans, tasks, and verdicts
+.specify/           Plantillas, scripts y constitución de Spec Kit
+.github/agents/     Agentes personalizados del proyecto
+.github/skills/     Flujos de trabajo de Spec Kit
+docs/               Arquitectura, carta del arnés y serie de artículos
+frontend/           Aplicación estática del navegador y pruebas
+scripts/            Validación de contratos, generadores y herramientas de compilación
+postman/            Colección de peticiones manuales a la fuente municipal
+specs/              Especificaciones, planes, tareas y revisiones
 ```
 
-## Status
+## Estado
 
-Automated coverage includes Node unit tests, DOM tests, fixture-based
-integration, Playwright browser checks, and accessibility scans. Install
-Playwright browsers with `npx playwright install` when they are not already
-available.
+La cobertura automatizada incluye pruebas unitarias de Node, pruebas del DOM,
+integración con datos de prueba, comprobaciones del navegador con Playwright y
+análisis de accesibilidad. Instala los navegadores de Playwright con
+`npx playwright install` si todavía no están disponibles.
 
-## License
+## Licencia
 
-Apache-2.0 — see [LICENSE](./LICENSE) and [NOTICE](./NOTICE).
+Apache-2.0 — consulta [LICENSE](./LICENSE) y [NOTICE](./NOTICE).

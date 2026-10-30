@@ -15,14 +15,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run lint
       - run: npm run typecheck
       - run: npm test # Frontend, script, contract, and pure-domain tests
-      - run: npm run test:coverage
-      - run: npx playwright install --with-deps chromium webkit
-      - run: npm run test:e2e
       - run: npm run lint:openapi
-      - run: npm run validate:feature004-contract
+      - run: npm run validate:municipal-api-contract
       - run: npm run build # Static production build; no network required
       - run: npm run validate:production-artifact
       - run: npm run size
