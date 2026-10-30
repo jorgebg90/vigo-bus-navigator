@@ -12,7 +12,7 @@ Validated on 2026-10-29:
 | `npm test` | 79 test files, 384 tests passed |
 | `npm run test:coverage` | Passed; 94.77% statements/lines, 87.05% branches, 97.95% functions |
 | `npm run lint:openapi` | Passed with 0 errors and 9 existing unused-component warnings |
-| `npm run validate:feature004-contract` | Passed; OpenAPI 3.1.0, 43 schemas compiled |
+| `npm run validate:municipal-api-contract` | Passed; OpenAPI 3.1.0, 43 schemas compiled |
 | `VITE_BASE_PATH=/ npm run build` | Passed; generated OpenAPI page present |
 | `VITE_BASE_PATH=/vigo-bus-navigator/ npm run build` | Passed; generated OpenAPI page present |
 | Full Playwright suite at `/`, `--workers=2`, rerun after review fixes | 116 passed, 7 skipped |

@@ -22,7 +22,7 @@ npm run typecheck
 npm test
 npm run test:coverage
 npm run lint:openapi
-npm run validate:feature004-contract
+npm run validate:municipal-api-contract
 npm run build
 npm run validate:production-artifact
 npm run size

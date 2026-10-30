@@ -46,7 +46,7 @@ describe('GitHub Pages deployment workflow', () => {
     const buildStep = steps.find((step) => step.run === 'npm run build');
     const validationCommands = [
       'npm run lint:openapi',
-      'npm run validate:feature004-contract',
+      'npm run validate:municipal-api-contract',
       'npm run validate:production-artifact'
     ];
     const validationIndexes = validationCommands.map((command) =>

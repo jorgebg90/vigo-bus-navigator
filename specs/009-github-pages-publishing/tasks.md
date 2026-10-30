@@ -44,7 +44,7 @@ the same build.
 
 ### Implementation for User Story 1
 
-- [X] T002 [US1] After T001, update the `frontend` job to run `npm run lint:openapi` and `npm run validate:feature004-contract` before `npm run build`, then run `npm run validate:production-artifact` before uploading `dist` in `.github/workflows/deploy.yml`
+- [X] T002 [US1] After T001, update the `frontend` job to run `npm run lint:openapi` and `npm run validate:municipal-api-contract` before `npm run build`, then run `npm run validate:production-artifact` before uploading `dist` in `.github/workflows/deploy.yml`
 - [X] T003 [US1] After T002, make the `deploy-pages` job depend on the artifact-producing `frontend` job and preserve its `github-pages` environment in `.github/workflows/deploy.yml` (existing dependency retained and covered by tests)
 
 **Checkpoint**: A successful `main` run cannot deploy until its static app and
@@ -88,7 +88,7 @@ guide aligned with implementation.
 
 - [X] T010 [P] Update the workflow validation commands, expected route results, and live deployment checklist to match the implemented workflow in `specs/009-github-pages-publishing/quickstart.md`
 - [X] T011 Run `npm test -- scripts/deploy-workflow.test.ts scripts/pages-smoke-check.test.ts scripts/generate-openapi-docs-failures.test.ts` and fix failures in `scripts/deploy-workflow.test.ts`, `scripts/pages-smoke-check.test.ts`, and `scripts/generate-openapi-docs-failures.test.ts`
-- [X] T012 Run `npm run lint:openapi`, `npm run validate:feature004-contract`, `VITE_PROFILE=production VITE_MUNICIPAL_PROFILE=production VITE_BASE_PATH=/vigo-bus-navigator/ npm run build`, and `npm run validate:production-artifact`; verify `dist/index.html` and `dist/docs/openapi/index.html` using `scripts/validate-production-artifact.ts`
+- [X] T012 Run `npm run lint:openapi`, `npm run validate:municipal-api-contract`, `VITE_PROFILE=production VITE_MUNICIPAL_PROFILE=production VITE_BASE_PATH=/vigo-bus-navigator/ npm run build`, and `npm run validate:production-artifact`; verify `dist/index.html` and `dist/docs/openapi/index.html` using `scripts/validate-production-artifact.ts`
 
 ---
 
