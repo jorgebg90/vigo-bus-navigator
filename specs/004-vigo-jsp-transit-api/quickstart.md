@@ -53,7 +53,7 @@ From the repository root, with the existing npm dependencies installed:
 ```sh
 git branch --show-current
 bash .specify/scripts/bash/check-prerequisites.sh --paths-only --json
-npm run validate:feature004-contract
+npm run validate:municipal-api-contract
 npm run lint:openapi
 npm test -- --run frontend/tests/unit/municipal
 npm run typecheck
@@ -70,7 +70,7 @@ Postman requests do not validate browser CORS behavior.
 Expected branch `004-vigo-jsp-transit-api`; plan/spec paths match this folder.
 Latest focused implementation validation: `npm test -- --run` passed 296 tests
 across 68 files, `npm run typecheck` and
-`npm run validate:feature004-contract` passed. The production build passed with
+`npm run validate:municipal-api-contract` passed. The production build passed with
 the existing MapLibre chunk-size warning. The focused Chromium offline
 snapshot E2E passed 2/2, including untrusted-provenance rejection. Spectral
 reported zero errors and nine known unused-component warnings in the earlier

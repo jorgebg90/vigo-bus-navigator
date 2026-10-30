@@ -344,7 +344,7 @@ because they are not imported by the application.
 | Active | `scripts/snapshot/source/manifest.json` | Maintained generation, validation, provenance, or supporting test utility. |
 | Active | `scripts/snapshot/source/stops.json` | Maintained generation, validation, provenance, or supporting test utility. |
 | Active | `scripts/snapshot/test/geo-validation.test.ts` | Maintained generation, validation, provenance, or supporting test utility. |
-| Active | `scripts/validate-feature004-contract.ts` | Maintained generation, validation, provenance, or supporting test utility. |
+| Active | `scripts/validate-municipal-api-contract.ts` | Maintained generation, validation, provenance, or supporting test utility. |
 | Active | `scripts/validate-production-artifact.ts` | Maintained generation, validation, provenance, or supporting test utility. |
 | Historical | `specs/000-constitution/gate-g1-ratification.md` | Completed feature, accepted decision, contract, or gate evidence; preserve. |
 | Historical | `specs/001-bus-frequency-pwa/checklists/requirements.md` | Completed feature, accepted decision, contract, or gate evidence; preserve. |
@@ -462,7 +462,7 @@ remains.
 | Worker catalog and timetable snapshots | Moved and retained | Catalog now lives under `frontend/src/infrastructure/municipal/data/`; dated snapshots live under `scripts/snapshot/generated/`; generator tests and parity validation pass |
 | Worker runtime, source, workspace, typecheck, and deployment configuration | Removed (22 baseline Worker files) | No Worker deploy existed; root workspace/scripts, CI, typecheck and test discovery were migrated; no tracked Worker path remains |
 | Local ignored Worker cache and `node_modules` remnants | Removed | The retired `worker/.wrangler` cache (20 MB) and its unused `worker/node_modules` directory were local-only and had no remaining consumers |
-| Worker-only contract/load and runtime unit tests | Removed | Replaced for maintained behavior by frontend tests, OpenAPI regression/lint, and `validate:feature004-contract` |
+| Worker-only contract/load and runtime unit tests | Removed | Replaced for maintained behavior by frontend tests, OpenAPI regression/lint, and `validate:municipal-api-contract` |
 | Legacy `ApiScheduleRepository`, `getLineFrequency`, `ScheduleRepository`, `LineDetails`, and `DatasetManifest` | Removed | Full frontend source/test reference scan showed no callers after migration to the municipal v5 repository |
 | `frontend/tests/unit/helpers/ports.ts` | Removed | Its fake classes had no imports or consumers |
 | `frontend/poc-vigo-jsp.html` and `frontend/poc-vigo-jsp.js` | Removed | Temporary experiments had no application/build/CI consumers; relevant request and browser observations remain in feature 004 evidence |
@@ -478,7 +478,7 @@ remains.
 | `npm run typecheck` and `npm run lint` | PASS |
 | `npm run test:coverage` | PASS — 71 files, 349 tests; statements/lines 93.58%, branches 85.33%, functions 97.50% |
 | `npm run lint:openapi` | PASS — 0 errors; 9 pre-existing unused-component warnings |
-| `npm run validate:feature004-contract` | PASS — OpenAPI 3.1.0, 43 schemas and supported municipal actions verified |
+| `npm run validate:municipal-api-contract` | PASS — OpenAPI 3.1.0, 43 schemas and supported municipal actions verified |
 | `npm run build` | PASS — static frontend artifact; existing large MapLibre chunk warning |
 | `npm run validate:production-artifact` | PASS — fixed source, credential-free requests, supported actions, exact detail mapping |
 | `npm run size` | PASS — JS 373.4 KiB gzip, CSS 13.6 KiB gzip, first-map graph 384.2 KiB / 500 KiB |

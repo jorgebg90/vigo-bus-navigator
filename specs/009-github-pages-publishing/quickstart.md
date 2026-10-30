@@ -15,7 +15,7 @@ GitHub Pages deployment.
 ```bash
 npm ci
 npm run lint:openapi
-npm run validate:feature004-contract
+npm run validate:municipal-api-contract
 VITE_PROFILE=production \
 VITE_MUNICIPAL_PROFILE=production \
 VITE_BASE_PATH=/vigo-bus-navigator/ \

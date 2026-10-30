@@ -88,7 +88,7 @@ the scoped local-live mapping:
 | --- | --- |
 | `npm test -- frontend/tests/unit/municipal frontend/tests/unit/request-version.test.ts frontend/tests/dom/us1-line-frequency.test.ts` | PASS — 27 files, 142 tests |
 | `npm run typecheck` | PASS |
-| `npm run validate:feature004-contract` | PASS — OpenAPI 3.1.0, v5.0.0, 41 schemas; seven general live actions, four exact local-live mappings, seven production actions |
+| `npm run validate:municipal-api-contract` | PASS — OpenAPI 3.1.0, v5.0.0, 41 schemas; seven general live actions, four exact local-live mappings, seven production actions |
 | Postman collection parse/count | PASS — 7 supported actions and 4 stakeholder-validated sample requests |
 | `git diff --check` | PASS |
 | `npm run build` | PASS — production build generated; existing MapLibre chunk exceeds Vite's 500 kB minified-chunk warning threshold |

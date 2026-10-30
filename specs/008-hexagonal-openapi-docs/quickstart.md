@@ -16,7 +16,7 @@ behavior. It assumes the implementation tasks have been completed.
 npm run typecheck
 npm test
 npm run lint:openapi
-npm run validate:feature004-contract
+npm run validate:municipal-api-contract
 ```
 
 Expected results:

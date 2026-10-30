@@ -14,7 +14,7 @@
     "test:e2e": "playwright test",
     "lint": "tsc --noEmit",
     "lint:openapi": "spectral lint specs/002-realtime-bus-api/contracts/realtime-arrivals.openapi.yaml specs/003-improve-frontend-design/contracts/realtime-api-v4.openapi.yaml specs/004-vigo-jsp-transit-api/contracts/municipal-transit-v5.openapi.yaml",
-    "validate:feature004-contract": "tsx scripts/validate-feature004-contract.ts",
+    "validate:municipal-api-contract": "tsx scripts/validate-municipal-api-contract.ts",
     "validate:production-artifact": "tsx scripts/validate-production-artifact.ts",
     "smoke:municipal-live": "tsx scripts/smoke-municipal-live.ts",
     "size": "size-limit && tsx scripts/check-payload-budget.ts",

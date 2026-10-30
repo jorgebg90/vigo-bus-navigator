@@ -57,7 +57,7 @@ npm test
 npm run test:coverage
 npm run test:e2e
 npm run lint:openapi
-npm run validate:feature004-contract
+npm run validate:municipal-api-contract
 npm run build
 npm run size
 ```
