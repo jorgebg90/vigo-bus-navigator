@@ -48,6 +48,7 @@ export const messages = {
 	routeShapeStopsAlternative: 'As listas de paradas de cada sentido describen este trazado.',
 	lineMapDefaultDirection: 'Percorrido',
 	lineMapUnavailable: 'Non hai un percorrido verificado dispoñible para esta liña.',
+	loadingLineMapRoute: 'Cargando o percorrido…',
 	tripStopSequence: 'Paradas provisionais da viaxe, en orde',
 	lineStopDepartures: 'Saídas provisionais da liña {line}',
 	statusStale: 'Datos desactualizados',
@@ -84,10 +85,12 @@ export const messages = {
 	liveUnavailable: 'As chegadas non están dispoñibles para esta parada',
 	servingLines: 'Liñas que paran aquí',
 	lineFrequencies: 'Ver frecuencias das liñas',
+	openLineRoute: 'Ver percorrido da liña {line}',
 	mapRetry: 'Reintentar mapa',
 	useSearch: 'Usar busca',
 	mapControls: 'Controis do mapa',
-	stopsHere: 'Paradas aquí ({count})'
+	stopsHere: 'Paradas aquí ({count})',
+	loadingLineRoute: 'Cargando o percorrido da liña…'
 	,saveFavorite: 'Gardar {name} nos favoritos'
 	,removeFavoriteNamed: 'Quitar {name} dos favoritos'
 	,savedEmpty: 'Aínda non hai favoritos'

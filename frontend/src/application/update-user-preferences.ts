@@ -3,7 +3,11 @@ import type { Language, RecentView, UserPreferences } from '../domain/types';
 import type { StoragePort } from './ports';
 
 export function loadUserPreferences(storage: StoragePort): UserPreferences {
-  return storage.loadPreferences();
+  const preferences = storage.loadPreferences();
+  if (preferences.language !== 'en') return preferences;
+  const normalized = { ...preferences, language: 'es' as const };
+  storage.savePreferences(normalized);
+  return normalized;
 }
 
 export function setPreferredLanguage(storage: StoragePort, language: Language): UserPreferences {

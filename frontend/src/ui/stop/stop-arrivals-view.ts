@@ -3,7 +3,7 @@ import { firstArrivalChanged, shouldAnnounceLoading } from '../../domain/freshne
 import type { Line } from '../../domain/types';
 import { translateCurrent } from '../../i18n';
 import { renderFavoriteToggle } from '../favorite-toggle';
-import { createLineBadge, createLineBadges } from '../line-badge';
+import { createLineBadge, lineCodeFromId } from '../line-badge';
 
 const STATUS_KEYS = {
   loading: 'statusLoading',
@@ -27,7 +27,8 @@ export function renderStopArrivals(
   onRetry?: () => void,
   favorite?: { saved: boolean; onToggle: () => void },
   lines?: Line[],
-  lineColors?: ReadonlyMap<string, string | null>
+  lineColors?: ReadonlyMap<string, string | null>,
+  onSelectLine?: (line: Line) => void
 ): void {
   const previous = previousResults.get(root);
   const unchangedRefresh = Boolean(previous
@@ -123,7 +124,7 @@ export function renderStopArrivals(
   if (statusRow.parentElement !== root) root.append(statusRow);
   const summary = document.createElement('div');
   summary.className = 'stop-arrivals-summary';
-  const lineBadges = createLineBadges(result.stop.lineIds, lines ?? []);
+  const lineBadges = createStopLineBadges(result.stop.lineIds, lines ?? [], onSelectLine);
   if (result.stop.lineIds.length) summary.append(lineBadges);
   if (favorite) {
     const favoriteHost = document.createElement('div');
@@ -131,6 +132,41 @@ export function renderStopArrivals(
     favoriteHost.className = 'stop-arrivals-actions';
     renderFavoriteToggle(favoriteHost, { type: 'stop', name: result.stop.name, ...favorite });
     summary.append(favoriteHost);
+  }
+
+  function createStopLineBadges(
+    lineIds: string[],
+    lines: Line[],
+    onSelectLine?: (line: Line) => void
+  ): HTMLSpanElement {
+    const group = document.createElement('span');
+    group.className = 'line-badges';
+    for (const lineId of lineIds) {
+      const line = lines.find((candidate) => candidate.id === lineId);
+      const badge = createLineBadge(line ?? { code: lineCodeFromId(lineId) });
+      if (line && onSelectLine) {
+        group.append(createLineRouteButton(line, badge, 'stopLine', onSelectLine));
+      } else {
+        group.append(badge);
+      }
+    }
+    return group;
+  }
+
+  function createLineRouteButton(
+    line: Line,
+    badge: HTMLSpanElement,
+    dataAttribute: 'stopLine' | 'arrivalLine',
+    onSelectLine: (line: Line) => void
+  ): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'line-route-link';
+    button.dataset[dataAttribute] = line.code;
+    button.setAttribute('aria-label', translateCurrent('openLineRoute', { line: line.code }));
+    button.append(badge);
+    button.addEventListener('click', () => onSelectLine(line));
+    return button;
   }
 
   function formatUpdatedTime(value: string): string {
@@ -216,7 +252,18 @@ export function renderStopArrivals(
     const minutes = document.createElement('strong');
     minutes.className = 'arrival-minutes';
     minutes.textContent = translateCurrent('minutes', { minutes: arrival.minutes });
-    item.append(createLineBadge({ code: arrival.lineCode, color: lineColors?.get(arrival.lineCode) }), destination, minutes);
+    const line = lines?.find((candidate) => candidate.code === arrival.lineCode);
+    const badge = createLineBadge({
+      code: arrival.lineCode,
+      color: lineColors?.get(arrival.lineCode) ?? line?.color
+    });
+    item.append(
+      line && onSelectLine
+        ? createLineRouteButton(line, badge, 'arrivalLine', onSelectLine)
+        : badge,
+      destination,
+      minutes
+    );
     list.append(item);
   }
   root.append(list);

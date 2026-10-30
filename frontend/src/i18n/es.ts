@@ -67,10 +67,12 @@ export const messages = {
   ,liveUnavailable: 'Las llegadas no están disponibles para esta parada'
   ,servingLines: 'Líneas que paran aquí'
   ,lineFrequencies: 'Ver frecuencias de las líneas'
+  ,openLineRoute: 'Ver recorrido de la línea {line}'
   ,mapRetry: 'Reintentar mapa'
   ,useSearch: 'Usar búsqueda',
   mapControls: 'Controles del mapa',
-  stopsHere: 'Paradas aquí ({count})'
+  stopsHere: 'Paradas aquí ({count})',
+  loadingLineRoute: 'Cargando el recorrido de la línea…'
   ,locationNoNearbyStops: 'No se muestran paradas de autobús cercanas.'
   ,locationUnavailable: 'No se pudo utilizar tu ubicación.'
   ,locationOutsideCoverage: 'Tu ubicación está fuera de la cobertura de Vigo.'
@@ -101,6 +103,7 @@ export const messages = {
   ,routeShapeStopsAlternative: 'Las listas de paradas de cada sentido describen este trazado.'
   ,lineMapDefaultDirection: 'Recorrido'
   ,lineMapUnavailable: 'No hay un recorrido verificado disponible para esta línea.'
+  ,loadingLineMapRoute: 'Cargando recorrido…'
   ,tripStopSequence: 'Paradas provisionales del trayecto, en orden'
   ,lineStopDepartures: 'Salidas provisionales de la línea {line}'
   ,bundledDiscoveryNotice: 'La búsqueda general de paradas y los resúmenes de recorridos aún usan el catálogo empaquetado, capturado el {date}; puede no ser exhaustivo.'

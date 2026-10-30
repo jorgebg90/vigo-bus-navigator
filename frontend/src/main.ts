@@ -4,6 +4,7 @@ import { loadLineView, loadOnlineLineRoute } from './application/load-line-view'
 import { loadServingLineDetails, loadStopServingLines } from './application/load-stop-serving-lines';
 import { loadTransitCatalog } from './application/load-transit-catalog';
 import { renderLineFrequency } from './ui/line/frequency-view';
+import { renderLineLoading } from './ui/line/line-loading-view';
 import { renderLinesList } from './ui/line/lines-list';
 import { renderStopSearch } from './ui/search/stop-search';
 import { MunicipalScheduleRepository } from './infrastructure/schedule/municipal-schedule-repository';
@@ -274,7 +275,9 @@ async function bootstrap(): Promise<void> {
           notifyStorageFailure();
           refreshFavorites();
         }
-      }, lines, new Map(lines.map((line) => [line.code, line.color])));
+      }, lines, new Map(lines.map((line) => [line.code, line.color])), (line) => {
+        void showLine(line);
+      });
     }
   });
 
@@ -351,7 +354,7 @@ async function bootstrap(): Promise<void> {
     locationStatusRoot = document.createElement('div');
     locationStatusRoot.className = 'location-status-host';
     mapRoot.append(locationStatusRoot);
-    renderLocationStatus(locationStatusRoot, locationStatus);
+    renderLocationStatus(locationStatusRoot, locationStatus, { mobile: isMobileViewport() });
     map.setLineRoute(selectedLineRoute);
     map.onStopSelected(selectStop);
     const chooser = createStopChooser(mapRoot, { onSelect: selectStop, lines });
@@ -419,7 +422,7 @@ async function bootstrap(): Promise<void> {
 
   function updateLocationStatus(map: StopMapPort, root: HTMLElement | undefined): void {
     if (activeMap === map && currentDestination === 'map' && root?.isConnected) {
-      renderLocationStatus(root, locationStatus);
+      renderLocationStatus(root, locationStatus, { mobile: isMobileViewport() });
     }
   }
 
@@ -447,7 +450,9 @@ async function bootstrap(): Promise<void> {
       if (locationState === 'located' && locationWasCentered && !locationStatus && activeMap?.getStopsInView(stops).length === 0) {
         locationStatus = 'no-nearby-stops';
       }
-      if (locationStatusRoot) renderLocationStatus(locationStatusRoot, locationStatus);
+      if (locationStatusRoot) {
+        renderLocationStatus(locationStatusRoot, locationStatus, { mobile: isMobileViewport() });
+      }
       return;
     }
     if (currentDestination === 'search') {
@@ -496,6 +501,13 @@ async function bootstrap(): Promise<void> {
     activeMap?.setLineRoute(null);
     remember('line', line.id);
     const requestVersion = lineViewRequests.next();
+    if (requestedDayType === undefined) {
+      renderLineLoading(view, {
+        lineCode: line.code,
+        lineColor: line.color,
+        onClose: () => shell.navigate('map')
+      });
+    }
     const lineView = await loadLineView(repository, line, requestedDayType, navigator.onLine, clock.now());
     if (!lineViewRequests.isCurrent(requestVersion) || currentDestination !== 'lines') return;
     const { dayType, scheduleResult, patterns, routeShapeResult, tripStopsResult, snapshotFallback } = lineView;
@@ -529,6 +541,7 @@ async function bootstrap(): Promise<void> {
       bundledScheduleSnapshots: snapshotFallback.snapshots,
       snapshotFallbackAttempted: snapshotFallback.attempted,
       mapRoute: mapRoute ?? undefined,
+      routePending: hasOnlineTrips && !routeLoaded,
       mapRouteUnavailable: routeLoaded && !mapRoute,
       routeShape: onlineRoute?.routeShape
         ?? (routeShapeResult.kind === 'success' ? routeShapeResult.value : undefined),
@@ -539,8 +552,10 @@ async function bootstrap(): Promise<void> {
       lines,
       favoriteStopIds: loadUserFavorites(storage).filter((favorite) => favorite.type === 'stop').map((favorite) => favorite.targetId),
       dayType,
+      onClose: () => shell.navigate('map'),
       onDayTypeChange: (dayType) => { void showLine(line, dayType); },
       onStopSelect: showStopOnMap,
+      onSelectLine: (relatedLine) => { void showLine(relatedLine); },
       onStopFavoriteToggle: (stopId) => {
         toggleFavoriteForTarget(storage, { type: 'stop', targetId: stopId });
         notifyStorageFailure();
