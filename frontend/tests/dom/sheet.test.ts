@@ -52,16 +52,23 @@ describe('responsive detail sheet', () => {
   it('closes on Close or Escape and respects reduced motion', () => {
     const root = document.createElement('div');
     document.body.append(root);
-    const sheet = createSheet(root, { layout: 'phone', reducedMotion: true });
+    let closeCount = 0;
+    const sheet = createSheet(root, {
+      layout: 'phone',
+      reducedMotion: true,
+      onClose: () => { closeCount += 1; }
+    });
     sheet.open('Central', document.createElement('p'));
     const panel = root.querySelector('[data-sheet]') as HTMLElement;
     expect(panel.dataset.motion).toBe('instant');
     panel.querySelector<HTMLButtonElement>('[data-sheet-close]')?.click();
     expect(root.querySelector('[data-sheet]')).toBeNull();
+    expect(closeCount).toBe(1);
 
     sheet.open('Central', document.createElement('p'));
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(root.querySelector('[data-sheet]')).toBeNull();
+    expect(closeCount).toBe(2);
   });
 
   it('hosts narrow-screen panels in the sheet component', () => {
@@ -74,6 +81,9 @@ describe('responsive detail sheet', () => {
 
     expect(root.querySelector('[data-sheet]')).toBeTruthy();
     expect(root.querySelector('aside[aria-label="Details"] [data-sheet]')?.getAttribute('aria-modal')).toBeNull();
+    root.querySelector<HTMLButtonElement>('[data-sheet-close]')?.click();
+    expect(root.querySelector<HTMLElement>('aside[aria-label="Details"]')?.hidden).toBe(true);
+    expect(root.querySelector('aside[aria-label="Details"] [data-sheet]')).toBeNull();
     shell.destroy();
   });
 });

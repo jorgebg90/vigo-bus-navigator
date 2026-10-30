@@ -185,3 +185,98 @@ test('shows no fabricated route for missing or invalid fixture geometry', async 
   }
   expect(requests).toEqual([]);
 });
+
+test('closes selected line details and restores the full mobile map', async ({ page }) => {
+  await useMunicipalProfile(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+
+  for (const expanded of [false, true]) {
+    if (expanded) {
+      await page.getByRole('button', { name: /Lines|Líneas|Liñas/ }).click();
+      await page.getByRole('searchbox', { name: /Search lines|Buscar líneas|Buscar liñas/ }).fill('A');
+      await page.getByRole('button', { name: 'A Synthetic line A' }).click();
+      await page.locator('[data-schedule-toggle]').click();
+      await expect(page.locator('[data-schedule-disclosure]')).toHaveJSProperty('open', true);
+    } else {
+      await page.getByRole('button', { name: /Lines|Líneas|Liñas/ }).click();
+      await page.getByRole('searchbox', { name: /Search lines|Buscar líneas|Buscar liñas/ }).fill('A');
+      await page.getByRole('button', { name: 'A Synthetic line A' }).click();
+    }
+
+    await expect(page.locator('.line-view')).toBeVisible();
+    await page.getByRole('button', { name: /Close|Cerrar|Pechar/, exact: true }).click();
+    await expect(page.locator('.destination-view')).toHaveAttribute('data-destination', 'map');
+
+    const mapBox = await page.locator('.map-base .map-container').boundingBox();
+    expect(mapBox).not.toBeNull();
+    expect(mapBox!.height).toBeCloseTo(844, 0);
+    await expect(page.locator('.map-base [data-engine="maplibre-clustered-geojson"]'))
+      .toHaveAttribute('data-route-count', '0');
+  }
+});
+
+test('closes the mobile stop detail sheet and restores the full map', async ({ page }) => {
+  await useMunicipalProfile(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.locator('.primary-nav [data-destination="search"]').click();
+  await page.getByRole('searchbox', { name: /Search stops|Buscar paradas/ }).fill('Aeroporto de Peinador');
+  await page.getByRole('button', { name: 'Aeroporto de Peinador', exact: true }).click();
+
+  const panel = page.locator('.context-panel');
+  await expect(panel.locator('.detail-sheet')).toBeVisible();
+  await panel.locator('[data-sheet-close]').click();
+
+  await expect(panel).toBeHidden();
+  const mapBox = await page.locator('.map-base .map-container').boundingBox();
+  expect(mapBox).not.toBeNull();
+  expect(mapBox!.height).toBeCloseTo(844, 0);
+});
+
+test('shows immediate line loading and ignores delayed results after closing', async ({ page }) => {
+  await useMunicipalProfile(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: /Lines|Líneas|Liñas/ }).click();
+  await page.getByRole('searchbox', { name: /Search lines|Buscar líneas|Buscar liñas/ }).fill('A');
+  await page.evaluate(() => {
+    let delaysRemaining = 4;
+    const originalAll = Promise.all.bind(Promise);
+    Object.defineProperty(Promise, 'all', {
+      configurable: true,
+      value: (values: Iterable<unknown>) => {
+        const pending = originalAll(values);
+        if (delaysRemaining === 0) return pending;
+        delaysRemaining -= 1;
+        return pending.then((result) => new Promise<unknown[]>((resolve) => {
+          window.setTimeout(() => resolve(result), 650);
+        }));
+      }
+    });
+  });
+  await page.getByRole('button', { name: 'A Synthetic line A' }).click();
+
+  await expect(page.locator('[data-line-loading]')).toBeVisible({ timeout: 2_000 });
+  const loadingView = page.locator('.line-loading-view');
+  await expect(loadingView).toHaveCSS('position', 'fixed');
+  await expect(loadingView).toHaveCSS('pointer-events', 'none');
+  await expect(loadingView.locator('.line-view-close')).toHaveCSS('pointer-events', 'auto');
+  const loadingBox = await loadingView.boundingBox();
+  expect(loadingBox).not.toBeNull();
+  expect(loadingBox!.width).toBeCloseTo(390, 0);
+  expect(loadingBox!.height).toBeCloseTo(844, 0);
+  const overlayOpacity = await loadingView.evaluate((element) => {
+    const color = getComputedStyle(element).backgroundColor;
+    return Number(color.match(/,\s*([0-9.]+)\)$/)?.[1]);
+  });
+  expect(overlayOpacity).toBeGreaterThan(0);
+  expect(overlayOpacity).toBeLessThan(1);
+  await page.getByRole('button', { name: /Close|Cerrar|Pechar/, exact: true }).click();
+  await expect(page.locator('.destination-view')).toHaveAttribute('data-destination', 'map');
+  await page.waitForTimeout(1_500);
+  await expect(page.locator('.destination-view')).toHaveAttribute('data-destination', 'map');
+  await expect(page.locator('.line-view')).toHaveCount(0);
+  await expect(page.locator('.map-base [data-engine="maplibre-clustered-geojson"]'))
+    .toHaveAttribute('data-route-count', '0');
+});

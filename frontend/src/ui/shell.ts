@@ -150,7 +150,8 @@ export function createShell(container: HTMLElement): ShellController {
       if (layout) {
         activeSheet = createSheet(panel, {
           layout,
-          reducedMotion: globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+          reducedMotion: globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
+          onClose: () => controller.closePanel()
         });
         panel.hidden = false;
         activeSheet.open(title, content, opener);

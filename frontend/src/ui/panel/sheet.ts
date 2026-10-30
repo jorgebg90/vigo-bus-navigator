@@ -6,6 +6,7 @@ export type SheetLayout = 'phone' | 'tablet-portrait' | 'landscape' | 'desktop';
 export interface SheetOptions {
   layout: SheetLayout;
   reducedMotion?: boolean;
+  onClose?: () => void;
 }
 
 export interface SheetController {
@@ -21,14 +22,15 @@ export function createSheet(root: HTMLElement, options: SheetOptions): SheetCont
   let opener: HTMLElement | undefined;
   let expanded = false;
 
-  const close = () => {
+  const close = (notifyOwner = false) => {
     if (!panel) return;
     panel.remove();
     panel = undefined;
     expanded = false;
     const previousOpener = opener;
     opener = undefined;
-    if (previousOpener?.isConnected) previousOpener.focus();
+    if (notifyOwner && options.onClose) options.onClose();
+    else if (previousOpener?.isConnected) previousOpener.focus();
   };
 
   const setExpanded = (value: boolean) => {
@@ -50,7 +52,7 @@ export function createSheet(root: HTMLElement, options: SheetOptions): SheetCont
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape' && panel) {
       event.preventDefault();
-      close();
+      close(true);
     }
   };
   document.addEventListener('keydown', onKeyDown);
@@ -89,7 +91,7 @@ export function createSheet(root: HTMLElement, options: SheetOptions): SheetCont
       closeButton.type = 'button';
       closeButton.dataset.sheetClose = 'true';
       setIconButton(closeButton, 'close', translateCurrent('close'));
-      closeButton.addEventListener('click', close);
+      closeButton.addEventListener('click', () => close(true));
       const body = document.createElement('div');
       body.className = 'sheet-content';
       body.append(content);
@@ -101,9 +103,9 @@ export function createSheet(root: HTMLElement, options: SheetOptions): SheetCont
     },
     expand() { setExpanded(true); },
     collapse() { setExpanded(false); },
-    close,
+    close() { close(true); },
     destroy() {
-      close();
+      close(false);
       document.removeEventListener('keydown', onKeyDown);
     }
   };

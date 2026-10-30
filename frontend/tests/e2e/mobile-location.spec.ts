@@ -46,7 +46,7 @@ test('does not request location on desktop', async ({ page }) => {
   expect(await page.evaluate(() => (window as Window & { __geolocationRequests?: number }).__geolocationRequests)).toBe(0);
 });
 
-test('does not retry a denied mobile request after navigation during the visit', async ({ page }) => {
+test('hides a denied mobile location warning while keeping map and line browsing available', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => {
     const state = window as Window & { __geolocationRequests?: number };
@@ -62,18 +62,37 @@ test('does not retry a denied mobile request after navigation during the visit',
     });
   });
   await page.goto('/');
-
   const status = page.locator('[data-location-status]');
-  await expect(status).toContainText(/could not be used|non se puido|no se pudo/i);
-  const statusBox = await status.boundingBox();
-  const navBox = await page.locator('.primary-nav').boundingBox();
-  expect(statusBox).not.toBeNull();
-  expect(navBox).not.toBeNull();
-  expect(statusBox!.y).toBeGreaterThanOrEqual(navBox!.y + navBox!.height);
+  await expect.poll(() => page.evaluate(() => (window as Window & { __geolocationRequests?: number }).__geolocationRequests)).toBe(1);
+  await expect(status).toHaveCount(0);
+  await page.getByRole('button', { name: /Lines|Líneas|Liñas/ }).click();
+  await expect(page.locator('.destination-view')).toHaveAttribute('data-destination', 'lines');
+  await page.getByRole('button', { name: /Map|Mapa/ }).click();
+  await expect(status).toHaveCount(0);
+  expect(await page.evaluate(() => (window as Window & { __geolocationRequests?: number }).__geolocationRequests)).toBe(1);
+});
+
+test('hides an unavailable mobile location warning', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    const state = window as Window & { __geolocationRequests?: number };
+    state.__geolocationRequests = 0;
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition(_success: PositionCallback, error: PositionErrorCallback) {
+          state.__geolocationRequests = (state.__geolocationRequests ?? 0) + 1;
+          error({ code: 2, message: 'unavailable', PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 });
+        }
+      }
+    });
+  });
+  await page.goto('/');
+
+  await expect.poll(() => page.evaluate(() => (window as Window & { __geolocationRequests?: number }).__geolocationRequests)).toBe(1);
   await page.getByRole('button', { name: /Lines|Líneas|Liñas/ }).click();
   await page.getByRole('button', { name: /Map|Mapa/ }).click();
-  await expect(status).toBeVisible();
-  expect(await page.evaluate(() => (window as Window & { __geolocationRequests?: number }).__geolocationRequests)).toBe(1);
+  await expect(page.locator('[data-location-status]')).toHaveCount(0);
 });
 
 test('does not recenter when a pending mobile position arrives after leaving the map', async ({ page }) => {
@@ -114,10 +133,28 @@ test('keeps the Vigo overview for a valid position outside coverage', async ({ p
   await page.setViewportSize({ width: 390, height: 844 });
   await page.context().grantPermissions(['geolocation']);
   await page.context().setGeolocation({ latitude: 42.5, longitude: -8.71 });
+  await page.addInitScript(() => {
+    const state = window as Window & { __geolocationRequests?: number };
+    state.__geolocationRequests = 0;
+    const browserGeolocation = navigator.geolocation;
+    const getCurrentPosition = browserGeolocation.getCurrentPosition.bind(browserGeolocation);
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition(success: PositionCallback, error?: PositionErrorCallback, options?: PositionOptions) {
+          state.__geolocationRequests = (state.__geolocationRequests ?? 0) + 1;
+          getCurrentPosition(success, error, options);
+        }
+      }
+    });
+  });
   await page.goto('/');
 
   const map = page.locator('.map-base [data-engine="maplibre-clustered-geojson"]');
-  await expect(page.locator('[data-location-status]')).toContainText(/outside Vigo bus coverage|fóra da cobertura|fuera de la cobertura/i);
+  await expect.poll(() => page.evaluate(() => (window as Window & { __geolocationRequests?: number }).__geolocationRequests)).toBe(1);
+  await page.getByRole('button', { name: /Lines|Líneas|Liñas/ }).click();
+  await page.getByRole('button', { name: /Map|Mapa/ }).click();
+  await expect(page.locator('[data-location-status]')).toHaveCount(0);
   await expect(map).not.toHaveAttribute('data-location-visible', 'true');
   await expect(map).not.toHaveAttribute('data-location-centered', 'true');
 });
