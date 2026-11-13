@@ -2,11 +2,12 @@ import { translateCurrent } from '../i18n';
 import { setIconButton } from './icons';
 import { createSheet, type SheetController, type SheetLayout } from './panel/sheet';
 
-export type Destination = 'map' | 'search' | 'lines' | 'saved';
+export type Destination = 'map' | 'search' | 'journeys' | 'lines' | 'saved';
 
 const destinationKeys = {
   map: 'navMap',
   search: 'navSearch',
+  journeys: 'navJourneys',
   lines: 'navLines',
   saved: 'navSaved'
 } as const;
@@ -75,8 +76,8 @@ export function createShell(container: HTMLElement): ShellController {
     for (const listener of destinationListeners) listener(next);
   };
 
-  const navIcons = { map: 'map', search: 'search', lines: 'lines', saved: 'saved' } as const;
-  for (const key of ['map', 'search', 'lines', 'saved'] as const) {
+  const navIcons = { map: 'map', search: 'search', journeys: 'journey', lines: 'lines', saved: 'saved' } as const;
+  for (const key of ['map', 'search', 'journeys', 'lines', 'saved'] as const) {
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.destination = key;
@@ -117,7 +118,7 @@ export function createShell(container: HTMLElement): ShellController {
   };
   const onAppNavigate = (event: Event) => {
     const next = (event as CustomEvent<Destination>).detail;
-    if (['map', 'search', 'lines', 'saved'].includes(next)) controller.navigate(next);
+    if (['map', 'search', 'journeys', 'lines', 'saved'].includes(next)) controller.navigate(next);
   };
 
   const controller: ShellController = {

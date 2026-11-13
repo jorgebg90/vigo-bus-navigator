@@ -10,6 +10,9 @@ describe('US3 map fallback', () => {
     const root = document.createElement('main');
     const map: StopMapPort = {
       mount: () => undefined, setStops: () => undefined, fitToStops: () => undefined, focusStop: () => undefined, setSelectedStop: () => undefined,
+      setJourneyStops: () => undefined,
+      setJourneyRoute: () => undefined,
+      focusJourneyPlace: () => undefined,
       showLocation: async () => ({ cameraCentered: false, hasVisibleStops: false }), clearLocation: () => undefined,
       onStopSelected: () => () => undefined, onChooserRequested: () => () => undefined,
       setLineRoute: () => undefined,

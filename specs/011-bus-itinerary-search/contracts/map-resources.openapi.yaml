@@ -1,0 +1,171 @@
+openapi: 3.1.0
+info:
+  title: CARTO Basemap Resources Used by the Browser
+  version: 1.0.0
+  description: >-
+    External rendering resources requested by MapLibre inside BrowserMapPort.
+    Not a transit API or an application-hosted service. Style documents select
+    versioned tile, sprite and glyph URLs; the resource version is provider-owned
+    and must not be hardcoded by the application. URLs below were observed on
+    2026-11-13. HTTP/browser caches are provider-controlled; the application
+    service worker does not runtime-cache these requests. Map requests reveal
+    viewport/tile coordinates and ordinary network metadata, not address text
+    or OTP query parameters. Provider availability is not guaranteed.
+  contact:
+    name: Vigo Bus Navigator maintainers
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+servers:
+  - url: https://basemaps.cartocdn.com
+security: []
+x-hexagonal:
+  port: StopMapPort
+  adapter: frontend/src/infrastructure/map/map-port.ts#BrowserMapPort
+  consumer: MapLibre GL JS within the outbound adapter
+  domainInput: MapStop, SelectedLineRouteDisplay, TransitJourney, JourneyPlace
+  boundary: No map-provider response enters domain or application use cases
+tags:
+  - name: basemap
+    description: Renderer-owned map resources, not journey planning
+paths:
+  /gl/{style}/style.json:
+    get:
+      operationId: getBasemapStyle
+      tags: [basemap]
+      summary: Load the fixed light or dark map style
+      parameters:
+        - $ref: '#/components/parameters/Style'
+      responses:
+        '200':
+          description: MapLibre style version 8 with source, sprite and glyph URLs
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [version, sources, layers]
+                properties:
+                  version:
+                    const: 8
+                  sources:
+                    type: object
+                    additionalProperties: true
+                  sprite:
+                    type: string
+                  glyphs:
+                    type: string
+                  layers:
+                    type: array
+                    items:
+                      type: object
+        '4XX':
+          $ref: '#/components/responses/Unavailable'
+        '5XX':
+          $ref: '#/components/responses/Unavailable'
+  /v/{version}/vectortiles/carto.streets/v2/{z}/{x}/{y}.mvt:
+    servers:
+      - url: https://tiles.basemaps.cartocdn.com
+    get:
+      operationId: getBasemapTile
+      tags: [basemap]
+      summary: Load a vector tile selected by the renderer
+      parameters:
+        - $ref: '#/components/parameters/Version'
+        - name: z
+          in: path
+          required: true
+          schema: { type: integer, minimum: 0 }
+        - name: x
+          in: path
+          required: true
+          schema: { type: integer, minimum: 0 }
+        - name: y
+          in: path
+          required: true
+          schema: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: Encoded vector tile consumed only by MapLibre
+          content:
+            application/vnd.mapbox-vector-tile:
+              schema: { type: string, format: binary }
+        '4XX':
+          $ref: '#/components/responses/Unavailable'
+        '5XX':
+          $ref: '#/components/responses/Unavailable'
+  /v/{version}/gl/{style}/sprite{scale}.{format}:
+    servers:
+      - url: https://tiles.basemaps.cartocdn.com
+    get:
+      operationId: getBasemapSprite
+      tags: [basemap]
+      summary: Load sprite metadata or imagery selected by the renderer
+      parameters:
+        - $ref: '#/components/parameters/Version'
+        - $ref: '#/components/parameters/Style'
+        - name: scale
+          in: path
+          required: true
+          description: Empty for standard resolution, @2x for high resolution
+          schema: { type: string, enum: ['', '@2x'] }
+        - name: format
+          in: path
+          required: true
+          schema: { type: string, enum: [json, png] }
+      responses:
+        '200':
+          description: Sprite atlas or its symbol metadata
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+            image/png:
+              schema: { type: string, format: binary }
+        '4XX':
+          $ref: '#/components/responses/Unavailable'
+        '5XX':
+          $ref: '#/components/responses/Unavailable'
+  /v/{version}/fonts/{fontstack}/{range}.pbf:
+    servers:
+      - url: https://tiles.basemaps.cartocdn.com
+    get:
+      operationId: getBasemapGlyphs
+      tags: [basemap]
+      summary: Load font glyphs selected by the renderer
+      parameters:
+        - $ref: '#/components/parameters/Version'
+        - name: fontstack
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: range
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[0-9]+-[0-9]+$' }
+      responses:
+        '200':
+          description: Encoded font glyphs consumed only by MapLibre
+          content:
+            application/x-protobuf:
+              schema: { type: string, format: binary }
+        '4XX':
+          $ref: '#/components/responses/Unavailable'
+        '5XX':
+          $ref: '#/components/responses/Unavailable'
+components:
+  parameters:
+    Style:
+      name: style
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [positron-gl-style, dark-matter-gl-style]
+    Version:
+      name: version
+      in: path
+      required: true
+      description: Version segment obtained from the current style document
+      schema: { type: string, minLength: 1 }
+  responses:
+    Unavailable:
+      description: Rendering resource unavailable; no alternative transit source is inferred

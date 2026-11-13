@@ -1,12 +1,15 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 import { parseDocument } from 'yaml';
 import { renderOpenApiDocument } from './openapi-docs-template';
+import { openApiContracts } from './openapi-contracts';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const canonicalPath = 'specs/004-vigo-jsp-transit-api/contracts/municipal-transit-v5.openapi.yaml';
+const require = createRequire(import.meta.url);
+const canonicalPath = openApiContracts[0].path;
 const remediation = 'Correct the canonical contract and rerun npm run build.';
 const schemaId = 'https://vigo-bus-navigator.invalid/openapi-docs-contract';
 const httpMethods = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
@@ -261,7 +264,9 @@ export async function generateOpenApiDocs(options: GenerateOpenApiDocsOptions = 
 
   let html: string;
   try {
-    html = (options.renderer ?? renderOpenApiDocument)(document, source);
+    html = options.renderer
+      ? options.renderer(document, source)
+      : renderOpenApiDocument(document, source, options.contractPath ?? canonicalPath);
     if (typeof html !== 'string' || html.trim().length === 0) throw new Error('Renderer returned empty HTML.');
   } catch (error) {
     throw fail('render-error', `Could not render the validated contract: ${error instanceof Error ? error.message : String(error)}.`, error);
@@ -277,10 +282,36 @@ export async function generateOpenApiDocs(options: GenerateOpenApiDocsOptions = 
   return outputPath;
 }
 
+export async function generateAllOpenApiDocs(
+  outputDirectory = 'frontend/public/docs/openapi',
+  distDirectory = 'dist/docs/openapi'
+): Promise<string[]> {
+  const outputs: string[] = [];
+  for (const contract of openApiContracts) {
+    try {
+      outputs.push(await generateOpenApiDocs({
+        contractPath: contract.path,
+        outputPath: resolve(outputDirectory, contract.page),
+        distOutputPath: resolve(distDirectory, contract.page)
+      }));
+    } catch (error) {
+      throw new Error(`Could not publish ${contract.path}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+    }
+  }
+  const swaggerDirectory = dirname(require.resolve('swagger-ui-dist/package.json'));
+  for (const asset of ['swagger-ui.css', 'swagger-ui-bundle.js', 'swagger-ui-bundle.js.LICENSE.txt']) {
+    await copyFile(resolve(swaggerDirectory, asset), resolve(outputDirectory, asset));
+  }
+  for (const asset of ['LICENSE', 'NOTICE']) {
+    await copyFile(resolve(swaggerDirectory, asset), resolve(outputDirectory, `swagger-ui-${asset}.txt`));
+  }
+  return outputs;
+}
+
 const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : undefined;
 if (invokedPath === import.meta.url) {
-  generateOpenApiDocs().then((output) => {
-    console.log(`Generated OpenAPI documentation: ${output}`);
+  generateAllOpenApiDocs().then((outputs) => {
+    console.log(`Generated OpenAPI documentation:\n${outputs.join('\n')}`);
   }).catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;

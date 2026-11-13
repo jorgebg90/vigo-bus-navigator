@@ -1,0 +1,171 @@
+openapi: 3.1.0
+info:
+  title: Browser Address Suggestions
+  version: 1.1.0
+  description: >-
+    Fixed, unauthenticated Vigo municipal Pelias autocomplete called directly
+    by the browser. The address query is sent to the municipal planner; the app does not
+    persist it. Results are restricted to the configured Vigo search area.
+  contact:
+    name: Vigo Bus Navigator maintainers
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+servers:
+  - url: https://planificador-rutas-api.vigo.org
+    description: Fixed municipal autocomplete; callers cannot configure the host
+security: []
+x-hexagonal:
+  useCase: frontend/src/application/search-address-suggestions.ts#searchAddressSuggestions
+  port: AddressGeocodingPort.searchAddresses
+  adapter: frontend/src/infrastructure/geocoding/municipal-geocoder.ts#MunicipalGeocoder
+  domain: frontend/src/domain/journey-address.ts
+  output:
+    $ref: '#/components/schemas/AddressSearchResult'
+  normalization: Pelias gid to id, label or name to label, coordinates longitude/latitude to named point
+  policy: Memory only; no logs, persistence or response caching; UI debounce 350 ms
+tags:
+  - name: geocoding
+    description: Browser-only public address suggestions
+paths:
+  /v1/autocomplete:
+    get:
+      operationId: suggestVigoAddresses
+      tags: [geocoding]
+      summary: Find address suggestions in Vigo
+      description: >-
+        Browser request uses GET, mode cors, credentials omit, redirect error,
+        referrerPolicy no-referrer and cache no-store. The query is debounced
+        by the UI and canceled when superseded. Requests time out after five
+        seconds and responses are bounded to 256 KiB. The client keeps up to
+        five distinct valid venue/street suggestions in provider order, using
+        the provider label (or name) and gid. Coordinates must fall within the
+        fixed Vigo bounding box -8.85,42.1,-8.6,42.32. Spanish is fixed across UI
+        languages, matching the municipal planner. No query or response is
+        persisted. The public service has no availability guarantee.
+      parameters:
+        - name: text
+          in: query
+          required: true
+          description: User-entered address text, sent to municipal autocomplete
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 180
+        - name: layers
+          in: query
+          required: true
+          schema:
+            type: string
+            const: venue,street
+        - name: lang
+          in: query
+          required: true
+          description: Fixed municipal planner language
+          schema:
+            type: string
+            const: es
+      responses:
+        "200":
+          description: GeoJSON address results; the client validates geometry and Vigo bounds
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeatureCollection"
+        "429":
+          description: The public service is throttling requests
+        "5XX":
+          description: Public service unavailable
+components:
+  schemas:
+    AddressSuggestion:
+      type: object
+      description: In-process domain model; not a provider payload or hosted response
+      required: [id, label, point]
+      additionalProperties: false
+      properties:
+        id: { type: string, minLength: 1 }
+        label: { type: string, minLength: 1 }
+        point:
+          type: object
+          required: [latitude, longitude]
+          additionalProperties: false
+          properties:
+            latitude: { type: number, minimum: 42.1, maximum: 42.32 }
+            longitude: { type: number, minimum: -8.85, maximum: -8.6 }
+    AddressSearchResult:
+      description: In-process discriminated port result; unavailable is never an empty success
+      oneOf:
+        - type: object
+          required: [kind, suggestions]
+          additionalProperties: false
+          properties:
+            kind: { const: success }
+            suggestions:
+              type: array
+              maxItems: 5
+              items:
+                $ref: '#/components/schemas/AddressSuggestion'
+        - type: object
+          required: [kind]
+          additionalProperties: false
+          properties:
+            kind: { const: cancelled }
+        - type: object
+          required: [kind, reason]
+          additionalProperties: false
+          properties:
+            kind: { const: unavailable }
+            reason: { enum: [network, http, invalid, oversized] }
+    FeatureCollection:
+      type: object
+      required: [type, features]
+      properties:
+        type:
+          const: FeatureCollection
+        features:
+          type: array
+          items:
+            $ref: "#/components/schemas/AddressFeature"
+    AddressFeature:
+      type: object
+      required: [type, geometry, properties]
+      properties:
+        type:
+          const: Feature
+        geometry:
+          type: object
+          required: [type, coordinates]
+          properties:
+            type:
+              const: Point
+            coordinates:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items:
+                type: number
+              prefixItems:
+                - type: number
+                  description: Longitude
+                - type: number
+                  description: Latitude
+        properties:
+          type: object
+          description: Pelias labels and namespaced identifiers; other provider metadata is ignored
+          required: [gid, layer, name]
+          properties:
+            gid:
+              type: string
+              minLength: 1
+              examples: ["custom:street:44945"]
+            layer:
+              type: string
+              enum: [venue, street]
+            name:
+              type: string
+              minLength: 1
+            label:
+              type: string
+              examples: ["Rúa de Urzáiz, Vigo, GA, Spain"]
+          additionalProperties: true

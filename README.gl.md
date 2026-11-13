@@ -84,12 +84,24 @@ flowchart LR
 
 ## Documentación OpenAPI
 
-Consulta o [contrato OpenAPI do transporte municipal](https://jorgebg90.github.io/vigo-bus-navigator/docs/openapi/).
-A páxina xérase durante a compilación a partir do
-[contrato OpenAPI en YAML](./specs/004-vigo-jsp-transit-api/contracts/municipal-transit-v5.openapi.yaml).
+Consulta o [portal OpenAPI da aplicación](https://jorgebg90.github.io/vigo-bus-navigator/docs/openapi/).
+A compilación valida e publica todos os contratos actuais:
+
+- [Transporte municipal JSP e modelos normalizados](./specs/004-vigo-jsp-transit-api/contracts/municipal-transit-v5.openapi.yaml).
+- [Autocompletado municipal e modelos de enderezos](./specs/011-bus-itinerary-search/contracts/address-geocoding.openapi.yaml).
+- [Planificador OTP e modelos de itinerario](./specs/011-bus-itinerary-search/contracts/route-planning.openapi.yaml).
+- [Recursos externos do mapa CARTO](./specs/011-bus-itinerary-search/contracts/map-resources.openapi.yaml).
+
+Cada integración está detrás dun porto de aplicación e un adaptador de saída.
+`x-hexagonal` relaciona contratos, casos de uso, portos, adaptadores e modelos.
+Véxase a [arquitectura actual](./docs/architecture.md).
 Para vela localmente, executa `npm run build` e `npm run preview`; despois abre
 [`/docs/openapi/`](http://127.0.0.1:4173/docs/openapi/). É documentación HTML
 estática do contrato, non unha API aloxada, un backend nin un proxy de transporte.
+
+O portal usa Swagger UI aloxado localmente, con operacións/esquemas despregables,
+navegación entre contratos e YAML de só lectura. Non usa CDN nin validador
+externo. «Try it out» está desactivado para non omitir os portos/adaptadores.
 
 ## Comezar
 
@@ -103,7 +115,9 @@ npm run dev
 `npm run dev` usa o perfil municipal `local-live` configurado en
 `frontend/.env.development`; consulta a fonte municipal directamente desde o
 navegador. Define `VITE_MUNICIPAL_PROFILE=fixture` para usar respostas
-sintéticas sen tráfico de rede municipal.
+sintéticas do servizo JSP. Este perfil non desactiva autocompletado nin OTP:
+buscar enderezos ou viaxes segue chamando a eses servizos. Os E2E substitúenos
+explicitamente por fixtures.
 
 ## Validación
 
@@ -139,42 +153,44 @@ unha API aloxada por separado.
 
 | Perfil municipal | Comportamento |
 | --- | --- |
-| `fixture` | Respostas sintéticas deterministas; non consulta o servizo municipal. |
+| `fixture` | Respostas JSP sintéticas deterministas; non consulta o servizo JSP. |
 | `local-live` | Peticións GET desde o navegador á orixe fixa, sen credenciais. |
 | `production` | Peticións GET directas do navegador para as accións municipais permitidas. |
 
-Os tests e as compilacións E2E seleccionan explicitamente `fixture`.
+Estes perfís controlan só JSP, non OTP/autocompletado nin os recursos do mapa.
+Os tests e as compilacións E2E seleccionan explicitamente `fixture` e inxectan
+respostas dos servizos de viaxes.
 `VITE_PROFILE=production` e `VITE_MUNICIPAL_PROFILE=production` seleccionan o
 perfil de compilación para aloxamento estático. A configuración non admite
 ningunha URL de transporte aloxada por separado.
 
-O catálogo GTFS/de datos abertos incluído é unha semente de descubrimento
-datada e non exhaustiva para paradas e alternativas textuais ordenadas de
-percorrido; non se presenta como unha resposta municipal en directo. Os
-catálogos municipais de liñas e servizos, as liñas que pasan por unha parada e
-as chegadas en directo mostran a procedencia da fonte. Os horarios de proba
-son sintéticos e así se identifican. Nos perfís en directo, os horarios reais
-seguen sen estar dispoñibles ata que exista unha correspondencia entre os
-identificadores de horario e os códigos dos días de servizo; a aplicación non
-a deduce dos metadatos do servizo. A xeometría dos percorridos, a secuencia
-das viaxes e os detalles das paradas tamén seguen sen estar dispoñibles ata
-que se implementen as correspondencias necesarias. As peticións fallidas ou
-os datos de orixe non válidos producen estados de indispoñibilidade, non
-horarios sen verificar.
+Os perfís en directo admiten catálogo municipal de paradas, liñas e servizos,
+chegadas, horarios por liña/día e xeometrías/secuencias cos identificadores dos
+horarios. O contexto detallado liña-parada segue limitado á correspondencia
+aprobada. O catálogo incluído é unha semente datada e non exhaustiva de respaldo,
+non unha resposta en directo.
+
+O buscador punto a punto usa autocompletado municipal (xa non Photon) e OTP
+mediante portos independentes. Mostra alternativas, pasos a pé e en bus,
+horarios, transbordos, paradas seleccionables e xeometría real. Distingue
+horario previsto de dato en tempo real e resultados baleiros de erros.
+Sen conexión non hai novas predicións nin cálculo de rutas. Verificouse o
+acceso desde localhost; falta comprobar a orixe real de produción.
 
 ## Privacidade e seguridade
 
 Os favoritos e a configuración gárdanse no `localStorage` do navegador; non
-hai perfís de usuario, credenciais nin contas. A aplicación non envía a
-localización precisa nin a actividade da persoa usuaria á fonte de transporte.
-Nos perfís `local-live` e `production`, o servizo municipal recibe a petición
-de rede do navegador e identificadores públicos do transporte. Vigo e o
-provedor de aloxamento estático poden procesar metadatos de conexión segundo
-as súas propias políticas.
+hai perfís de usuario, credenciais nin contas. O texto escrito envíase ao
+autocompletado municipal; ao planificar, as coordenadas seleccionadas e a
+data/hora envíanse a OTP. Isto inclúe a localización actual se se escolle como
+extremo. Non se gardan buscas, coordenadas nin historial de viaxes. As consultas
+JSP usan identificadores públicos; o mapa recibe peticións asociadas á área
+visible. Os provedores poden procesar metadatos de conexión segundo as súas políticas.
 
 O service worker garda na caché recursos estáticos da interface e o documento
-OpenAPI xerado, pero non as respostas da API municipal. Non fan falta segredos
-nin unha URL de backend.
+portal OpenAPI xerado, pero non as respostas das APIs externas. As cachés de
+recibos JSP conservan as súas regras de frescura; autocompletado e OTP usan
+`cache: no-store` sen persistencia. Non fan falta segredos nin unha URL de backend.
 
 ## Fluxo de traballo do proxecto
 

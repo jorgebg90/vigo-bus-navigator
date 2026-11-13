@@ -3,10 +3,14 @@ import { RequestVersion } from './application/request-version';
 import { loadLineView, loadOnlineLineRoute } from './application/load-line-view';
 import { loadServingLineDetails, loadStopServingLines } from './application/load-stop-serving-lines';
 import { loadTransitCatalog } from './application/load-transit-catalog';
+import { planJourneySearch, searchJourneys, type JourneySearchOutcome } from './application/search-journeys';
+import type { EndpointStopCandidate } from './domain/journey';
+import { searchAddressSuggestions } from './application/search-address-suggestions';
 import { renderLineFrequency } from './ui/line/frequency-view';
 import { renderLineLoading } from './ui/line/line-loading-view';
 import { renderLinesList } from './ui/line/lines-list';
 import { renderStopSearch } from './ui/search/stop-search';
+import { renderJourneySearch } from './ui/search/journey-search-view';
 import { MunicipalScheduleRepository } from './infrastructure/schedule/municipal-schedule-repository';
 import { SystemClock } from './infrastructure/system/clock';
 import { SystemIntervalScheduler } from './infrastructure/system/interval-scheduler';
@@ -24,6 +28,9 @@ import { BundledDiscoveryCatalog } from './infrastructure/municipal/bundled-disc
 import { OnlineStopCatalog } from './infrastructure/municipal/online-stop-catalog';
 import { BundledScheduleSnapshotCatalog } from './infrastructure/schedule/bundled-schedule-snapshot';
 import { MunicipalHttpClient } from './infrastructure/municipal/http-client';
+import { MunicipalGeocoder } from './infrastructure/geocoding/municipal-geocoder';
+import { OtpRoutePlanner } from './infrastructure/routing/otp-route-planner';
+import type { TransitJourney } from './domain/transit-journey';
 import { createDefaultFixtureMunicipalClient } from './infrastructure/municipal/default-fixture-client';
 import { ArrivalCache } from './infrastructure/municipal/arrival-cache';
 import { renderStopArrivals } from './ui/stop/stop-view';
@@ -43,11 +50,19 @@ import {
   recordUserView
 } from './application/update-user-preferences';
 import type { DayType, Favorite, Line, NetworkStop, Provenance, RecentView, SelectedLineRouteDisplay } from './domain/types';
+import { currentMadridLocalDateTime } from './domain/journey-time';
+import type { JourneyPoint } from './domain/journey';
 import { onLanguageChange, setDocumentLanguage, translateCurrent } from './i18n';
 import { createShell, type Destination } from './ui/shell';
 import { createStopChooser } from './ui/map/stop-chooser';
 import { renderMapToolbar } from './ui/map/map-toolbar';
-import type { GeolocationPort, OnlineLineRoute, ScheduleRepositoryV5, StopMapPort } from './application/ports';
+import type {
+  GeolocationPort,
+  OnlineLineRoute,
+  RequestCancellationPort,
+  ScheduleRepositoryV5,
+  StopMapPort
+} from './application/ports';
 import { showStorageNotice } from './ui/settings/storage-notice';
 import { renderMapAttribution } from './ui/privacy/privacy-view';
 import { BrowserGeolocation } from './infrastructure/system/browser-geolocation';
@@ -74,7 +89,28 @@ let currentDestination: Destination = 'map';
 let activePanelStopId: string | undefined;
 let activePanelContent: HTMLElement | undefined;
 let activeMap: StopMapPort | undefined;
+let journeyOrigin: JourneyPoint | null = null;
+let journeyDestination: JourneyPoint | null = null;
+let journeyOriginLabel = '';
+let journeyDestinationLabel = '';
+let journeyDepartureLocal = currentMadridLocalDateTime();
+let journeyOutcome: JourneySearchOutcome | null = null;
+let journeyOriginStopId: string | null = null;
+let journeyDestinationStopId: string | null = null;
+let journeyNotice: 'location-unavailable' | 'point-outside' | null = null;
 const geolocation: GeolocationPort = new BrowserGeolocation();
+const addressGeocoder = new MunicipalGeocoder();
+const routePlanner = new OtpRoutePlanner();
+let selectedJourney: TransitJourney | null = null;
+let journeyRequest: AbortController | undefined;
+let journeyRequestVersion = 0;
+function clearJourneySearch(): void {
+  journeyRequest?.abort();
+  journeyRequestVersion += 1;
+  journeyOutcome = null;
+  selectedJourney = null;
+  activeMap?.setJourneyRoute(null);
+}
 let locationAttempted = false;
 let locationState: LocationRequestState = 'not-requested';
 let currentLocation: CurrentLocation | undefined;
@@ -96,6 +132,11 @@ settingsHost.className = 'settings-host';
 shell.header.querySelector('.settings-trigger')?.replaceWith(settingsHost);
 createSettingsMenu(settingsHost, storage);
 shell.onDestinationChange((destination) => {
+  if (destination !== 'journeys') {
+    journeyRequest?.abort();
+    journeyRequestVersion += 1;
+    if (journeyOutcome?.status === 'loading') journeyOutcome = null;
+  }
   currentDestination = destination;
   if (destination !== 'lines') {
     lineViewRequests.invalidate();
@@ -117,6 +158,9 @@ void bootstrap();
 onLanguageChange(() => { void bootstrap(); });
 
 async function bootstrap(): Promise<void> {
+  journeyRequest?.abort();
+  journeyRequestVersion += 1;
+  if (journeyOutcome?.status === 'loading') journeyOutcome = null;
   lineViewRequests.invalidate();
   unsubscribeSelection?.();
   selection?.dispose();
@@ -356,6 +400,8 @@ async function bootstrap(): Promise<void> {
     mapRoot.append(locationStatusRoot);
     renderLocationStatus(locationStatusRoot, locationStatus, { mobile: isMobileViewport() });
     map.setLineRoute(selectedLineRoute);
+    map.setJourneyStops(journeyOriginStopId, journeyDestinationStopId);
+    map.setJourneyRoute(currentDestination === 'journeys' ? selectedJourney : null);
     map.onStopSelected(selectStop);
     const chooser = createStopChooser(mapRoot, { onSelect: selectStop, lines });
     renderMapToolbar(mapRoot, {
@@ -434,6 +480,8 @@ async function bootstrap(): Promise<void> {
     activePanelContent = undefined;
     activeMap?.setSelectedStop(null);
     if (!activeMap) mountBaseMap();
+    activeMap?.setJourneyStops(journeyOriginStopId, journeyDestinationStopId);
+    activeMap?.setJourneyRoute(currentDestination === 'journeys' ? selectedJourney : null);
 
     if (currentDestination === 'saved') {
       renderFavorites(view, loadUserFavorites(storage), lines, stops, openSavedItem, {
@@ -469,9 +517,171 @@ async function bootstrap(): Promise<void> {
       });
       return;
     }
+    if (currentDestination === 'journeys') {
+      renderJourneySearch(view, {
+        origin: journeyOrigin,
+        destination: journeyDestination,
+        originLabel: journeyOriginLabel,
+        destinationLabel: journeyDestinationLabel,
+        departureLocal: journeyDepartureLocal,
+        outcome: journeyOutcome,
+        selectedOriginStopId: journeyOriginStopId,
+        selectedDestinationStopId: journeyDestinationStopId,
+        notice: journeyNotice,
+        selectedJourneyId: selectedJourney?.id,
+        onJourneySelect: (journey) => {
+          selectedJourney = journey;
+          activeMap?.setJourneyRoute(journey);
+        },
+        onPlaceSelect: (place) => activeMap?.focusJourneyPlace(place),
+        onDepartureEdit: (departureLocal) => {
+          clearJourneySearch();
+          journeyDepartureLocal = departureLocal;
+        },
+        onSwapEndpoints: () => {
+          clearJourneySearch();
+          [journeyOrigin, journeyDestination] = [journeyDestination, journeyOrigin];
+          [journeyOriginLabel, journeyDestinationLabel] = [journeyDestinationLabel, journeyOriginLabel];
+          [journeyOriginStopId, journeyDestinationStopId] = [journeyDestinationStopId, journeyOriginStopId];
+          journeyOutcome = null;
+          journeyNotice = null;
+          renderDestination();
+        },
+        onAddressEdit: (endpoint, query) => {
+          clearJourneySearch();
+          if (endpoint === 'origin') {
+            journeyOrigin = null;
+            journeyOriginLabel = query;
+            journeyOriginStopId = null;
+          } else {
+            journeyDestination = null;
+            journeyDestinationLabel = query;
+            journeyDestinationStopId = null;
+          }
+          activeMap?.setJourneyStops(journeyOriginStopId, journeyDestinationStopId);
+          journeyOutcome = null;
+          journeyNotice = null;
+        },
+        onAddressSearch: (query, signal) => {
+          const cancellation: RequestCancellationPort = {
+            isCancelled: () => signal.aborted,
+            onCancelled: (listener) => {
+              signal.addEventListener('abort', listener, { once: true });
+              return () => signal.removeEventListener('abort', listener);
+            }
+          };
+          return searchAddressSuggestions(addressGeocoder, query, cancellation);
+        },
+        onAddressSelect: (endpoint, suggestion) => {
+          clearJourneySearch();
+          if (!isWithinMapCoverage({ ...suggestion.point, accuracyMeters: 0 })) {
+            journeyNotice = 'point-outside';
+            renderDestination();
+            return;
+          }
+          if (endpoint === 'origin') {
+            journeyOrigin = suggestion.point;
+            journeyOriginLabel = suggestion.label;
+            journeyOriginStopId = null;
+          } else {
+            journeyDestination = suggestion.point;
+            journeyDestinationLabel = suggestion.label;
+            journeyDestinationStopId = null;
+          }
+          journeyOutcome = null;
+          journeyNotice = null;
+          renderDestination();
+        },
+        onCandidateSelect: (endpoint: 'origin' | 'destination', candidate: EndpointStopCandidate) => {
+          if (candidate.stop.lat === null || candidate.stop.lon === null) return;
+          clearJourneySearch();
+          const point = { latitude: candidate.stop.lat, longitude: candidate.stop.lon };
+          if (endpoint === 'origin') {
+            journeyOrigin = point;
+            journeyOriginLabel = candidate.stop.name;
+            journeyOriginStopId = candidate.stop.id;
+          } else {
+            journeyDestination = point;
+            journeyDestinationLabel = candidate.stop.name;
+            journeyDestinationStopId = candidate.stop.id;
+          }
+          journeyNotice = null;
+          journeyOutcome = searchJourneys({
+            origin: journeyOrigin,
+            destination: journeyDestination,
+            departureLocal: journeyDepartureLocal
+          }, stops);
+          renderDestination();
+        },
+        onUseLocation: () => { void setJourneyOriginFromCurrentLocation(); },
+        onSearch: (departureLocal) => {
+          void runJourneySearch(departureLocal);
+        }
+      });
+      return;
+    }
     renderLinesList(view, lines, (line) => { void showLine(line); }, {
       unavailable: lineCatalogUnavailable
     });
+  }
+
+  async function runJourneySearch(departureLocal: string): Promise<void> {
+    clearJourneySearch();
+    journeyDepartureLocal = departureLocal;
+    journeyNotice = null;
+    const input = { origin: journeyOrigin, destination: journeyDestination, departureLocal };
+    const initial = searchJourneys(input, stops);
+    journeyOutcome = initial.status === 'invalid' ? initial : { ...initial, status: 'loading', reason: null };
+    renderDestination();
+    if (initial.status === 'invalid') return;
+    const controller = new AbortController();
+    journeyRequest = controller;
+    const version = journeyRequestVersion;
+    const cancellation: RequestCancellationPort = {
+      isCancelled: () => controller.signal.aborted,
+      onCancelled: (listener) => {
+        controller.signal.addEventListener('abort', listener, { once: true });
+        return () => controller.signal.removeEventListener('abort', listener);
+      }
+    };
+    try {
+      const result = await planJourneySearch(routePlanner, input, stops, cancellation);
+      if (!result || controller.signal.aborted || version !== journeyRequestVersion) return;
+      journeyOutcome = result;
+      selectedJourney = result.options[0] ?? null;
+    } catch (error) {
+      if (controller.signal.aborted || version !== journeyRequestVersion) return;
+      console.error('Unexpected municipal journey-planning failure.', error instanceof Error ? error.name : 'unknown');
+      journeyOutcome = { ...initial, status: 'unavailable', reason: 'unavailable-data' };
+    }
+    if (currentDestination === 'journeys') renderDestination();
+  }
+
+  async function setJourneyOriginFromCurrentLocation(): Promise<void> {
+    clearJourneySearch();
+    journeyNotice = null;
+    journeyOriginStopId = null;
+    try {
+      const result = await geolocation.getCurrentPosition();
+      if (result.kind !== 'success') {
+        journeyNotice = 'location-unavailable';
+        renderDestination();
+        return;
+      }
+      if (!isValidCurrentLocation(result.location) || !isWithinMapCoverage(result.location)) {
+        journeyNotice = 'point-outside';
+        renderDestination();
+        return;
+      }
+      journeyOrigin = { latitude: result.location.latitude, longitude: result.location.longitude };
+      journeyOriginLabel = translateCurrent('journeyCurrentLocationLabel');
+      journeyOutcome = null;
+      renderDestination();
+    } catch (error) {
+      journeyNotice = 'location-unavailable';
+      console.error('Could not use current location for a journey search.', error);
+      renderDestination();
+    }
   }
 
   const clearSelectionOnPanelClose = () => {

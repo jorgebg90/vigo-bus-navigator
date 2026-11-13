@@ -6,141 +6,54 @@ import { renderOpenApiDocument } from './openapi-docs-template';
 const sourcePath = 'specs/004-vigo-jsp-transit-api/contracts/municipal-transit-v5.openapi.yaml';
 const canonical = parse(readFileSync(sourcePath, 'utf8')) as Record<string, unknown>;
 
-const fixture = {
-  openapi: '3.1.0',
-  info: { title: 'Transit <Contract>', version: '1.0', 'x-a11y': 'visible & safe' },
-  paths: {
-    '/routes/{routeId}': {
-      parameters: [{ name: 'routeId', in: 'path', required: true, schema: { type: 'string' } }],
-      get: {
-        operationId: 'readRoute',
-        summary: 'Read one route',
-        parameters: [{ name: 'locale', in: 'query', schema: { type: 'string' } }],
-        responses: {
-          '200': {
-            description: 'Route found',
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/Route' } } }
-          }
-        }
-      },
-      post: {
-        operationId: 'createRoute',
-        requestBody: {
-          required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/Route' } } }
-        },
-        responses: { '201': { description: 'Route created' } }
-      }
-    }
-  },
-  components: {
-    schemas: {
-      Route: {
-        type: 'object',
-        description: 'Route <details>',
-        properties: { id: { type: 'string', 'x-display': 'Identifier' } }
-      }
-    }
-  },
-  'x-contract-policy': { retained: true }
-};
-
-function sourcePointers(value: unknown, pointer = '#'): string[] {
-  if (Array.isArray(value)) {
-    return value.flatMap((item, index) => sourcePointers(item, `${pointer}/${index}`));
-  }
-  if (value !== null && typeof value === 'object') {
-    return Object.entries(value).flatMap(([key, child]) => {
-      const childPointer = `${pointer}/${key.replaceAll('~', '~0').replaceAll('/', '~1')}`;
-      return [childPointer, ...sourcePointers(child, childPointer)];
-    });
-  }
-  return [pointer];
-}
-
-describe('OpenAPI static HTML template', () => {
-  it('renders semantic navigation, operation and schema content, bodies and responses', () => {
-    const html = renderOpenApiDocument(fixture);
-
-    expect(html).toContain('<main class="docs-pane" id="contract-content">');
-    expect(html).toContain('<nav aria-label="On this page">');
-    expect(html).toContain('Skip to rendered documentation');
-    expect(html).toContain('YAML · read only');
-    expect(html).toContain('Transit &lt;Contract&gt;');
-    expect(html).toContain('GET /routes/{routeId}');
-    expect(html).toContain('POST /routes/{routeId}');
-    expect(html).toContain('class="method-badge">GET</span><code>/routes/{routeId}</code>');
-    expect(html).toContain('Read one route');
-    expect(html).toContain('Parameters');
-    expect(html).toContain('Request body');
-    expect(html).toContain('Responses');
-    expect(html).toContain('application/json');
-    expect(html).toContain('Route');
-    expect(html).toContain('201');
-    expect(html).toContain('x-contract-policy');
-    expect(html).toContain('href="#schema-Route"');
-    const navigation = html.match(/<nav aria-label="On this page">([\s\S]*?)<\/nav>/)?.[1] ?? '';
-    expect(navigation).not.toContain('<h3>Operations</h3>');
-    expect(navigation).not.toContain('<h3>Schemas</h3>');
-    expect(navigation).toContain('<p class="index-heading">Operations</p>');
-    expect(navigation).toContain('<p class="index-heading">Schemas</p>');
-  });
-
-  it('represents every canonical contract pointer without inventing operations or schemas', () => {
+describe('self-hosted Swagger UI template', () => {
+  it('embeds the complete canonical contract without modifying its models or operations', () => {
     const html = renderOpenApiDocument(canonical);
-    const visiblePointers = new Set(
-      [...html.matchAll(/data-contract-pointer="([^"]+)"/g)].map((match) => match[1])
-    );
-
-    for (const pointer of sourcePointers(canonical)) {
-      expect(visiblePointers, `missing visible source pointer ${pointer}`).toContain(pointer);
-    }
-    expect([...html.matchAll(/<article class="operation\b/g)]).toHaveLength(countOperations(canonical));
-    expect([...html.matchAll(/<article class="schema\b/g)]).toHaveLength(
-      Object.keys((canonical.components as { schemas?: object }).schemas ?? {}).length
-    );
+    const json = html.match(/<script id="openapi-spec" type="application\/json">([\s\S]*?)<\/script>/)?.[1];
+    expect(json).toBeDefined();
+    expect(JSON.parse(json!)).toEqual(canonical);
+    expect(html).toContain('SwaggerUIBundle({');
+    expect(html).toContain('src="./swagger-ui-bundle.js"');
+    expect(html).toContain('href="./swagger-ui.css"');
   });
 
-  it('escapes contract-derived text and attributes', () => {
-    const html = renderOpenApiDocument(fixture);
-    expect(html).toContain('Transit &lt;Contract&gt;');
-    expect(html).toContain('Route &lt;details&gt;');
-    expect(html).toContain('visible &amp; safe');
-    expect(html).not.toContain('<title>Transit <Contract>');
+  it('disables external validation, request execution and persisted credentials', () => {
+    const html = renderOpenApiDocument(canonical);
+    expect(html).toContain('validatorUrl: null');
+    expect(html).toContain('supportedSubmitMethods: []');
+    expect(html).toContain('persistAuthorization: false');
+    expect(html).toContain('withCredentials: false');
+    expect(html).not.toContain('src="https://');
+    expect(html).not.toContain('href="https://');
   });
 
-  it('renders the original contract source read-only and escapes its contents', () => {
-    const source = `info:
-  title: "<unsafe>"
-`;
-    const html = renderOpenApiDocument(fixture, source);
-
-    expect(html).toContain('<pre class="source-code" tabindex="0" aria-label="Canonical OpenAPI YAML"><code>info:\n  title: &quot;&lt;unsafe&gt;&quot;\n</code></pre>');
-    expect(html).not.toContain('<unsafe>');
+  it('escapes YAML and safely embeds JSON containing script terminators', () => {
+    const document = {
+      ...canonical,
+      info: { title: '</script><img src=x onerror=alert(1)>', version: '1' }
+    };
+    const html = renderOpenApiDocument(document);
+    expect(html).not.toContain('<img src=x');
+    const json = html.match(/<script id="openapi-spec" type="application\/json">([\s\S]*?)<\/script>/)?.[1];
+    expect(JSON.parse(json!)).toEqual(document);
+    expect(html).toContain('&lt;/script&gt;');
   });
 
-  it('produces byte-for-byte deterministic output', () => {
-    expect(renderOpenApiDocument(fixture)).toBe(renderOpenApiDocument(fixture));
+  it('retains read-only YAML, architecture policies, contract navigation and source identity', () => {
+    const html = renderOpenApiDocument(canonical, 'original: "<safe>"\n', sourcePath);
+    expect(html).toContain('original: &quot;&lt;safe&gt;&quot;');
+    expect(html).toContain('OpenAPI YAML · read only');
+    expect(html).toContain('Architecture and source policies');
+    expect(html).toContain('x-hexagonal');
+    expect(html).toContain('aria-label="Application API contracts"');
+    expect(html).toContain('href="./route-planning.html"');
+    expect(html).toContain(sourcePath);
+    expect(html).toContain('Interactive documentation is unavailable.');
   });
 
-  it('explains empty operation and schema sections without creating entries', () => {
-    const html = renderOpenApiDocument({ ...fixture, paths: {}, components: { schemas: {} } });
-
-    expect(html).toContain('No operations are defined in this contract.');
-    expect(html).toContain('No component schemas are defined in this contract.');
-    expect(html).not.toContain('<article class="operation');
-    expect(html).not.toContain('<article class="schema');
-    const navigation = html.match(/<nav aria-label="On this page">([\s\S]*?)<\/nav>/)?.[1] ?? '';
-    expect(navigation).not.toContain('<h3>Operations</h3>');
-    expect(navigation).not.toContain('<h3>Schemas</h3>');
+  it('produces deterministic output and supports an empty contract', () => {
+    expect(renderOpenApiDocument(canonical)).toBe(renderOpenApiDocument(canonical));
+    const empty = { openapi: '3.1.0', info: { title: 'Empty', version: '1' }, paths: {} };
+    expect(renderOpenApiDocument(empty)).toContain('"paths":{}');
   });
 });
-
-function countOperations(document: Record<string, unknown>): number {
-  const methods = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
-  const paths = document.paths as Record<string, Record<string, unknown>>;
-  return Object.values(paths).reduce(
-    (count, pathItem) => count + Object.keys(pathItem).filter((key) => methods.has(key)).length,
-    0
-  );
-}

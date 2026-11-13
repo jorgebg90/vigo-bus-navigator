@@ -1,5 +1,9 @@
 [
   {
+    "path": "frontend/src/ui/search/journey-results-view.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
     "path": "frontend/src/application/get-bundled-schedule-fallback.ts",
     "responsibility": "application-use-case",
     "rules": ["request bundled schedules only when the online schedule is unavailable"],
@@ -28,6 +32,30 @@
     "responsibility": "application-use-case",
     "rules": ["validate arrival receipts, cache complete receipts, and control polling"],
     "isolatedTests": ["frontend/tests/unit/get-stop-arrivals.test.ts"]
+  },
+  {
+    "path": "frontend/src/application/search-journeys.ts",
+    "responsibility": "application-use-case",
+    "rules": ["validate journey queries, delegate municipal OTP planning and enforce endpoint and transfer eligibility"],
+    "isolatedTests": ["frontend/tests/unit/search-journeys.test.ts"]
+  },
+  {
+    "path": "frontend/src/domain/transit-journey.ts",
+    "responsibility": "domain",
+    "rules": ["model municipal itineraries, enforce radius/transfer limits and rank alternatives"],
+    "isolatedTests": ["frontend/tests/unit/search-journeys.test.ts"]
+  },
+  {
+    "path": "frontend/src/infrastructure/routing/otp-route-planner.ts",
+    "responsibility": "outbound-adapter",
+    "rules": ["call fixed public municipal OTP directly and validate bounded responses and geometry"],
+    "isolatedTests": ["frontend/tests/unit/otp-route-planner.test.ts"]
+  },
+  {
+    "path": "frontend/src/application/search-address-suggestions.ts",
+    "responsibility": "application-use-case",
+    "rules": ["validate address query length and delegate geocoding through the address port"],
+    "isolatedTests": ["frontend/tests/unit/search-address-suggestions.test.ts"]
   },
   {
     "path": "frontend/src/application/ports.ts",
@@ -88,6 +116,28 @@
     "isolatedTests": ["frontend/tests/unit/freshness-labels.test.ts"]
   },
   {
+    "path": "frontend/src/domain/journey-geo.ts",
+    "responsibility": "domain",
+    "rules": ["validate journey coordinates and compute fixed-radius candidates and approximate walking"],
+    "isolatedTests": ["frontend/tests/unit/journey-geo.test.ts"]
+  },
+  {
+    "path": "frontend/src/domain/journey-time.ts",
+    "responsibility": "domain",
+    "rules": ["parse unambiguous Europe/Madrid departure times and reject daylight-saving gaps"],
+    "isolatedTests": ["frontend/tests/unit/journey-time.test.ts"]
+  },
+  {
+    "path": "frontend/src/domain/journey.ts",
+    "responsibility": "domain",
+    "rules": ["validate per-stop trip times and plan feasible direct and transfer journeys"],
+    "isolatedTests": ["frontend/tests/unit/journey-routing.test.ts"]
+  },
+  {
+    "path": "frontend/src/domain/journey-address.ts",
+    "responsibility": "domain"
+  },
+  {
     "path": "frontend/src/domain/map-stops.ts",
     "responsibility": "domain",
     "rules": ["validate current location and convert stops into map coordinates"],
@@ -134,8 +184,20 @@
     "responsibility": "outbound-adapter"
   },
   {
+    "path": "frontend/src/infrastructure/http/bounded-response.ts",
+    "responsibility": "outbound-adapter",
+    "rules": ["read streaming HTTP bodies within a byte limit and cancel oversized responses"],
+    "isolatedTests": ["frontend/tests/unit/municipal/bounded-response.test.ts"]
+  },
+  {
     "path": "frontend/src/infrastructure/map/map-port.ts",
     "responsibility": "outbound-adapter"
+  },
+  {
+    "path": "frontend/src/infrastructure/geocoding/municipal-geocoder.ts",
+    "responsibility": "outbound-adapter",
+    "rules": ["use the fixed municipal autocomplete host, bound suggestions to Vigo, omit credentials, and reject malformed or out-of-area features"],
+    "isolatedTests": ["frontend/tests/unit/geocoding/municipal-geocoder.test.ts"]
   },
   {
     "path": "frontend/src/infrastructure/municipal/action-readiness.ts",
@@ -329,6 +391,10 @@
   },
   {
     "path": "frontend/src/ui/search/stop-search.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/search/journey-search-view.ts",
     "responsibility": "inbound-adapter"
   },
   {

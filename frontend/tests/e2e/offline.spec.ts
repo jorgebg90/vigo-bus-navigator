@@ -4,7 +4,7 @@ test('loads the map-first shell and network catalog in production preview', asyn
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /Map|Mapa/ })).toBeVisible();
   await expect(page.getByRole('region', { name: /Mapa interactivo|Interactive bus stop map/ })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('button')).toHaveCount(4);
+  await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('button')).toHaveCount(5);
 });
 
 test('uses the bundled discovery catalog offline without an API runtime cache', async ({ page, context }) => {

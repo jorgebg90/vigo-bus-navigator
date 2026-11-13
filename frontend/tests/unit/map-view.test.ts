@@ -6,6 +6,7 @@ import { BrowserMapPort } from '../../src/infrastructure/map/map-port';
 import { renderMap } from '../../src/ui/map/map-view';
 import type { CurrentLocation, SelectedLineRouteDisplay, Stop } from '../../src/domain/types';
 import { setDocumentLanguage } from '../../src/i18n';
+import type { TransitJourney } from '../../src/domain/transit-journey';
 
 const stops: Stop[] = [{ id: 's1', code: '1001', vitrasaId: '1001', name: 'Central', lat: 42.2, lon: -8.7, lineIds: ['l4a'] }];
 
@@ -46,7 +47,10 @@ describe('map view', () => {
     const container = document.createElement('div');
     const port = new BrowserMapPort(async () => fakeMap as unknown as import('maplibre-gl').Map);
     port.mount(container, { theme: 'light' });
-    port.setStops([{ id: 's1', code: '1001', vitrasaId: null, name: 'Central', lineIds: [], coordinates: [-8.7, 42.2] }]);
+    port.setStops([
+      { id: 's1', code: '1001', vitrasaId: null, name: 'Origin', lineIds: [], coordinates: [-8.7, 42.2] },
+      { id: 's2', code: '1002', vitrasaId: null, name: 'Destination', lineIds: [], coordinates: [-8.71, 42.25] }
+    ]);
     const shown = port.showLocation({ latitude: 42.25, longitude: -8.71, accuracyMeters: 10 });
 
     await expect(shown).resolves.toEqual({ cameraCentered: true, hasVisibleStops: true });
@@ -59,6 +63,47 @@ describe('map view', () => {
     expect(jumpTo).toHaveBeenCalledWith({ center: [-8.71, 42.25], zoom: expect.any(Number) });
     expect(container.dataset.motion).toBe('instant');
     expect(fakeMap.easeTo).not.toHaveBeenCalled();
+
+    port.setJourneyStops('s1', 's2');
+    expect(sources.get('journey-stops')?.data).toMatchObject({
+      features: [
+        { id: 'origin', properties: { stopId: 's1' }, geometry: { coordinates: [-8.7, 42.2] } },
+        { id: 'destination', properties: { stopId: 's2' }, geometry: { coordinates: [-8.71, 42.25] } }
+      ]
+    });
+    expect(container.dataset.journeyStops).toBe('["s1","s2"]');
+    expect(fakeMap.fitBounds).toHaveBeenLastCalledWith(
+      [[-8.71, 42.2], [-8.7, 42.25]],
+      expect.objectContaining({ maxZoom: 17 })
+    );
+
+    const journey: TransitJourney = {
+      id: 'otp-0', startTime: 1, endTime: 2, durationSeconds: 1,
+      transfers: 0, walkingMeters: 0, walkingSeconds: 0,
+      legs: [{
+        mode: 'BUS', line: '4C', headsign: 'Coia', realTime: false,
+        startTime: 1, endTime: 2, durationSeconds: 1, distanceMeters: 100,
+        from: { name: 'OTP boarding', latitude: 42.2, longitude: -8.7, stopId: '1:other' },
+        to: { name: 'OTP alighting', latitude: 42.25, longitude: -8.71 },
+        coordinates: [[-8.7, 42.2], [-8.71, 42.25]], intermediateStops: [], steps: []
+      }]
+    };
+    port.setJourneyRoute(journey);
+    expect(sources.get('journey-route')?.data).toMatchObject({
+      features: [{ properties: { mode: 'BUS' }, geometry: { type: 'LineString', coordinates: journey.legs[0].coordinates } }]
+    });
+    expect(layers).toContainEqual(expect.objectContaining({ id: 'journey-walk-route', source: 'journey-route' }));
+    port.focusJourneyPlace(journey.legs[0].from);
+    expect(fakeMap.easeTo).toHaveBeenCalledWith(expect.objectContaining({ center: [-8.7, 42.2], zoom: 17, duration: 0 }));
+    expect(fakeMap.easeTo.mock.calls.at(-1)?.[0]).not.toHaveProperty('padding');
+    port.fitToStops(true);
+    expect(fakeMap.fitBounds).toHaveBeenLastCalledWith(
+      [[-8.71, 42.2], [-8.7, 42.25]], expect.objectContaining({ maxZoom: 16 })
+    );
+    expect(container.dataset.journeyFocusedPlace).toBe('OTP boarding');
+    port.setJourneyRoute(null);
+    expect(sources.get('journey-route')?.data).toMatchObject({ features: [] });
+    expect(sources.get('journey-places')?.data).toMatchObject({ features: [] });
 
     port.clearLocation();
     expect(source?.data).toMatchObject({ features: [] });
@@ -263,7 +308,7 @@ describe('map view', () => {
       expect.objectContaining({ padding: expect.objectContaining({ left: 484 }), duration: 300 })
     );
     await handlers.get('click')?.({ point: { x: 100, y: 100 } });
-    expect(queryRenderedFeatures.mock.calls[0]?.[1]).toEqual({ layers: ['stop-clusters', 'stop-hit-targets'] });
+    expect(queryRenderedFeatures.mock.calls[0]?.[1]).toEqual({ layers: ['stop-clusters', 'stop-hit-targets', 'journey-place-markers'] });
     expect(stopSelected).toHaveBeenCalledWith('stop-1');
 
     port.setLineRoute({
@@ -379,7 +424,11 @@ describe('map view', () => {
     const map: StopMapPort = {
       mount: () => undefined, setStops: (visibleStops) => shownStops.push(visibleStops), fitToStops: () => calls.push('fit'), focusStop: () => undefined,
       showLocation: async () => ({ cameraCentered: false, hasVisibleStops: false }), clearLocation: () => undefined,
-      setSelectedStop: () => undefined, onStopSelected: () => () => undefined, onChooserRequested: () => () => undefined,
+      setSelectedStop: () => undefined,
+      setJourneyStops: () => undefined,
+      setJourneyRoute: () => undefined,
+      focusJourneyPlace: () => undefined,
+      onStopSelected: () => () => undefined, onChooserRequested: () => () => undefined,
       setLineRoute: () => undefined,
       zoomIn: () => undefined, zoomOut: () => undefined, getMapCenter: () => [-8.72, 42.24], getStopsInView: () => [],
       setTheme: () => undefined, unmount: () => undefined
@@ -406,7 +455,11 @@ describe('map view', () => {
     const map: StopMapPort = {
       mount: () => calls.push('mount'), setStops: () => calls.push('stops'), fitToStops: () => calls.push('fit'), focusStop: () => undefined,
       showLocation: async () => ({ cameraCentered: false, hasVisibleStops: false }), clearLocation: () => undefined,
-      setSelectedStop: () => undefined, onStopSelected: () => () => undefined, onChooserRequested: () => () => undefined,
+      setSelectedStop: () => undefined,
+      setJourneyStops: () => undefined,
+      setJourneyRoute: () => undefined,
+      focusJourneyPlace: () => undefined,
+      onStopSelected: () => () => undefined, onChooserRequested: () => () => undefined,
       setLineRoute: () => undefined,
       zoomIn: () => undefined, zoomOut: () => undefined, getMapCenter: () => [-8.72, 42.24], getStopsInView: () => [],
       setTheme: () => undefined, unmount: () => calls.push('unmount')
@@ -423,7 +476,11 @@ describe('map view', () => {
     const map: StopMapPort = {
       mount: () => undefined, setStops: () => undefined, fitToStops: () => undefined, focusStop: () => undefined,
       showLocation: async () => ({ cameraCentered: false, hasVisibleStops: false }), clearLocation: () => undefined,
-      setSelectedStop: () => undefined, onStopSelected: () => () => undefined, onChooserRequested: () => () => undefined,
+      setSelectedStop: () => undefined,
+      setJourneyStops: () => undefined,
+      setJourneyRoute: () => undefined,
+      focusJourneyPlace: () => undefined,
+      onStopSelected: () => () => undefined, onChooserRequested: () => () => undefined,
       setLineRoute: () => undefined,
       zoomIn: () => undefined, zoomOut: () => undefined, getMapCenter: () => [-8.72, 42.24], getStopsInView: () => [],
       setTheme: () => undefined, unmount: () => undefined

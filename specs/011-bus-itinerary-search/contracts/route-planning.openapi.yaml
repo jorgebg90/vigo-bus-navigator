@@ -1,0 +1,499 @@
+openapi: 3.1.0
+info:
+  title: Vigo OTP Route Planner
+  version: 1.0.0
+  description: >-
+    Browser contract for the public Vigo OpenTripPlanner route-planning endpoint.
+    The request includes origin and destination coordinates and a departure date
+    and time. Direct integration and this coordinate/time transmission were
+    approved by the product owner for feature 011. No credentials, query
+    persistence, backend or proxy are used.
+  contact:
+    name: Vigo Bus Navigator maintainers
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+servers:
+  - url: https://planificador-rutas.vigo.org
+    description: Fixed public Vigo route planner host; callers cannot configure the host
+security: []
+x-hexagonal:
+  useCase: frontend/src/application/search-journeys.ts#planJourneySearch
+  port: RoutePlanningPort.plan
+  adapter: frontend/src/infrastructure/routing/otp-route-planner.ts#OtpRoutePlanner
+  domain: frontend/src/domain/transit-journey.ts
+  input:
+    $ref: '#/components/schemas/TransitJourneyQuery'
+  output:
+    $ref: '#/components/schemas/RoutePlanningResult'
+  normalization: >-
+    Epoch milliseconds, durations in seconds, distances in meters, polyline
+    decoded to longitude/latitude coordinates. Preserve provider stop IDs;
+    never join OTP IDs to municipal catalog IDs without an explicit mapping.
+  policy: Memory only; cache no-store; no query logs, persistence or runtime caching
+tags:
+  - name: route-planning
+    description: Observed public OpenTripPlanner route planning
+paths:
+  /otp/routers/default/plan:
+    get:
+      operationId: planVigoTransitJourney
+      tags: [route-planning]
+      summary: Calculate public-transit journey alternatives in Vigo
+      description: >-
+        Observed request uses GET and returns OTP itinerary alternatives, with
+        walking and bus legs, stop details, and encoded leg geometry. The query
+        transmits both endpoint coordinates and the requested local departure
+        date/time to the service. Browser requests with credentials omitted
+        succeeded from localhost during discovery; the configured production
+        origin has not been verified. Use credentials omit, redirect error and
+        referrerPolicy no-referrer. Requests time out after 15 seconds, accept
+        at most 2 MiB and are cancelled when superseded. Interpret departure
+        date/time in Europe/Madrid. The client enforces 500 m straight-line
+        endpoint-stop radii, at most two transfers and 300 m straight-line
+        transfer connectors; provider walking limits may be exceeded in replies.
+      parameters:
+        - name: fromPlace
+          in: query
+          required: true
+          description: Origin coordinates as latitude,longitude
+          schema:
+            type: string
+            pattern: "^-?[0-9]+(?:\\.[0-9]+)?,-?[0-9]+(?:\\.[0-9]+)?$"
+          example: "42.23419,-8.71358"
+        - name: toPlace
+          in: query
+          required: true
+          description: Destination coordinates as latitude,longitude
+          schema:
+            type: string
+            pattern: "^-?[0-9]+(?:\\.[0-9]+)?,-?[0-9]+(?:\\.[0-9]+)?$"
+          example: "42.22151,-8.7327"
+        - name: arriveBy
+          in: query
+          required: true
+          description: Whether the requested time is an arrival deadline; observed as false
+          schema:
+            type: boolean
+            const: false
+        - name: date
+          in: query
+          required: true
+          description: Local departure date in M/D/YYYY format
+          schema:
+            type: string
+            pattern: "^(0?[1-9]|1[0-2])/(0?[1-9]|[12][0-9]|3[01])/[0-9]{4}$"
+          example: "11/13/2026"
+        - name: time
+          in: query
+          required: true
+          description: Local departure time in h:mm AM/PM format
+          schema:
+            type: string
+            pattern: "^(0?[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$"
+          example: "3:53 PM"
+        - name: locale
+          in: query
+          required: true
+          schema:
+            type: string
+            const: es
+        - name: showIntermediateStops
+          in: query
+          required: true
+          schema:
+            type: boolean
+            const: true
+        - name: mode
+          in: query
+          required: true
+          schema:
+            type: string
+            const: TRANSIT
+        - name: numItineraries
+          in: query
+          required: true
+          schema:
+            type: integer
+            const: 4
+        - name: walkSpeed
+          in: query
+          required: true
+          schema:
+            type: number
+            const: 1.4
+        - name: maxWalkTime
+          in: query
+          required: true
+          schema:
+            type: integer
+            const: 10
+        - name: wheelchair
+          in: query
+          required: true
+          schema:
+            type: boolean
+            const: false
+        - name: maxWalkDistance
+          in: query
+          required: true
+          description: Requested walk limit in metres; enforce endpoint radii separately in the client
+          schema:
+            type: integer
+            const: 500
+        - name: maxTransfers
+          in: query
+          required: true
+          schema:
+            type: integer
+            const: 2
+        - name: itineraryId
+          in: query
+          required: true
+          schema:
+            type: string
+            const: fast
+        - name: optimize
+          in: query
+          required: true
+          schema:
+            type: string
+            const: QUICK
+        - name: walkReluctance
+          in: query
+          required: true
+          schema:
+            type: integer
+            const: 10
+      responses:
+        "200":
+          description: OTP plan or planning error; an error must never be treated as an empty successful plan
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/OtpPlanResponse"
+                  - $ref: "#/components/schemas/OtpErrorResponse"
+        "400":
+          description: Invalid or unsupported planning request
+        "404":
+          description: Router or planning endpoint not found
+        "5XX":
+          description: Public route planner unavailable or unable to calculate a plan
+components:
+  schemas:
+    JourneyPoint:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+    JourneyPlace:
+      allOf:
+        - $ref: '#/components/schemas/JourneyPoint'
+        - type: object
+          required: [name]
+          properties:
+            name: { type: string }
+            stopId: { type: string }
+    TransitJourneyQuery:
+      type: object
+      description: In-process query; validated before converting it to OTP query parameters
+      required: [origin, destination, departureLocal]
+      properties:
+        origin:
+          $ref: '#/components/schemas/JourneyPoint'
+        destination:
+          $ref: '#/components/schemas/JourneyPoint'
+        departureLocal:
+          type: string
+          description: Europe/Madrid local time; DST gaps and ambiguous times are rejected
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}$'
+    TransitJourneyLeg:
+      type: object
+      description: Normalized domain model; not the OTP wire format
+      required: [mode, line, headsign, realTime, from, to, startTime, endTime, durationSeconds, distanceMeters, coordinates, intermediateStops, steps]
+      properties:
+        mode: { enum: [WALK, BUS] }
+        line: { type: string }
+        headsign: { type: string }
+        realTime:
+          type: boolean
+          description: False means scheduled, not a live arrival estimate
+        from:
+          $ref: '#/components/schemas/JourneyPlace'
+        to:
+          $ref: '#/components/schemas/JourneyPlace'
+        startTime: { type: integer, description: Epoch milliseconds }
+        endTime: { type: integer, description: Epoch milliseconds }
+        durationSeconds: { type: number, minimum: 0 }
+        distanceMeters: { type: number, minimum: 0 }
+        coordinates:
+          type: array
+          minItems: 2
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            items: { type: number }
+            prefixItems:
+              - { type: number, minimum: -180, maximum: 180 }
+              - { type: number, minimum: -90, maximum: 90 }
+        intermediateStops:
+          type: array
+          items:
+            $ref: '#/components/schemas/JourneyPlace'
+        steps:
+          type: array
+          items:
+            type: object
+            required: [street, distanceMeters]
+            properties:
+              street: { type: string }
+              distanceMeters: { type: number, minimum: 0 }
+    TransitJourney:
+      type: object
+      required: [id, startTime, endTime, durationSeconds, walkingMeters, walkingSeconds, transfers, legs]
+      properties:
+        id: { type: string }
+        startTime: { type: integer, description: Epoch milliseconds }
+        endTime: { type: integer, description: Epoch milliseconds }
+        durationSeconds: { type: number, minimum: 0 }
+        walkingMeters: { type: number, minimum: 0 }
+        walkingSeconds: { type: number, minimum: 0 }
+        transfers: { type: integer, minimum: 0 }
+        legs:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/TransitJourneyLeg'
+    RoutePlanningResult:
+      description: In-process discriminated port result; not a hosted HTTP response
+      oneOf:
+        - type: object
+          required: [kind, journeys]
+          additionalProperties: false
+          properties:
+            kind: { const: success }
+            journeys:
+              type: array
+              items:
+                $ref: '#/components/schemas/TransitJourney'
+        - type: object
+          required: [kind]
+          additionalProperties: false
+          properties:
+            kind: { const: cancelled }
+        - type: object
+          required: [kind, reason]
+          additionalProperties: false
+          properties:
+            kind: { const: unavailable }
+            reason: { enum: [invalid, http, network, timeout, oversized, service] }
+    OtpErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          properties:
+            id:
+              type: integer
+            msg:
+              type: string
+            message:
+              type: string
+            noPath:
+              type: boolean
+          additionalProperties: true
+      additionalProperties: true
+    OtpPlanResponse:
+      type: object
+      required: [plan]
+      properties:
+        requestParameters:
+          type: object
+          additionalProperties: true
+        plan:
+          $ref: "#/components/schemas/OtpPlan"
+        metadata:
+          type: object
+          additionalProperties: true
+        previousPageCursor:
+          type: [string, "null"]
+        nextPageCursor:
+          type: [string, "null"]
+        debugOutput:
+          type: object
+          additionalProperties: true
+        elevationMetadata:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+    OtpPlan:
+      type: object
+      required: [date, from, to, itineraries]
+      properties:
+        date:
+          type: integer
+          description: Requested service date as epoch milliseconds
+        from:
+          $ref: "#/components/schemas/OtpPlace"
+        to:
+          $ref: "#/components/schemas/OtpPlace"
+        itineraries:
+          type: array
+          items:
+            $ref: "#/components/schemas/OtpItinerary"
+      additionalProperties: true
+    OtpPlace:
+      type: object
+      required: [name, lat, lon]
+      properties:
+        name:
+          type: string
+        lat:
+          type: number
+          minimum: -90
+          maximum: 90
+        lon:
+          type: number
+          minimum: -180
+          maximum: 180
+        stopId:
+          type: string
+        stopCode:
+          type: string
+        arrival:
+          type: integer
+        departure:
+          type: integer
+        vertexType:
+          type: string
+      additionalProperties: true
+    OtpItinerary:
+      type: object
+      required: [duration, startTime, endTime, transfers, legs]
+      properties:
+        duration:
+          type: number
+          minimum: 0
+          description: Total itinerary duration in seconds
+        startTime:
+          type: integer
+          description: Epoch milliseconds
+        endTime:
+          type: integer
+          description: Epoch milliseconds
+        walkTime:
+          type: number
+          minimum: 0
+        transitTime:
+          type: number
+          minimum: 0
+        waitingTime:
+          type: number
+          minimum: 0
+        walkDistance:
+          type: number
+          minimum: 0
+        transfers:
+          type: integer
+          minimum: 0
+        fare:
+          type: object
+          additionalProperties: true
+        legs:
+          type: array
+          items:
+            $ref: "#/components/schemas/OtpLeg"
+      additionalProperties: true
+    OtpLeg:
+      type: object
+      required: [startTime, endTime, distance, mode, transitLeg, realTime, from, to, legGeometry, duration]
+      properties:
+        startTime:
+          type: integer
+          description: Epoch milliseconds
+        endTime:
+          type: integer
+          description: Epoch milliseconds
+        distance:
+          type: number
+          minimum: 0
+          description: Leg distance in metres
+        duration:
+          type: number
+          minimum: 0
+          description: Leg duration in seconds
+        mode:
+          type: string
+          enum: [WALK, BUS]
+        transitLeg:
+          type: boolean
+        realTime:
+          type: boolean
+          description: False means scheduled rather than realtime service
+        route:
+          type: [string, "null"]
+        routeShortName:
+          type: string
+        routeLongName:
+          type: string
+        headsign:
+          type: string
+        agencyName:
+          type: string
+        routeId:
+          type: string
+        tripId:
+          type: string
+        serviceDate:
+          type: string
+        from:
+          $ref: "#/components/schemas/OtpPlace"
+        to:
+          $ref: "#/components/schemas/OtpPlace"
+        intermediateStops:
+          type: array
+          items:
+            $ref: "#/components/schemas/OtpPlace"
+        legGeometry:
+          $ref: "#/components/schemas/OtpLegGeometry"
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/OtpWalkingStep"
+      additionalProperties: true
+    OtpLegGeometry:
+      type: object
+      required: [points, length]
+      properties:
+        points:
+          type: string
+          description: Encoded polyline geometry
+        length:
+          type: integer
+          minimum: 0
+      additionalProperties: true
+    OtpWalkingStep:
+      type: object
+      properties:
+        distance:
+          type: number
+          minimum: 0
+        relativeDirection:
+          type: string
+        absoluteDirection:
+          type: string
+        streetName:
+          type: string
+        lon:
+          type: number
+          minimum: -180
+          maximum: 180
+        lat:
+          type: number
+          minimum: -90
+          maximum: 90
+      additionalProperties: true
