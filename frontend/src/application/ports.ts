@@ -23,6 +23,8 @@ import type {
 } from '../domain/types';
 import type { MunicipalFailureReason } from '../domain/municipal-failures';
 import type { MapStop } from '../domain/map-stops';
+import type { AddressSearchResult } from '../domain/journey-address';
+import type { JourneyPlace, RoutePlanningResult, TransitJourney, TransitJourneyQuery } from '../domain/transit-journey';
 
 export type MunicipalOperationResult<T> =
   | { kind: 'success'; value: T }
@@ -133,6 +135,19 @@ export interface GeolocationPort {
   getCurrentPosition(): Promise<GeolocationResult>;
 }
 
+export interface RequestCancellationPort {
+  isCancelled(): boolean;
+  onCancelled(listener: () => void): () => void;
+}
+
+export interface AddressGeocodingPort {
+  searchAddresses(query: string, cancellation?: RequestCancellationPort): Promise<AddressSearchResult>;
+}
+
+export interface RoutePlanningPort {
+  plan(query: TransitJourneyQuery, cancellation?: RequestCancellationPort): Promise<RoutePlanningResult>;
+}
+
 export interface LocationDisplayResult {
   cameraCentered: boolean;
   hasVisibleStops: boolean;
@@ -147,6 +162,9 @@ export interface StopMapPort {
   clearLocation(): void;
   setLineRoute(route: SelectedLineRouteDisplay | null): void;
   setSelectedStop(stopId: string | null): void;
+  setJourneyStops(originStopId: string | null, destinationStopId: string | null): void;
+  setJourneyRoute(journey: TransitJourney | null): void;
+  focusJourneyPlace(place: JourneyPlace): void;
   onStopSelected(listener: (stopId: string) => void): () => void;
   onChooserRequested(listener: (stopIds: string[]) => void): () => void;
   fitToStops(userInitiated?: boolean): void;

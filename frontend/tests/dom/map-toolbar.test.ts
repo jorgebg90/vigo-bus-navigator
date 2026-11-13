@@ -12,6 +12,9 @@ describe('map toolbar', () => {
       mount: () => undefined, setTheme: () => undefined, unmount: () => undefined,
       setStops: () => undefined, showLocation: async () => ({ cameraCentered: false, hasVisibleStops: false }), clearLocation: () => undefined,
       setLineRoute: () => undefined, setSelectedStop: () => undefined,
+      setJourneyStops: () => undefined,
+      setJourneyRoute: () => undefined,
+      focusJourneyPlace: () => undefined,
       onStopSelected: () => () => undefined, onChooserRequested: () => () => undefined,
       fitToStops: vi.fn(), focusStop: () => undefined, zoomIn: vi.fn(), zoomOut: vi.fn(),
       getMapCenter: () => [-8.72, 42.24], getStopsInView: () => []

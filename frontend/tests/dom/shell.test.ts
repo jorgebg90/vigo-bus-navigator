@@ -34,9 +34,9 @@ describe('app shell', () => {
     expect(root.querySelectorAll('h1')).toHaveLength(1);
     expect(root.querySelector('[data-destination="map"]')?.getAttribute('aria-current')).toBe('page');
     expect([...root.querySelectorAll('nav [data-destination]')].map((node) => node.getAttribute('aria-label')))
-      .toEqual(['Map', 'Search', 'Lines', 'Saved']);
+      .toEqual(['Map', 'Search', 'Plan a trip', 'Lines', 'Saved']);
 
-    for (const [destination, label] of [['map', 'Map'], ['search', 'Search'], ['lines', 'Lines'], ['saved', 'Saved']] as const) {
+    for (const [destination, label] of [['map', 'Map'], ['search', 'Search'], ['journeys', 'Plan a trip'], ['lines', 'Lines'], ['saved', 'Saved']] as const) {
       shell.navigate(destination);
       expect(root.querySelectorAll('main h1')).toHaveLength(1);
       expect(root.querySelector('main h1')?.textContent).toBe(label);
@@ -62,10 +62,13 @@ describe('app shell', () => {
     document.body.append(root);
     mount(root);
     const labels = [...root.querySelectorAll('nav[aria-label="Main"] [data-destination]')];
-    expect(labels.map((node) => node.getAttribute('data-destination'))).toEqual(['map', 'search', 'lines', 'saved']);
+    expect(labels.map((node) => node.getAttribute('data-destination'))).toEqual(['map', 'search', 'journeys', 'lines', 'saved']);
     expect(labels.every((node) => node.getAttribute('aria-label') && !node.textContent?.trim() && node.querySelector('svg'))).toBe(true);
     const css = readFileSync(resolve(import.meta.dirname, '../../src/ui/styles.css'), 'utf8');
-    expect(css).not.toContain('text-overflow: ellipsis');
+    const navigationRules = [...css.matchAll(/[^{}]*\.primary-nav[^{}]*\{[^{}]*\}/g)]
+      .map(([rule]) => rule);
+    expect(navigationRules.length).toBeGreaterThan(0);
+    expect(navigationRules.join('\n')).not.toContain('text-overflow: ellipsis');
   });
 
   it('toggles an open overlay destination back to the map', () => {

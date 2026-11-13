@@ -81,12 +81,24 @@ flowchart LR
 
 ## OpenAPI documentation
 
-Read the [municipal transit OpenAPI contract](https://jorgebg90.github.io/vigo-bus-navigator/docs/openapi/).
-The page is generated at build time from the canonical
-[OpenAPI YAML contract](./specs/004-vigo-jsp-transit-api/contracts/municipal-transit-v5.openapi.yaml).
+Read the [application OpenAPI portal](https://jorgebg90.github.io/vigo-bus-navigator/docs/openapi/).
+The build validates and publishes all current contracts:
+
+- [Municipal JSP transport and normalized models](./specs/004-vigo-jsp-transit-api/contracts/municipal-transit-v5.openapi.yaml).
+- [Municipal autocomplete and address models](./specs/011-bus-itinerary-search/contracts/address-geocoding.openapi.yaml).
+- [OTP planning and journey models](./specs/011-bus-itinerary-search/contracts/route-planning.openapi.yaml).
+- [External CARTO map resources](./specs/011-bus-itinerary-search/contracts/map-resources.openapi.yaml).
+
+Each integration sits behind an application port and outbound adapter.
+`x-hexagonal` maps contracts to the use cases, ports, adapters and internal models.
+See the [current architecture](./docs/architecture.md).
 For a local preview, run `npm run build` and `npm run preview`, then open
 [`/docs/openapi/`](http://127.0.0.1:4173/docs/openapi/). It is static contract
 documentation—not a hosted API, backend, or transit proxy.
+
+The portal uses self-hosted Swagger UI with expandable operations/schemas,
+contract navigation and read-only YAML. No CDN or external validator is used.
+“Try it out” is disabled so documentation cannot bypass application ports/adapters.
 
 ## Get started
 
@@ -100,7 +112,9 @@ npm run dev
 `npm run dev` uses the `local-live` municipal profile configured in
 `frontend/.env.development`; it calls the fixed municipal source directly from
 the browser. Set `VITE_MUNICIPAL_PROFILE=fixture` to use synthetic responses
-without municipal network traffic.
+without JSP network traffic. This profile does not disable autocomplete or OTP;
+interactive address/journey searches still call those services. E2E tests
+explicitly replace both with fixtures.
 
 ## Validation
 
@@ -135,36 +149,42 @@ Worker, serverless function, or separately hosted API.
 
 | Municipal profile | Behavior |
 | --- | --- |
-| `fixture` | Deterministic synthetic responses; no municipal traffic. |
+| `fixture` | Deterministic synthetic JSP responses; no JSP traffic. |
 | `local-live` | Fixed-origin browser GETs with credentials omitted. |
 | `production` | Direct browser GETs for the supported municipal action allowlist. |
 
-Tests and E2E builds select `fixture` explicitly. `VITE_PROFILE=production` and
+These profiles govern JSP only, not OTP/autocomplete or external map resources.
+Tests and E2E builds select `fixture` explicitly and inject journey-service fixtures.
+`VITE_PROFILE=production` and
 `VITE_MUNICIPAL_PROFILE=production` select the static-host build profile. No
 separately hosted transit URL is accepted by configuration.
 
-The bundled open-data/GTFS catalog is a dated, non-exhaustive discovery seed
-for stops and ordered textual route alternatives; it is not represented as a
-live municipal response. Live municipal line/service catalogs, serving lines,
-and arrivals show source provenance. Fixture timetables are synthetic and
-labeled as such. In live profiles, real timetables remain unavailable until a
-source schedule-ID/day-code mapping exists; the app does not infer them from
-service metadata. Route geometry, trip sequencing, and detailed stop data also
-remain unavailable until their respective mappings are implemented. Failed
-source requests or invalid source semantics produce unavailable states rather
-than an unverified timetable fallback.
+Live profiles support municipal stop/line/service catalogs, arrivals, line/day
+schedules and schedule-derived route geometry and trip stops. Detailed line-stop
+context remains limited to its approved mapping. The bundled catalog is a dated,
+non-exhaustive discovery fallback, not live coverage.
+
+Point-to-point search uses municipal autocomplete (replacing Photon) and OTP
+through separate ports. It shows alternatives, walking/bus directions, times,
+transfers, selectable stops and returned route geometry. Scheduled versus realtime
+data and empty versus failed requests remain distinct. Offline mode cannot perform
+new predictions or route calculations. Localhost access was verified; verify the
+actual production origin before release.
 
 ## Privacy and security
 
 Favorites and settings stay in browser `localStorage`; there are no user
-profiles, credentials, or accounts. The app does not send precise location or
-user activity to its transit source. In `local-live` and `production`, the
-municipal service receives the browser's network request and public transit
-identifiers. Vigo and the static hosting provider may process connection
-metadata under their own policies.
+profiles, credentials, or accounts. Entered address text goes to municipal
+autocomplete; selected endpoint coordinates and departure date/time go to OTP
+when planning. This includes current location if selected as an endpoint.
+Searches, coordinates and journey history are not persisted. JSP lookups use
+public transit IDs; the map provider receives viewport-related resource requests.
+Providers may process ordinary connection metadata under their own policies.
 
 The service worker caches static frontend assets and the generated OpenAPI
-document, not municipal API responses. No secrets or backend URL are required.
+pages, not external API responses. JSP receipt caches retain their own freshness
+rules; autocomplete and OTP use `cache: no-store` without persistence.
+No secrets or backend URL are required.
 
 ## Project workflow
 
