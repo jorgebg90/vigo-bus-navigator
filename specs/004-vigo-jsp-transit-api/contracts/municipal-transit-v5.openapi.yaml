@@ -23,6 +23,13 @@ servers:
   - url: https://datos.vigo.org
     description: Fixed municipal source; no caller-configurable server
 security: []
+x-hexagonal:
+  ports: [ScheduleRepositoryV5, MunicipalArrivalsGateway, LineScheduleGateway]
+  application: frontend/src/application
+  adapters: frontend/src/infrastructure/municipal
+  repository: frontend/src/infrastructure/schedule/municipal-schedule-repository.ts
+  boundary: Source DTOs are validated and normalized in outbound adapters; no UI or core HTTP calls
+  modelAuthority: frontend/src/domain/types.ts and frontend/src/application/ports.ts
 tags:
   - name: municipal
     description: Allowlisted public GET actions, credentials omitted
@@ -335,14 +342,14 @@ x-browser-ports:
   getArrivals:
     input: verified Vitrasa ID; selected application stop association
     outputSchema: '#/components/schemas/ArrivalReceipt'
-  getLineService:
-    input: exact stakeholder-attested line-A/day mappings in local-live and product-owner-approved production; explicit provisional mapping in fixture evaluation
-    outputSchema: '#/components/schemas/LineService'
+  getPublishedLineSchedule:
+    input: validated public line code and day selector 1/6/0 in live profiles; service metadata alone is not a schedule
+    outputSchema: '#/components/schemas/PublishedLineSchedule'
   getRouteShape:
-    input: exact stakeholder-attested Route_1005 mapping in local-live and product-owner-approved production; explicit provisional mapping in fixture evaluation
-    outputSchema: '#/components/schemas/RouteShape'
+    input: shape_id from a returned schedule row in live profiles; never the public line code
+    outputSchema: '#/components/schemas/RouteShapeReceipt'
   getTripStops:
-    input: exact stakeholder-attested weekday trip and catalog stop map in local-live and product-owner-approved production; provisional exact mapping in fixture evaluation
+    input: trip_id from a returned schedule row and municipal stop catalog map in live profiles
     outputSchema: '#/components/schemas/TripStopSequence'
   getLineStopDetail:
     input: exact stakeholder-attested municipalCode=2789 and lineCode=A in local-live and product-owner-approved production with fixed min=0; provisional fixture evaluation otherwise
@@ -735,6 +742,8 @@ components:
             - properties: {kind: {const: snapshot}}
     LineService:
       type: object
+      deprecated: true
+      description: Retained earlier design schema; runtime schedule ports return PublishedLineSchedule
       additionalProperties: false
       required: [lineCode, dayType, scheduleId, patterns, timetable, provenance]
       properties:
@@ -746,6 +755,37 @@ components:
           oneOf:
             - $ref: '#/components/schemas/SnapshotTimetable'
             - type: 'null'
+        provenance: {$ref: '#/components/schemas/Provenance'}
+    PublishedTrip:
+      type: object
+      additionalProperties: false
+      required: [tripId, shapeId, direction, headsign, origin, destination, departures, active]
+      properties:
+        tripId: {$ref: '#/components/schemas/OpaqueId'}
+        shapeId: {$ref: '#/components/schemas/OpaqueId'}
+        direction: {type: integer, enum: [0, 1]}
+        headsign: {type: string}
+        origin: {type: [string, 'null']}
+        destination: {type: [string, 'null']}
+        departures:
+          type: array
+          items: {$ref: '#/components/schemas/PublishedTime'}
+        active: {type: boolean}
+    PublishedLineSchedule:
+      type: object
+      additionalProperties: false
+      required: [lineCode, dayType, scheduleId, departures, provenance]
+      description: Current ScheduleRepositoryV5 and LineScheduleGateway normalized output
+      properties:
+        lineCode: {$ref: '#/components/schemas/OpaqueId'}
+        dayType: {$ref: '#/components/schemas/DayType'}
+        scheduleId: {$ref: '#/components/schemas/OpaqueId'}
+        departures:
+          type: array
+          items: {$ref: '#/components/schemas/PublishedTime'}
+        trips:
+          type: array
+          items: {$ref: '#/components/schemas/PublishedTrip'}
         provenance: {$ref: '#/components/schemas/Provenance'}
     Position:
       type: array
@@ -769,12 +809,24 @@ components:
           items: {$ref: '#/components/schemas/Position'}
     RouteShape:
       type: object
+      deprecated: true
       additionalProperties: false
       required: [shapeId, crs, geometry, provenance]
       description: Scoped local-live output uses the stakeholder-reported CRS mapping for Route_1005 and remains outside production readiness; fixture-only provisional output must be visibly labeled.
       properties:
         shapeId: {$ref: '#/components/schemas/OpaqueId'}
         crs: {type: string, const: 'OGC:CRS84', description: OGC:CRS84 is stakeholder-reported for the scoped local-live Route_1005 mapping; in fixture evaluation it remains an explicit provisional assumption, not independent provider evidence}
+        geometry: {$ref: '#/components/schemas/LineString'}
+        provenance: {$ref: '#/components/schemas/Provenance'}
+    RouteShapeReceipt:
+      type: object
+      additionalProperties: false
+      required: [lineCode, shapeId, crs, geometry, provenance]
+      description: Current normalized geometry receipt; shape identity comes from a schedule row
+      properties:
+        lineCode: {$ref: '#/components/schemas/OpaqueId'}
+        shapeId: {$ref: '#/components/schemas/OpaqueId'}
+        crs: {type: string, const: 'OGC:CRS84'}
         geometry: {$ref: '#/components/schemas/LineString'}
         provenance: {$ref: '#/components/schemas/Provenance'}
     TripStop:
@@ -787,8 +839,10 @@ components:
     TripStopSequence:
       type: object
       additionalProperties: false
-      required: [tripId, stops, provenance]
+      required: [lineCode, dayType, tripId, stops, provenance]
       properties:
+        lineCode: {$ref: '#/components/schemas/OpaqueId'}
+        dayType: {$ref: '#/components/schemas/DayType'}
         tripId: {$ref: '#/components/schemas/OpaqueId'}
         stops:
           type: array
@@ -801,7 +855,7 @@ components:
       additionalProperties: false
       x-verification: provisional
       required: [municipalCode, lineCode, patterns, provenance]
-      description: Scoped local-live output is restricted to stop 2789/line A and fixed min=0 under stakeholder attestation; production remains disabled. Fixture-only output uses fixed min=0, checks the leading trip_id token against the requested line code, preserves shape_id as opaque, and is visibly labeled.
+      description: Live output is restricted to approved stop 2789/line A with fixed min=0 in local-live and production profiles. Approval is not independent production-origin verification. Fixture-only provisional output checks the leading trip_id token against the line code and preserves shape_id as opaque.
       properties:
         municipalCode: {$ref: '#/components/schemas/NumericId'}
         lineCode: {$ref: '#/components/schemas/OpaqueId'}

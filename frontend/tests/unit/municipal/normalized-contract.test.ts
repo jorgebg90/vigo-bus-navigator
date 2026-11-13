@@ -4,6 +4,7 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import { parseDocument } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import { isReceiptTimestampConsistent } from '../../../src/domain/municipal-contract';
+import type { PublishedLineSchedule, RouteShapeReceipt, TripStopSequence } from '../../../src/domain/types';
 
 const contractPath = resolve(
   process.cwd(),
@@ -22,6 +23,35 @@ function validateSchema(name: string) {
 }
 
 describe('OpenAPI v5 normalized browser contract', () => {
+  it('documents the current schedule, geometry and trip sequence models rather than retired designs', () => {
+    const provenance = {
+      kind: 'municipal', sourceName: 'Vigo municipal transit JSP',
+      fetchedAt: '2026-11-13T12:00:00.000Z'
+    } as const;
+    const schedule: PublishedLineSchedule = {
+      lineCode: '4C', dayType: 'weekday', scheduleId: '4C', departures: ['15:53'],
+      trips: [{
+        tripId: 'trip-1', shapeId: 'shape-1', direction: 0, headsign: 'Centro',
+        origin: null, destination: null, departures: ['15:53'], active: true
+      }],
+      provenance
+    };
+    const shape: RouteShapeReceipt = {
+      lineCode: '4C', shapeId: 'shape-1', crs: 'OGC:CRS84',
+      geometry: { type: 'LineString', coordinates: [[-8.72, 42.24], [-8.73, 42.23]] },
+      provenance
+    };
+    const sequence: TripStopSequence = {
+      lineCode: '4C', dayType: 'weekday', tripId: 'trip-1', stops: [], provenance
+    };
+    for (const [name, value] of [
+      ['PublishedLineSchedule', schedule], ['RouteShapeReceipt', shape], ['TripStopSequence', sequence]
+    ] as const) {
+      const validate = validateSchema(name);
+      expect(validate(value), JSON.stringify(validate.errors)).toBe(true);
+    }
+  });
+
   it('compiles every declared browser-port output schema', () => {
     const outputs = Object.entries(contract['x-browser-ports'])
       .flatMap(([name, value]) => typeof value === 'object' && value.outputSchema

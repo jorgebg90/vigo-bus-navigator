@@ -8,6 +8,23 @@ Earlier constitutions and ratification records remain historical evidence at
 
 ## Core Principles
 
+**Feature 011 approved source exception (2026-11-13)**: At the product owner's
+explicit request, journey planning MAY additionally use browser GET to the fixed
+`https://planificador-rutas.vigo.org/otp/routers/default/plan` endpoint documented
+in feature 011's OpenAPI. This narrowly supersedes the JSP-only and public-
+identifiers-only restrictions below for route planning: selected origin and
+destination coordinates and departure date/time MAY be transmitted with fixed
+documented routing parameters. Disclose transmission in the journey privacy UI;
+omit credentials/referrers, reject redirects, bound/cancel requests, and never
+persist or log queries or cache responses containing them. No backend, proxy or
+Worker is permitted. At the product owner's request, the same feature MAY use
+`https://planificador-rutas-api.vigo.org/v1/autocomplete` for predictive addresses,
+sending only entered text and fixed `layers=venue,street&lang=es` parameters.
+This replaces Photon and is subject to the same disclosure, bounded/cancelled
+requests and no-persistence/logging/caching requirements. Browser access to both
+services succeeded from localhost; verify the actual production origin before
+release. All other source/privacy restrictions remain.
+
 ### I. Browser-First Frontend
 
 All application logic and transit-data requests MUST run client-side in the
@@ -91,15 +108,19 @@ solution on their machine with zero external setup.
 ### V. Contract-First APIs with OpenAPI
 
 Every HTTP interface used by the browser MUST be specified in an OpenAPI document
-before implementation. OpenAPI MUST describe the fixed municipal JSP host,
-allowlisted GET actions and parameters, source response schemas, and normalized
-application data models. Source-specific field names and envelopes MUST be mapped
+before implementation and accessed through an application-owned port implemented
+by an outbound adapter. OpenAPI MUST describe every approved external service,
+including the municipal JSP, feature-011 autocomplete/OTP and map-rendering
+resources: fixed hosts, allowed operations/parameters, source response schemas,
+and normalized application data models where applicable. Contracts MUST identify
+their ports/adapters and be included in the generated application API portal.
+Source-specific field names and envelopes MUST be mapped
 to stable frontend/domain fields. Breaking changes to the normalized contract
 require a version bump and QA/architect review at the plan gate. The PWA does not
 expose a server-side API and no Worker adapter is deployed.
 
 **Rationale**: a machine-readable source and normalized-data contract decouples
-frontend models from volatile JSP response fields and makes the integration
+frontend models from volatile provider response fields and makes the integration
 testable without deploying a server-side API.
 
 ### VI. Zero-Cost Client-Only & Privacy by Design

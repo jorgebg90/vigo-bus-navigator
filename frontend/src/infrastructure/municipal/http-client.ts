@@ -4,8 +4,9 @@ import { isMunicipalActionEnabled } from './action-readiness';
 import { buildMunicipalRequest, type MunicipalAction } from './request-builder';
 import { decodeMunicipalBytes } from './response-decoder';
 import { RequestScheduler } from './request-scheduler';
+import { MAX_RESPONSE_BYTES, readBoundedResponse } from '../http/bounded-response';
+export { MAX_RESPONSE_BYTES, readBoundedResponse } from '../http/bounded-response';
 
-export const MAX_RESPONSE_BYTES = 262144;
 export const MAX_ROWS_OR_POSITIONS = 10000;
 export const MAX_IDENTIFIER_LENGTH = 128;
 export const MAX_TEXT_LENGTH = 2048;
@@ -98,45 +99,6 @@ export class MunicipalHttpClient {
       requestSignal.removeEventListener('abort', abortFromScheduler);
     }
   }
-}
-
-export async function readBoundedResponse(
-  response: Response,
-  maxBytes = MAX_RESPONSE_BYTES
-): Promise<Uint8Array> {
-  const declaredLength = response.headers.get('content-length');
-  if (declaredLength !== null && /^[0-9]+$/.test(declaredLength) && Number(declaredLength) > maxBytes) {
-    await response.body?.cancel();
-    throw new RangeError('Municipal response exceeded the size limit');
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) throw new TypeError('Municipal response has no readable body');
-
-  const chunks: Uint8Array[] = [];
-  let totalBytes = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      totalBytes += value.byteLength;
-      if (totalBytes > maxBytes) {
-        await reader.cancel();
-        throw new RangeError('Municipal response exceeded the size limit');
-      }
-      chunks.push(value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  const result = new Uint8Array(totalBytes);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return result;
 }
 
 export function assertPayloadLimits(

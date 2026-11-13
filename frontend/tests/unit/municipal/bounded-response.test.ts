@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { assertPayloadLimits, MunicipalHttpClient, readBoundedResponse } from '../../../src/infrastructure/municipal/http-client';
+import { assertPayloadLimits, MunicipalHttpClient } from '../../../src/infrastructure/municipal/http-client';
+import { readBoundedResponse } from '../../../src/infrastructure/http/bounded-response';
 
 describe('bounded municipal responses', () => {
   it('accepts a response exactly at the byte limit', async () => {

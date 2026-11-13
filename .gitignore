@@ -12,7 +12,8 @@ coverage/
 playwright-report/
 test-results/
 /.github/apk/
-/frontend/public/docs/openapi/index.html
+/frontend/public/docs/openapi/*.html
+/frontend/public/docs/openapi/swagger-ui*
 
 # Editor
 .vscode/*

@@ -1,6 +1,7 @@
 import type { LocationDisplayResult, StopMapPort } from '../../application/ports';
 import type { MapStop } from '../../domain/map-stops';
 import type { CurrentLocation, DirectionalRoute, SelectedLineRouteDisplay } from '../../domain/types';
+import type { JourneyPlace, TransitJourney } from '../../domain/transit-journey';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 const SOURCE_ID = 'bus-stops';
@@ -10,6 +11,10 @@ const STOP_LAYER_ID = 'stop-points';
 const STOP_HIT_LAYER_ID = 'stop-hit-targets';
 const SELECTION_LAYER_ID = 'selected-stop-ring';
 const ROUTE_SOURCE_ID = 'line-routes';
+const JOURNEY_SOURCE_ID = 'journey-stops';
+const JOURNEY_LAYER_ID = 'journey-stop-markers';
+const ITINERARY_SOURCE_ID = 'journey-route';
+const ITINERARY_PLACES_SOURCE_ID = 'journey-places';
 const ROUTE_DIRECTION_0_LAYER_ID = 'line-route-direction-0';
 const ROUTE_DIRECTION_1_LAYER_ID = 'line-route-direction-1';
 const LOCATION_SOURCE_ID = 'user-location';
@@ -33,6 +38,15 @@ interface RouteFeatureCollection {
   type: 'FeatureCollection';
   features: RouteFeature[];
 }
+interface JourneyStopFeatureCollection {
+  type: 'FeatureCollection';
+  features: Array<{
+    type: 'Feature';
+    id: string;
+    properties: { endpoint: 'origin' | 'destination'; stopId: string; name: string };
+    geometry: { type: 'Point'; coordinates: [number, number] };
+  }>;
+}
 interface LocationFeatureCollection {
   type: 'FeatureCollection';
   features: Array<{
@@ -40,6 +54,32 @@ interface LocationFeatureCollection {
     properties: Record<string, never>;
     geometry: { type: 'Point'; coordinates: [number, number] };
   }>;
+}
+
+function itineraryFeatureCollection(journey: TransitJourney | null) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: journey?.legs.map((leg) => ({
+      type: 'Feature' as const,
+      properties: { mode: leg.mode },
+      geometry: { type: 'LineString' as const, coordinates: leg.coordinates }
+    })) ?? []
+  };
+}
+
+function itineraryPlaces(journey: TransitJourney | null, focused: JourneyPlace | null) {
+  const places = journey ? [journey.legs[0].from, ...journey.legs.flatMap((leg) => (
+    leg.mode === 'BUS' ? [leg.from, leg.to] : []
+  )), journey.legs[journey.legs.length - 1].to] : [];
+  if (focused) places.push(focused);
+  return {
+    type: 'FeatureCollection' as const,
+    features: places.map((place) => ({
+      type: 'Feature' as const,
+      properties: { name: place.name, selected: place === focused },
+      geometry: { type: 'Point' as const, coordinates: [place.longitude, place.latitude] }
+    }))
+  };
 }
 
 function featureCollection(stops: MapStop[]): StopFeatureCollection {
@@ -84,6 +124,25 @@ function locationFeatureCollection(location: CurrentLocation | undefined): Locat
   };
 }
 
+function journeyStopFeatureCollection(
+  stops: MapStop[],
+  originStopId: string | null,
+  destinationStopId: string | null
+): JourneyStopFeatureCollection {
+  const features: JourneyStopFeatureCollection['features'] = [];
+  for (const [endpoint, stopId] of [['origin', originStopId], ['destination', destinationStopId]] as const) {
+    const stop = stopId ? stops.find((candidate) => candidate.id === stopId) : undefined;
+    if (!stop) continue;
+    features.push({
+      type: 'Feature',
+      id: endpoint,
+      properties: { endpoint, stopId: stop.id, name: stop.name },
+      geometry: { type: 'Point', coordinates: stop.coordinates }
+    });
+  }
+  return { type: 'FeatureCollection', features };
+}
+
 function isDisplayableDirection(direction: DirectionalRoute): boolean {
   return direction.headsign.trim().length > 0
     && direction.shapeId.trim().length > 0
@@ -109,6 +168,10 @@ export class BrowserMapPort implements StopMapPort {
   private stopSelected?: (stopId: string) => void;
   private chooserRequested?: (stopIds: string[]) => void;
   private lineRoute: SelectedLineRouteDisplay | null = null;
+  private journeyOriginStopId: string | null = null;
+  private journeyDestinationStopId: string | null = null;
+  private journeyRoute: TransitJourney | null = null;
+  private focusedJourneyPlace: JourneyPlace | null = null;
   private location?: CurrentLocation;
   private locationShouldCenter = true;
   private userMoved = false;
@@ -163,6 +226,14 @@ export class BrowserMapPort implements StopMapPort {
         this.map.addSource(ROUTE_SOURCE_ID, {
           type: 'geojson',
           data: routeFeatureCollection(this.lineRoute)
+        });
+        this.map.addSource(JOURNEY_SOURCE_ID, {
+          type: 'geojson',
+          data: journeyStopFeatureCollection(this.stops, this.journeyOriginStopId, this.journeyDestinationStopId)
+        });
+        this.map.addSource(ITINERARY_SOURCE_ID, { type: 'geojson', data: itineraryFeatureCollection(this.journeyRoute) });
+        this.map.addSource(ITINERARY_PLACES_SOURCE_ID, {
+          type: 'geojson', data: itineraryPlaces(this.journeyRoute, this.focusedJourneyPlace)
         });
         this.map.addSource(LOCATION_SOURCE_ID, {
           type: 'geojson',
@@ -245,6 +316,42 @@ export class BrowserMapPort implements StopMapPort {
             'circle-stroke-width': 3
           }
         });
+        this.map.addLayer({
+          id: JOURNEY_LAYER_ID,
+          type: 'circle',
+          source: JOURNEY_SOURCE_ID,
+          paint: {
+            'circle-color': ['match', ['get', 'endpoint'], 'origin', '#1684D8', '#F28C28'],
+            'circle-radius': 10,
+            'circle-stroke-color': '#FFFFFF',
+            'circle-stroke-width': 3
+          }
+        });
+        this.map.addLayer({
+          id: 'journey-bus-route', type: 'line', source: ITINERARY_SOURCE_ID,
+          filter: ['==', ['get', 'mode'], 'BUS'],
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#1769AA', 'line-width': 6 }
+        });
+        this.map.addLayer({
+          id: 'journey-walk-route', type: 'line', source: ITINERARY_SOURCE_ID,
+          filter: ['==', ['get', 'mode'], 'WALK'],
+          paint: { 'line-color': '#1769AA', 'line-width': 4, 'line-dasharray': [1, 1.5] }
+        });
+        this.map.addLayer({
+          id: 'journey-place-markers', type: 'circle', source: ITINERARY_PLACES_SOURCE_ID,
+          paint: {
+            'circle-color': ['case', ['get', 'selected'], '#F28C28', '#1769AA'],
+            'circle-radius': ['case', ['get', 'selected'], 10, 6],
+            'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 3
+          }
+        });
+        this.map.addLayer({
+          id: 'journey-focused-label', type: 'symbol', source: ITINERARY_PLACES_SOURCE_ID,
+          filter: ['==', ['get', 'selected'], true],
+          layout: { 'text-field': ['get', 'name'], 'text-size': 14, 'text-anchor': 'bottom', 'text-offset': [0, -1.2] },
+          paint: { 'text-color': '#202020', 'text-halo-color': '#FFFFFF', 'text-halo-width': 2 }
+        });
         this.map.on('click', (event) => { void this.handleMapClick(event); });
         this.map.on('mouseenter', CLUSTER_LAYER_ID, () => { if (this.map) this.map.getCanvas().style.cursor = 'pointer'; });
         this.map.on('mouseleave', CLUSTER_LAYER_ID, () => { if (this.map) this.map.getCanvas().style.cursor = ''; });
@@ -252,8 +359,12 @@ export class BrowserMapPort implements StopMapPort {
         this.map.on('mouseleave', STOP_HIT_LAYER_ID, () => { if (this.map) this.map.getCanvas().style.cursor = ''; });
         this.refreshSelectionRing();
         this.ready = true;
-        if (routeFeatureCollection(this.lineRoute).features.length > 0) this.fitLineRoute();
-        else if (this.focusedStopId) this.applyFocus();
+        this.container?.setAttribute('data-map-ready', 'true');
+        if (this.journeyRoute) this.fitJourneyRoute();
+        else if (routeFeatureCollection(this.lineRoute).features.length > 0) this.fitLineRoute();
+        else if (journeyStopFeatureCollection(this.stops, this.journeyOriginStopId, this.journeyDestinationStopId).features.length > 0) {
+          this.fitJourneyStops();
+        } else if (this.focusedStopId) this.applyFocus();
         else this.fitStops(this.stops);
         if (this.location) this.applyLocation();
       });
@@ -267,7 +378,17 @@ export class BrowserMapPort implements StopMapPort {
     const queried = this.map.queryRenderedFeatures([
       [event.point.x - HIT_HALF_SIZE, event.point.y - HIT_HALF_SIZE],
       [event.point.x + HIT_HALF_SIZE, event.point.y + HIT_HALF_SIZE]
-    ], { layers: [CLUSTER_LAYER_ID, STOP_HIT_LAYER_ID] });
+    ], { layers: [CLUSTER_LAYER_ID, STOP_HIT_LAYER_ID, 'journey-place-markers'] });
+    const itineraryPlace = queried.find((feature) => feature.source === ITINERARY_PLACES_SOURCE_ID
+      && feature.geometry.type === 'Point');
+    if (itineraryPlace?.geometry.type === 'Point') {
+      this.focusJourneyPlace({
+        name: String(itineraryPlace.properties?.name ?? ''),
+        latitude: itineraryPlace.geometry.coordinates[1],
+        longitude: itineraryPlace.geometry.coordinates[0]
+      });
+      return;
+    }
     const nearby = queried.filter((feature) => {
       if (feature.geometry.type !== 'Point') return false;
       const point = this.map!.project(feature.geometry.coordinates as [number, number]);
@@ -302,6 +423,7 @@ export class BrowserMapPort implements StopMapPort {
     this.stops = stops;
     this.updateStopAttributes();
     this.updateStopSource();
+    this.updateJourneySource();
     this.refreshSelectionRing();
   }
 
@@ -361,6 +483,91 @@ export class BrowserMapPort implements StopMapPort {
     this.refreshSelectionRing();
   }
 
+  setJourneyStops(originStopId: string | null, destinationStopId: string | null): void {
+    if (originStopId === this.journeyOriginStopId && destinationStopId === this.journeyDestinationStopId
+      && this.container?.hasAttribute('data-journey-stops')) return;
+    this.journeyOriginStopId = originStopId;
+    this.journeyDestinationStopId = destinationStopId;
+    this.container?.setAttribute('data-journey-stops', JSON.stringify([originStopId, destinationStopId]));
+    this.updateJourneySource();
+    this.fitJourneyStops();
+  }
+
+  setJourneyRoute(journey: TransitJourney | null): void {
+    if (this.journeyRoute === journey && this.container?.hasAttribute('data-journey-route')) return;
+    this.journeyRoute = journey;
+    this.focusedJourneyPlace = null;
+    this.container?.setAttribute('data-journey-route', journey?.id ?? '');
+    this.container?.setAttribute('data-journey-route-legs', String(journey?.legs.length ?? 0));
+    this.container?.removeAttribute('data-journey-focused-place');
+    const source = this.map?.getSource(ITINERARY_SOURCE_ID) as import('maplibre-gl').GeoJSONSource | undefined;
+    source?.setData(itineraryFeatureCollection(journey));
+    this.updateStopAttributes();
+    this.updateStopSource();
+    this.updateItineraryPlaces();
+    if (journey) this.fitJourneyRoute();
+  }
+
+  focusJourneyPlace(place: JourneyPlace): void {
+    this.focusedJourneyPlace = place;
+    this.container?.setAttribute('data-journey-focused-place', place.name);
+    this.updateItineraryPlaces();
+    const padding = this.getLineRoutePadding();
+    this.map?.easeTo({
+      center: [place.longitude, place.latitude], zoom: 17,
+      offset: [(padding.left - padding.right) / 2, (padding.top - padding.bottom) / 2],
+      duration: this.reducedMotion ? 0 : 300
+    });
+  }
+
+  private updateItineraryPlaces(): void {
+    const source = this.map?.getSource(ITINERARY_PLACES_SOURCE_ID) as import('maplibre-gl').GeoJSONSource | undefined;
+    source?.setData(itineraryPlaces(this.journeyRoute, this.focusedJourneyPlace));
+  }
+
+  private fitJourneyRoute(): void {
+    if (!this.map || !this.ready || !this.journeyRoute) return;
+    const coordinates = this.journeyRoute.legs.flatMap((leg) => leg.coordinates);
+    const longitudes = coordinates.map(([longitude]) => longitude);
+    const latitudes = coordinates.map(([, latitude]) => latitude);
+    this.map.fitBounds([
+      [Math.min(...longitudes), Math.min(...latitudes)],
+      [Math.max(...longitudes), Math.max(...latitudes)]
+    ], { padding: this.getLineRoutePadding(), maxZoom: 16, duration: this.reducedMotion ? 0 : 300 });
+  }
+
+  private fitJourneyStops(): void {
+    const endpoints = journeyStopFeatureCollection(
+      this.stops,
+      this.journeyOriginStopId,
+      this.journeyDestinationStopId
+    ).features;
+    if (!this.ready || !this.map || endpoints.length === 0) return;
+    if (endpoints.length === 1) {
+      const panelWidth = document.querySelector<HTMLElement>('.destination-view')?.getBoundingClientRect().width ?? 0;
+      this.map.easeTo({
+        center: endpoints[0].geometry.coordinates,
+        zoom: Math.max(this.map.getZoom(), CLUSTER_MAX_ZOOM + 1),
+        offset: [Math.round(panelWidth / 2), 0],
+        duration: this.reducedMotion ? 0 : 300
+      });
+      return;
+    }
+    const longitudes = endpoints.map(({ geometry }) => geometry.coordinates[0]);
+    const latitudes = endpoints.map(({ geometry }) => geometry.coordinates[1]);
+    const mapWidth = this.container?.getBoundingClientRect().width ?? 0;
+    const panelWidth = document.querySelector<HTMLElement>('.destination-view')?.getBoundingClientRect().width ?? 0;
+    const leftPadding = Math.max(64, Math.min(Math.ceil(mapWidth * 0.55), Math.ceil(panelWidth + 48)));
+    this.map.fitBounds(
+      [[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]],
+      {
+        padding: { top: 64, right: 48, bottom: 64, left: leftPadding },
+        maxZoom: CLUSTER_MAX_ZOOM + 1,
+        duration: this.reducedMotion ? 0 : 300
+      }
+    );
+  }
+
   onStopSelected(listener: (stopId: string) => void): () => void {
     this.stopSelected = listener;
     return () => { if (this.stopSelected === listener) this.stopSelected = undefined; };
@@ -374,6 +581,10 @@ export class BrowserMapPort implements StopMapPort {
   fitToStops(userInitiated = false): void {
     if (userInitiated) this.userMoved = true;
     this.focusedStopId = null;
+    if (this.journeyRoute) {
+      this.fitJourneyRoute();
+      return;
+    }
     this.fitStops(this.getVisibleStops());
   }
 
@@ -411,6 +622,7 @@ export class BrowserMapPort implements StopMapPort {
   }
 
   private getVisibleStops(): MapStop[] {
+    if (this.journeyRoute) return [];
     const route = this.lineRoute;
     return route ? this.stops.filter((stop) => stop.lineIds.includes(route.lineId)) : this.stops;
   }
@@ -425,6 +637,11 @@ export class BrowserMapPort implements StopMapPort {
   private updateStopSource(): void {
     const source = this.map?.getSource(SOURCE_ID) as import('maplibre-gl').GeoJSONSource | undefined;
     source?.setData(featureCollection(this.getVisibleStops()));
+  }
+
+  private updateJourneySource(): void {
+    const source = this.map?.getSource(JOURNEY_SOURCE_ID) as import('maplibre-gl').GeoJSONSource | undefined;
+    source?.setData(journeyStopFeatureCollection(this.stops, this.journeyOriginStopId, this.journeyDestinationStopId));
   }
 
   private fitLineRoute(): void {
@@ -442,7 +659,7 @@ export class BrowserMapPort implements StopMapPort {
     );
   }
 
-  private getLineRoutePadding(): import('maplibre-gl').PaddingOptions {
+  private getLineRoutePadding(): Required<import('maplibre-gl').PaddingOptions> {
     const padding = { top: 48, right: 48, bottom: 48, left: 48 };
     const panel = document.querySelector<HTMLElement>('.destination-view');
     if (!panel || !this.container) return padding;
@@ -547,6 +764,7 @@ export class BrowserMapPort implements StopMapPort {
     this.resolveLocation({ cameraCentered: false, hasVisibleStops: false });
     this.map?.remove();
     this.map = undefined;
+    this.container?.removeAttribute('data-map-ready');
     this.container?.replaceChildren();
     this.container = undefined;
     this.stops = [];

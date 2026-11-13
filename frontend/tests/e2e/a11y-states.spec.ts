@@ -32,7 +32,8 @@ test('primary destinations and open overlays have no WCAG 2.2 AA violations in l
     await page.setViewportSize(viewport);
     for (const [destination, label] of [
       ['map', /Map|Mapa/], ['lines', /Lines|Líneas|Liñas/],
-      ['search', /Search|Buscar/], ['saved', /Saved|Guardado|Gardado/]
+      ['search', /Search|Buscar/], ['journeys', /Plan a trip|Planificar viaje|Planificar viaxe/],
+      ['saved', /Saved|Guardado|Gardado/]
     ] as const) {
       await page.getByRole('button', { name: label }).click();
       const violations = await new AxeBuilder({ page })
