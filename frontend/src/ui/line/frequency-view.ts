@@ -39,6 +39,7 @@ export interface FrequencyViewOptions {
   onClose?: () => void;
   onDayTypeChange?: (dayType: DayType) => void;
   onStopSelect?: (stopId: string) => void;
+  onStopEndpoint?: (endpoint: 'origin' | 'destination', stopId: string) => void;
   onStopFavoriteToggle?: (stopId: string) => void;
 }
 
@@ -103,6 +104,20 @@ export function renderLineFrequency(root: HTMLElement, options: FrequencyViewOpt
         open.textContent = stop.name;
         open.addEventListener('click', () => options.onStopSelect?.(stop.id));
         info.append(open, createLineBadges(stop.lineIds, options.lines ?? [], options.onSelectLine));
+        if (options.onStopEndpoint) {
+          const actions = document.createElement('div');
+          actions.className = 'result-actions';
+          for (const endpoint of ['origin', 'destination'] as const) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'result-action';
+            button.dataset.routeStopEndpoint = endpoint;
+            button.textContent = translateCurrent(endpoint === 'origin' ? 'useAsOrigin' : 'useAsDestination');
+            button.addEventListener('click', () => options.onStopEndpoint?.(endpoint, stop.id));
+            actions.append(button);
+          }
+          info.append(actions);
+        }
         item.append(info);
         if (options.onStopFavoriteToggle) {
           const favorite = document.createElement('div');

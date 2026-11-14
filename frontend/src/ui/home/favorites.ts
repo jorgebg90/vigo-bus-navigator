@@ -1,3 +1,4 @@
+import { renderContentState } from '../content-state';
 import type { Favorite, Line, RecentView, Stop } from '../../domain/types';
 import { translateCurrent } from '../../i18n';
 import { createStarIcon } from '../favorite-toggle';
@@ -50,8 +51,8 @@ export function renderFavorites(root: HTMLElement, favorites: Favorite[], lines:
     const list = document.createElement('ul');
     if (activeTab === 'favorites') {
       if (favorites.length === 0) {
-        const empty = document.createElement('p');
-        empty.textContent = translateCurrent('savedEmpty');
+        const empty = document.createElement('div');
+        renderContentState(empty, 'empty', { message: translateCurrent('savedEmpty') });
         panel.append(empty);
       }
       for (const favorite of favorites) {
@@ -89,8 +90,8 @@ export function renderFavorites(root: HTMLElement, favorites: Favorite[], lines:
     } else {
       const recentViews = options.recentViews ?? [];
       if (recentViews.length === 0) {
-        const empty = document.createElement('p');
-        empty.textContent = translateCurrent('recentEmpty');
+        const empty = document.createElement('div');
+        renderContentState(empty, 'empty', { message: translateCurrent('recentEmpty') });
         panel.append(empty);
       }
       for (const recent of recentViews) {
