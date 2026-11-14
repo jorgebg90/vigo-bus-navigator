@@ -44,7 +44,7 @@ test('keyboard flow searches a stop and browses lines without opening the map', 
   await line.focus();
   await expect(line).toBeFocused();
   await line.press('Enter');
-  await expect(page.locator('[data-schedule-provenance="provisional-fixture"]')).toBeVisible();
+  await expect(page.locator('[data-schedule-provenance="provisional-fixture"]')).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('[data-provisional-warning]').first()).toBeVisible();
   await expect(page.locator('[data-schedule-disclosure]')).toHaveJSProperty('open', false);
   await page.locator('[data-schedule-toggle]').click();

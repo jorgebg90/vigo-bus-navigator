@@ -4,7 +4,9 @@
 
 **Created**: 2026-11-14
 
-**Status**: Draft
+**Status**: Closed — current delivery accepted; remaining work tracked as follow-up
+
+**Accepted**: 2026-11-14
 
 **Input**: User description: "Improve the UX of the app menus and create a more holistic experience, using the route planner as the best visual reference."
 
@@ -23,6 +25,9 @@ A rider moves between the main app sections, including the map, search, journey 
 1. **Given** a rider is in any primary section, **When** they select another destination, **Then** the app opens that destination and clearly indicates which section is active.
 2. **Given** the app is viewed on a phone, tablet, or desktop, **When** the viewport changes, **Then** navigation adapts without obscuring content or making destinations unreachable.
 3. **Given** the route planner is open, **When** the shared visual language is applied elsewhere, **Then** the route planner's current visual hierarchy and task flow remain intact.
+4. **Given** a rider opens Saved on a phone, **When** the section appears, **Then** it enters from below above the navigation bar, keeps the map visible above it, and scrolls its content internally; larger layouts retain the side panel.
+5. **Given** a rider opens Search or Lines, **When** the search control is displayed or focused, **Then** both sections use the same full-width rounded field, search icon, and visible focus treatment.
+6. **Given** a rider browses Lines or Saved, **When** list items and tabs are displayed, **Then** rounded cards, spacing, and selected-tab styling follow the same visual language.
 
 ### User Story 2 - Find and continue a transit journey (Priority: P1)
 
@@ -65,6 +70,8 @@ A rider can operate the menus, search, panels, and navigation with touch, keyboa
 1. **Given** a rider uses a keyboard, **When** they navigate the menus and open or close a panel, **Then** focus order is logical, focus remains visible, and every action is operable.
 2. **Given** a rider uses touch, **When** they activate navigation or common actions, **Then** interactive targets meet the minimum size and are not obscured by other interface elements.
 3. **Given** a rider has enabled reduced motion or selected a supported language, **When** they use the app, **Then** non-essential motion is reduced and all added interface text is localized consistently.
+4. **Given** navigation labels wrap or text is enlarged, **When** the navigation height changes, **Then** map controls and panels reserve its actual height rather than overlapping the bar.
+5. **Given** a rider changes destination, **When** the destination content finishes rendering, **Then** focus moves to its final heading or search input, not to an element replaced during rendering.
 
 ### Edge Cases
 
@@ -114,3 +121,24 @@ A rider can operate the menus, search, panels, and navigation with touch, keyboa
 - **SC-005**: All interactive targets in the covered experience meet or exceed 44 CSS pixels, and all reviewed text and controls meet WCAG 2.2 AA contrast requirements.
 - **SC-006**: New and changed user-facing text is available in all three supported languages, and reduced-motion preferences are respected in all covered interactions.
 - **SC-007**: Riders can complete a journey from search or a stop/line detail into a relevant map or trip-planning action without re-entering context that the app already knows.
+
+## Accepted Delivery and Follow-Up
+
+On 2026-11-14 the product owner approved the final presentation and explicitly
+chose to close the current delivery with remaining work documented as follow-up.
+The accepted delivery includes labeled adaptive navigation, unified search,
+stop/address/line-route-stop handoffs, measured navigation spacing, final-content
+focus, matching Search/Lines controls, rounded lists/tabs, and the phone Saved
+bottom sheet. It preserves existing data ports, favorites, privacy and planner
+behavior without adding infrastructure, dependencies, or external contracts.
+
+Closure is acceptance of this delivery, not a claim that every original task or
+success criterion has been exhaustively verified. Remaining tasks stay unchecked
+in [tasks.md](tasks.md): pre-change visual comparison, broader context restoration,
+complete cross-section state/accessibility review, Android ADB validation, and
+harness/usability verdicts. In particular, SC-002's participant success rate has
+not been measured. English copy is covered by catalog/DOM tests; browser locale
+switches cover the existing Spanish/Galician menu only.
+
+Validation commands, results, and device limitations are recorded in
+[quickstart.md](quickstart.md) and [tasks.md](tasks.md).

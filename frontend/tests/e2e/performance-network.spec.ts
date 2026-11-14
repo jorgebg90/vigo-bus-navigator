@@ -17,7 +17,7 @@ test('shows loading within one second and a terminal state within ten for 20 sto
   let terminalCount = 0;
 
   for (let index = 0; index < 20; index += 1) {
-    await openStopFromSearch(page, '', index);
+    await openStopFromSearch(page, 'a', index);
     const status = page.locator('[data-arrivals-status]');
     await expect(status).toBeVisible({ timeout: 1_000 });
     const terminal = await page.waitForFunction(() => {

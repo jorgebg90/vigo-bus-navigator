@@ -8,6 +8,27 @@
 
 Make the five primary destinations (map, search, journeys, lines, saved) feel like one product by extending the journey planner's visual language, replacing the icon-only rail with a labeled bottom bar (phone) / persistent rail (tablet+desktop), and composing existing stop, line and address-suggestion capabilities into a single search surface reachable from every section. Cross-section handoffs (stop/address to journey endpoint, line to route stop to planner) carry context in memory only. Loading, empty, error and offline states are unified. No new dependency, data source, endpoint or persisted data (see [research.md](research.md)).
 
+## Delivery Consolidation (2026-11-14)
+
+- `shell.ts` measures phone navigation with `ResizeObserver` and a resize listener,
+  writes the actual `--nav-h`, and cleans both up on destroy. Destination listeners
+  render content before focus is moved to the final heading/search input.
+- Search and Lines share `.search-field`, the existing decorative search icon,
+  a 48px input, rounded border, token colors, and focus-within treatment.
+  Lines keeps its existing filtering and adds a section heading and rounded cards.
+- Saved on phones is a 45dvh bottom sheet above the measured navigation height;
+  the map reserves that space. Its entry animation respects reduced motion.
+  Larger layouts keep their existing side panel. Saved and line-detail tabs share
+  rounded selection styling; saved rows use spaced rounded cards.
+- DOM and browser regressions cover navigation sizing/focus, endpoint handoffs,
+  query privacy, search recovery, es/gl enlarged text, search field geometry,
+  Saved positioning, keyboard use, reduced motion, and axe checks.
+
+The product owner accepted closure of the current delivery with the unchecked
+tasks retained as follow-up. Full state/accessibility review and usability/device
+evidence are not implied by successful automated tests. See [spec.md](spec.md)
+for the accepted scope and [tasks.md](tasks.md) for outstanding work.
+
 ## Technical Context
 
 **Language/Version**: TypeScript (strict), ES modules, Node.js per repository `package.json`
@@ -42,7 +63,9 @@ Make the five primary destinations (map, search, journeys, lines, saved) feel li
 | VI. Zero-Cost & Privacy | Pass | Queries/addresses never persisted, cached, logged or in URLs; disclosure kept visible in search. |
 | VII. Simplicity & English | Pass | No framework or design-system package; artifacts in English. |
 
-No violations; Complexity Tracking not required. Gate G3 verdicts (Architect, Backend Developer, UX Designer, Frontend Developer) are to be recorded before tasks.
+No violations; Complexity Tracking not required. Separate G3/G4 harness verdicts
+remain follow-up under T034; product-owner delivery acceptance is not a substitute
+for those verdicts.
 
 ## Project Structure
 

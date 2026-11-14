@@ -38,7 +38,7 @@
 **Independent Test**: Visit all five destinations at 320, 390, 768, 1024 and 1280 px; active destination is clear, content reachable, planner unchanged.
 
 - [x] T007 [P] [US1] Extend `frontend/tests/dom/shell.test.ts`: each destination button has a visible text label and accessible name, active one has `aria-current="page"`, heading and `document.title` update on navigate and on language change, settings/language remains in header outside `nav`
-- [ ] T008 [P] [US1] Extend `frontend/tests/e2e/responsive.spec.ts`: at 320x700, 390x844, 768x1024, 1024x768, 1280x900 assert bottom bar (phone) vs persistent rail (tablet/desktop), every destination reachable in one action (SC-001), no horizontal overflow, nav does not overlap map controls or panel actions, targets ≥ 44px
+- [x] T008 [P] [US1] Extend `frontend/tests/e2e/responsive.spec.ts`: at 320x700, 390x844, 768x1024, 1024x768, 1280x900 assert bottom bar (phone) vs persistent rail (tablet/desktop), every destination reachable in one action (SC-001), no horizontal overflow, nav does not overlap map controls or panel actions, targets ≥ 44px
 - [x] T009 [US1] Update `frontend/src/ui/shell.ts` to render labeled destination buttons (icon + text via `setIconButton`/`translateCurrent` keys `navMap`…`navSaved`), set `aria-current="page"` on active, update section heading and `document.title`, and re-translate labels on language change
 - [x] T010 [US1] Update `frontend/src/ui/styles.css` for the bottom-bar layout (< 600px) and labeled persistent rail (≥ 600px, incl. 1024px portrait rule), safe-area insets, long-label wrapping/ellipsis safe for gl/es/en, visible focus, reduced-motion safe transitions; reserve space so map controls and sheets are not obscured
 - [x] T011 [P] [US1] Apply shared patterns from T005 to the lines list, saved/favorites view and privacy view: `frontend/src/ui/line/lines-list.ts`, `frontend/src/ui/home/favorites.ts`, `frontend/src/ui/privacy/privacy-view.ts`; keep `frontend/src/ui/search/journey-search-view.ts` and `journey-results-view.ts` behavior unchanged
@@ -95,18 +95,93 @@
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T031 Run full gates: `npm run typecheck`, `npm test`, `npm run test:e2e`, `npm run build`, `npm run size`; confirm budgets (850 KiB JS, 150 KiB CSS, 500 KiB first-map) and that navigation/search do not eagerly import map-only code
+- [x] T031 Run full gates: `npm run typecheck`, `npm test`, `npm run test:e2e`, `npm run build`, `npm run size`; confirm budgets (850 KiB JS, 150 KiB CSS, 500 KiB first-map) and that navigation/search do not eagerly import map-only code
 - [ ] T032 [P] Capture Android ADB screenshots of the primary destinations and search on a device/emulator and review layout (project UI-verification convention); also manual walkthrough from `specs/012-holistic-menu-experience/quickstart.md`
 - [x] T033 [P] Update README sections (`README.md`, `README.en.md`, `README.gl.md`) only if user-visible navigation/search behavior is described there
 - [ ] T034 Record G3/G4 harness verdicts and phase blog draft (G6) under `specs/012-holistic-menu-experience/`
+- [x] T035 Consolidate final UX refinements: shared rounded Search/Lines fields,
+  line cards and Saved tabs/rows, phone Saved bottom sheet, actual navigation
+  spacing and final-content focus; add DOM/responsive regression coverage
+- [x] T036 Re-run final typecheck, all Vitest tests, affected browser suites,
+  production build/artifact guard and payload budgets; record results and
+  product-owner closure scope without marking deferred tasks complete
 
 ---
 
 ## Implementation Status
 
-Verified locally: typecheck, 465 Vitest tests, production build and `npm run size` (JS 389.1 KiB, CSS 15.6 KiB, first-map 401.9 KiB gzip, within budgets).
+Verified on 2026-11-14: strict typecheck, all 467 Vitest tests across 93 files,
+production build, production-artifact guard and payload budgets. Gzip totals:
+JS 388.2 KiB / 850 KiB, CSS 15.9 KiB / 150 KiB, first-map 401.3 KiB / 500 KiB.
+Coverage passes at 96.93% lines and 89.61% branches in the configured
+application/domain scope; this is not a whole-UI coverage claim.
 
-**Pending e2e / device validation (needs user action):** Chromium installation for Playwright was denied in this environment, so no e2e suite ran. Please run `npx playwright install chromium` and `npm run test:e2e`, or approve the install. Affected tasks, left unchecked: T002 (baseline screenshots), T008/T012/T015 (responsive, handoff e2e), T022/T023/T026 (state e2e; DOM coverage exists in `unified-search.test.ts`), T027/T028 (axe, keyboard, reduced-motion e2e), T031 (full gate incl. e2e), T032 (ADB screenshots), T034 (G3/G4 verdicts and blog draft, pending e2e results). Specs `responsive.spec.ts` and `search-lines.spec.ts` were updated but not executed.
+The pre-refinement single full Playwright run (`npm run test:e2e -- --workers=2`)
+passes: **164 passed, seven existing project-specific skips**, out of 171 cases.
+The skips are desktop-only camera assertions and Chromium-only network emulation
+on unsupported projects, not disabled failing tests. Chromium desktop, Android
+Chrome and iOS Safari all execute the applicable journey, menu, search, keyboard,
+offline and axe checks. No browser installation was needed in this environment.
+
+Regression fixes and added checks:
+
+- Measure actual phone navigation height (including wrapped labels, text resizing
+  and safe-area padding) instead of reserving a hardcoded 64 px. Disconnect the
+  resize observer/listener when the shell is destroyed.
+- Focus the final composed destination content, not the discarded shell heading;
+  verify stop-to-planner handoff with Enter and Escape focus return under reduced
+  motion. The DOM focus regression was reproduced before the fix.
+- Adapt map/panel assertions to the bottom bar and tablet rail. Performance tests
+  use a real local query rather than expecting results for empty search.
+- Explicitly select the initial weekday tab rather than depending on today's
+  calendar date. Use the existing 15-second line readiness allowance in the
+  functional keyboard test; the separate one-/ten-second arrivals performance
+  thresholds remain unchanged.
+- Verify global search access, stop/address/line-route-stop endpoint handoffs,
+  retained search query and other journey endpoint, no implicit OTP submission,
+  no query storage/URL writes, and address error/retry/offline/empty states.
+- Verify enlarged-text layout and real menu language switches in es/gl. English
+  catalog/DOM coverage is retained; the existing menu intentionally has no English
+  item. Do not claim browser English selection was tested.
+
+Manual browser checks used real municipal autocomplete and OTP responses on
+localhost, with desktop and 390x844 screenshots inspected. The existing published
+application at `https://jblueprint.dev/vigo-bus-navigator/` also completed direct
+autocomplete and OTP planning; that confirms the deployed planner's origin
+compatibility, not deployment of feature 012 or these local corrections.
+
+**Follow-up retained at closure:** T002/T012's pre-change screenshot comparison was not
+retroactively manufactured. T015's broader return/selected-line restoration
+coverage, T022–T024/T026's complete cross-section state work, T027/T028's full
+requirements review and T034's harness/usability verdicts remain separate from
+passing existing automated checks. Passing tests do not close those tasks or
+establish SC-002's participant success rate.
+
+**Device validation:** ADB was absent from PATH and standard SDK locations.
+The product owner explicitly chose to leave T032 pending and finish browser
+testing. Playwright Android emulation and browser screenshots are not ADB/device
+captures.
+
+### Final Delivery Acceptance
+
+On 2026-11-14 the product owner approved the final Search, Lines and Saved
+presentation and chose: "Cerrar la entrega actual y documentar lo restante como
+seguimiento pendiente". Feature 012 is closed for this accepted delivery; the
+unchecked original tasks above are retained follow-up, not completed or erased.
+No participant usability metric, ADB capture, pre-change visual baseline, or
+separate harness verdict is claimed.
+
+After all refinements, `npm run typecheck`, `npm test -- --maxWorkers=2`
+(467 tests / 93 files), `npm run build`,
+`npm run validate:production-artifact`, `npm run size`, and `git diff --check`
+pass. The affected responsive/favorites/search-lines/reduced-motion browser suite
+passes **28 cases with two existing project-specific skips** across Chromium
+desktop, Android Chrome and iOS Safari. This includes the unified Search rounded
+field assertions, not just Lines. The full 164-pass run above predates these final
+style changes and is not represented as a new full-suite run.
+
+No implementation extension hooks are registered. Local Spec Kit selection now
+resolves feature 012 rather than the previous feature's ignored metadata.
 
 Notes: the global search entry is the primary-nav Search destination, reachable in one action from every section. T033: the READMEs do not describe navigation or search, so no change was needed.
 

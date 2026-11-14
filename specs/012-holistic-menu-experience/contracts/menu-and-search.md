@@ -10,6 +10,8 @@ This document defines an in-process user-interface contract. It does not expose 
 - Every destination has an accessible name independent of its icon. The language/settings control remains reachable outside primary navigation.
 - Navigation does not cover map controls, panel actions, or essential content. It remains reachable without horizontal scrolling at the supported 320 CSS pixel minimum viewport.
 - Selecting a destination updates its heading and document title and follows existing focus management and browser back behavior.
+- Phone map/panel spacing follows the measured navigation height, including wrapped
+  or enlarged labels. Destination focus targets the final composed heading or input.
 
 ## Unified Search
 
@@ -19,6 +21,8 @@ This document defines an in-process user-interface contract. It does not expose 
 - Blank input produces no address request. Address autocomplete uses its existing fixed host, parameters, cancellation, and privacy disclosure; queries and address results are not logged, cached, placed in the URL, or persisted.
 - Search provides explicit loading, no-results, unavailable/error, and offline feedback. A retry is offered only when the operation can be repeated.
 - Changing the query or leaving search invalidates stale suggestions; results from an older query must not replace the current result set.
+- Search and Lines use the same full-width rounded field with a decorative search
+  icon and visible focus treatment; styling does not alter filtering or cancellation.
 
 ## Cross-Destination Actions
 
@@ -35,3 +39,14 @@ This document defines an in-process user-interface contract. It does not expose 
 - All controls work by keyboard and touch, expose names and state to assistive technology, and meet WCAG 2.2 AA and 44 CSS pixel target requirements.
 - Reduced-motion preferences are respected. New or changed copy is present in English, Spanish, and Galician.
 - Loading and backgrounded real-time requests continue to obey existing cancellation, visibility, offline, and freshness behavior.
+- On phones, Saved enters from below as a 45dvh internally scrolling sheet above
+  navigation, leaving the map visible above it. Larger layouts retain the side panel.
+- Lines cards and Saved rows are rounded and spaced; Saved and line-detail tabs
+  use the same selected-pill treatment. Sheet motion respects reduced motion.
+
+## Delivery Status
+
+The current delivery was accepted on 2026-11-14 with remaining verification and
+implementation work retained in [tasks.md](../tasks.md). This contract describes
+the intended behavior; acceptance does not assert exhaustive verification of all
+state, accessibility, or context-restoration combinations.

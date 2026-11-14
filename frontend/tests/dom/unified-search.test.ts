@@ -50,6 +50,8 @@ describe('unified search', () => {
     const { root, options } = mount();
     await vi.advanceTimersByTimeAsync(50);
     expect(root.querySelector('[data-content-state="empty"]')).toBeTruthy();
+    expect(root.querySelector('.search-field input')?.getAttribute('aria-label')).toBe('Search stops, lines or addresses');
+    expect(root.querySelector('.search-field svg')?.getAttribute('aria-hidden')).toBe('true');
     expect(options.addressSearch).not.toHaveBeenCalled();
   });
 

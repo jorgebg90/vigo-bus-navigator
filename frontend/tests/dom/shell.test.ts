@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it, beforeEach } from 'vitest';
+import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest';
 import { createShell, type ShellController } from '../../src/ui/shell';
 import { setDocumentLanguage } from '../../src/i18n';
 import { readFileSync } from 'node:fs';
@@ -13,7 +13,10 @@ beforeEach(() => {
   document.title = 'Vigo Bus Navigator';
   setDocumentLanguage('en');
 });
-afterEach(() => controllers.forEach((controller) => controller.destroy()));
+afterEach(() => {
+  controllers.forEach((controller) => controller.destroy());
+  vi.restoreAllMocks();
+});
 
 function mount(root: HTMLElement): ShellController {
   const controller = createShell(root);
@@ -57,6 +60,19 @@ describe('app shell', () => {
     expect(root.querySelector('[data-destination="map"]')?.hasAttribute('aria-current')).toBe(false);
   });
 
+  it('focuses the rendered content after a destination listener replaces the shell heading', () => {
+    const root = document.createElement('div');
+    document.body.append(root);
+    const shell = mount(root);
+    shell.onDestinationChange(() => {
+      const heading = document.createElement('h1');
+      heading.textContent = 'Plan your journey';
+      shell.main.replaceChildren(heading);
+    });
+    shell.navigate('journeys');
+    expect(document.activeElement).toBe(shell.main.querySelector('h1'));
+  });
+
   it('keeps navigation in source order as labeled icon buttons with accessible names', () => {
     const root = document.createElement('div');
     document.body.append(root);
@@ -93,5 +109,30 @@ describe('app shell', () => {
     expect(root.querySelector('main')?.getAttribute('data-destination')).toBe('search');
     search.click();
     expect(root.querySelector('main')?.getAttribute('data-destination')).toBe('map');
+  });
+
+  it('reserves measured mobile navigation space and removes resize work on destroy', () => {
+    const width = Object.getOwnPropertyDescriptor(window, 'innerWidth')!;
+    const root = document.createElement('div');
+    document.body.append(root);
+    const shell = mount(root);
+    const layout = root.querySelector<HTMLElement>('.app-shell')!;
+    vi.spyOn(shell.nav, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 390, 75));
+    const disconnect = vi.spyOn(ResizeObserver.prototype, 'disconnect');
+    try {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+      window.dispatchEvent(new Event('resize'));
+      expect(layout.style.getPropertyValue('--nav-h')).toBe('75px');
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 });
+      window.dispatchEvent(new Event('resize'));
+      expect(layout.style.getPropertyValue('--nav-h')).toBe('0px');
+      shell.destroy();
+      expect(disconnect).toHaveBeenCalled();
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+      window.dispatchEvent(new Event('resize'));
+      expect(layout.style.getPropertyValue('--nav-h')).toBe('0px');
+    } finally {
+      Object.defineProperty(window, 'innerWidth', width);
+    }
   });
 });

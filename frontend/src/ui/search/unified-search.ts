@@ -4,6 +4,7 @@ import { translateCurrent } from '../../i18n';
 import { renderContentState } from '../content-state';
 import { renderFavoriteToggle } from '../favorite-toggle';
 import { createLineBadge } from '../line-badge';
+import { createIcon } from '../icons';
 import type { SearchCategory, SearchSession } from './search-session';
 
 export type JourneyEndpointKind = 'origin' | 'destination';
@@ -58,13 +59,14 @@ export function renderUnifiedSearch(root: HTMLElement, options: UnifiedSearchOpt
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const landmark = document.createElement('div');
+  landmark.className = 'search-field';
   landmark.setAttribute('role', 'search');
   const input = document.createElement('input');
   input.type = 'search';
   input.value = session.query;
   input.setAttribute('aria-label', translateCurrent('searchAllPlaceholder'));
   input.placeholder = translateCurrent('searchAllPlaceholder');
-  landmark.append(input);
+  landmark.append(createIcon('search'), input);
 
   const filters = document.createElement('div');
   filters.className = 'filter-group';

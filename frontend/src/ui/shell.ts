@@ -58,6 +58,11 @@ export function createShell(container: HTMLElement): ShellController {
   let activeSheet: SheetController | undefined;
   let destroyed = false;
   const destinationListeners = new Set<(destination: Destination) => void>();
+  const updateNavigationSpace = () => {
+    const height = window.innerWidth < 600 ? nav.getBoundingClientRect().height : 0;
+    shell.style.setProperty('--nav-h', `${height}px`);
+  };
+  const navigationResize = new ResizeObserver(updateNavigationSpace);
 
   const renderDestination = (next: Destination, focus: boolean) => {
     destination = next;
@@ -72,8 +77,12 @@ export function createShell(container: HTMLElement): ShellController {
       if (button.dataset.destination === next) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
     }
-    if (focus) heading.focus();
     for (const listener of destinationListeners) listener(next);
+    if (focus) {
+      const target = main.querySelector<HTMLElement>('h1, input[type="search"]') ?? main;
+      if (target.tagName !== 'INPUT') target.tabIndex = -1;
+      target.focus();
+    }
   };
 
   const navIcons = { map: 'map', search: 'search', journeys: 'journey', lines: 'lines', saved: 'saved' } as const;
@@ -201,6 +210,8 @@ export function createShell(container: HTMLElement): ShellController {
       if (destroyed) return;
       destroyed = true;
       stopLanguageListener();
+      navigationResize.disconnect();
+      window.removeEventListener('resize', updateNavigationSpace);
       clearPanel(false);
       window.removeEventListener('popstate', onPopState);
       document.removeEventListener('keydown', onKeyDown);
@@ -212,6 +223,9 @@ export function createShell(container: HTMLElement): ShellController {
 
   shell.append(header, nav, main, panel, base);
   container.replaceChildren(shell);
+  navigationResize.observe(nav);
+  updateNavigationSpace();
+  window.addEventListener('resize', updateNavigationSpace);
   history.replaceState({ destination }, '', location.href);
   window.addEventListener('popstate', onPopState);
   document.addEventListener('keydown', onKeyDown);
