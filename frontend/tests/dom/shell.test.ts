@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it, beforeEach } from 'vitest';
+import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest';
 import { createShell, type ShellController } from '../../src/ui/shell';
 import { setDocumentLanguage } from '../../src/i18n';
 import { readFileSync } from 'node:fs';
@@ -13,7 +13,10 @@ beforeEach(() => {
   document.title = 'Vigo Bus Navigator';
   setDocumentLanguage('en');
 });
-afterEach(() => controllers.forEach((controller) => controller.destroy()));
+afterEach(() => {
+  controllers.forEach((controller) => controller.destroy());
+  vi.restoreAllMocks();
+});
 
 function mount(root: HTMLElement): ShellController {
   const controller = createShell(root);
@@ -57,18 +60,44 @@ describe('app shell', () => {
     expect(root.querySelector('[data-destination="map"]')?.hasAttribute('aria-current')).toBe(false);
   });
 
-  it('keeps navigation in source order as icon-only buttons with accessible names', () => {
+  it('focuses the rendered content after a destination listener replaces the shell heading', () => {
+    const root = document.createElement('div');
+    document.body.append(root);
+    const shell = mount(root);
+    shell.onDestinationChange(() => {
+      const heading = document.createElement('h1');
+      heading.textContent = 'Plan your journey';
+      shell.main.replaceChildren(heading);
+    });
+    shell.navigate('journeys');
+    expect(document.activeElement).toBe(shell.main.querySelector('h1'));
+  });
+
+  it('keeps navigation in source order as labeled icon buttons with accessible names', () => {
     const root = document.createElement('div');
     document.body.append(root);
     mount(root);
     const labels = [...root.querySelectorAll('nav[aria-label="Main"] [data-destination]')];
     expect(labels.map((node) => node.getAttribute('data-destination'))).toEqual(['map', 'search', 'journeys', 'lines', 'saved']);
-    expect(labels.every((node) => node.getAttribute('aria-label') && !node.textContent?.trim() && node.querySelector('svg'))).toBe(true);
+    expect(labels.every((node) => node.getAttribute('aria-label') && node.textContent?.trim() === node.getAttribute('aria-label') && node.querySelector('svg'))).toBe(true);
     const css = readFileSync(resolve(import.meta.dirname, '../../src/ui/styles.css'), 'utf8');
     const navigationRules = [...css.matchAll(/[^{}]*\.primary-nav[^{}]*\{[^{}]*\}/g)]
       .map(([rule]) => rule);
     expect(navigationRules.length).toBeGreaterThan(0);
     expect(navigationRules.join('\n')).not.toContain('text-overflow: ellipsis');
+  });
+
+  it('refreshes labels, heading and title when the language changes', () => {
+    const root = document.createElement('div');
+    document.body.append(root);
+    const shell = mount(root);
+    shell.navigate('lines');
+    setDocumentLanguage('es');
+    const lines = root.querySelector('[data-destination="lines"]')!;
+    expect(lines.textContent).toBe(lines.getAttribute('aria-label'));
+    expect(lines.textContent).not.toBe('Lines');
+    expect(root.querySelector('main h1')?.textContent).toBe(lines.textContent);
+    expect(document.title).toContain(lines.textContent!);
   });
 
   it('toggles an open overlay destination back to the map', () => {
@@ -80,5 +109,30 @@ describe('app shell', () => {
     expect(root.querySelector('main')?.getAttribute('data-destination')).toBe('search');
     search.click();
     expect(root.querySelector('main')?.getAttribute('data-destination')).toBe('map');
+  });
+
+  it('reserves measured mobile navigation space and removes resize work on destroy', () => {
+    const width = Object.getOwnPropertyDescriptor(window, 'innerWidth')!;
+    const root = document.createElement('div');
+    document.body.append(root);
+    const shell = mount(root);
+    const layout = root.querySelector<HTMLElement>('.app-shell')!;
+    vi.spyOn(shell.nav, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 390, 75));
+    const disconnect = vi.spyOn(ResizeObserver.prototype, 'disconnect');
+    try {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+      window.dispatchEvent(new Event('resize'));
+      expect(layout.style.getPropertyValue('--nav-h')).toBe('75px');
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 });
+      window.dispatchEvent(new Event('resize'));
+      expect(layout.style.getPropertyValue('--nav-h')).toBe('0px');
+      shell.destroy();
+      expect(disconnect).toHaveBeenCalled();
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+      window.dispatchEvent(new Event('resize'));
+      expect(layout.style.getPropertyValue('--nav-h')).toBe('0px');
+    } finally {
+      Object.defineProperty(window, 'innerWidth', width);
+    }
   });
 });

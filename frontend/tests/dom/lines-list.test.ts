@@ -17,6 +17,10 @@ describe('lines list', () => {
     renderLinesList(root, lines, () => undefined);
 
     expect(root.querySelector('[role="search"]')).toBeTruthy();
+    expect(root.querySelector('h1')?.textContent).toBe('Lines');
+    expect(root.querySelector('.lines-search svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(root.querySelector('.lines-search input')?.getAttribute('aria-label')).toBe('Search lines');
+    expect(root.querySelector('.lines-results')).toBeTruthy();
     expect(root.querySelectorAll('[data-line-code-badge]')).toHaveLength(2);
     expect(root.textContent).toContain('4A');
     expect(root.textContent).toContain('Praza de América');

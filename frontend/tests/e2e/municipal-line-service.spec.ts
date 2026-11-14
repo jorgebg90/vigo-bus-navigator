@@ -36,6 +36,8 @@ test('shows clearly labeled provisional fixture times and route data without con
   const weekday = page.locator('[data-day-type="weekday"]');
   const saturday = page.locator('[data-day-type="saturday"]');
   const sundayHoliday = page.locator('[data-day-type="sunday_holiday"]');
+  await weekday.click();
+  await expect(weekday).toHaveAttribute('aria-selected', 'true');
   await weekday.focus();
   await page.keyboard.press('ArrowRight');
   await expect(saturday).toBeFocused();
@@ -142,7 +144,8 @@ test('shows a selected line route on the map and clears it before independent st
   expect(detailsBox).not.toBeNull();
   expect(mapBox).not.toBeNull();
   expect(mapBox!.y + mapBox!.height).toBeLessThanOrEqual(detailsBox!.y);
-  expect(detailsBox!.y + detailsBox!.height).toBeCloseTo(844, 0);
+  const navBox = await page.locator('.primary-nav').boundingBox();
+  expect(detailsBox!.y + detailsBox!.height).toBeCloseTo(navBox!.y, 0);
   expect(detailsBox!.height).toBeLessThanOrEqual(844 * 0.45);
   await expect(page.locator('[data-line-map-directions]')).toHaveCount(0);
 
@@ -158,7 +161,7 @@ test('shows a selected line route on the map and clears it before independent st
   expect(stopPanelBox).not.toBeNull();
   expect(mapWithStopPanelBox).not.toBeNull();
   expect(mapWithStopPanelBox!.y + mapWithStopPanelBox!.height).toBeLessThanOrEqual(stopPanelBox!.y);
-  expect(stopPanelBox!.y + stopPanelBox!.height).toBeCloseTo(844, 0);
+  expect(stopPanelBox!.y + stopPanelBox!.height).toBeCloseTo(navBox!.y, 0);
   const stopSheetHeight = await stopSheet.evaluate((element) => Number.parseFloat(getComputedStyle(element).height));
   expect(stopSheetHeight).toBeCloseTo(stopPanelBox!.height, 2);
   await expect(map).toHaveAttribute('data-route-count', '0');
@@ -192,8 +195,11 @@ test('fills portrait mobile width with the selected line and its stop list', asy
     const patternBox = await routePattern.boundingBox();
     expect(panelBox).not.toBeNull();
     expect(patternBox).not.toBeNull();
-    expect(panelBox!.x).toBeCloseTo(0, 0);
-    expect(panelBox!.width).toBeCloseTo(viewport.width, 0);
+    const railWidth = await page.locator('.app-shell').evaluate((element) =>
+      Number.parseFloat(getComputedStyle(element).getPropertyValue('--rail-w')) *
+      Number.parseFloat(getComputedStyle(document.documentElement).fontSize));
+    expect(panelBox!.x).toBeCloseTo(railWidth, 0);
+    expect(panelBox!.width).toBeCloseTo(viewport.width - railWidth, 0);
     expect(patternBox!.x).toBeGreaterThanOrEqual(panelBox!.x);
     expect(patternBox!.x + patternBox!.width).toBeLessThanOrEqual(panelBox!.x + panelBox!.width);
   }
@@ -241,7 +247,8 @@ test('closes selected line details and restores the full mobile map', async ({ p
 
     const mapBox = await page.locator('.map-base .map-container').boundingBox();
     expect(mapBox).not.toBeNull();
-    expect(mapBox!.height).toBeCloseTo(844, 0);
+    const navBox = await page.locator('.primary-nav').boundingBox();
+    expect(mapBox!.y + mapBox!.height).toBeCloseTo(navBox!.y, 0);
     await expect(page.locator('.map-base [data-engine="maplibre-clustered-geojson"]'))
       .toHaveAttribute('data-route-count', '0');
   }
@@ -262,7 +269,8 @@ test('closes the mobile stop detail sheet and restores the full map', async ({ p
   await expect(panel).toBeHidden();
   const mapBox = await page.locator('.map-base .map-container').boundingBox();
   expect(mapBox).not.toBeNull();
-  expect(mapBox!.height).toBeCloseTo(844, 0);
+  const navBox = await page.locator('.primary-nav').boundingBox();
+  expect(mapBox!.y + mapBox!.height).toBeCloseTo(navBox!.y, 0);
 });
 
 test('shows immediate line loading and ignores delayed results after closing', async ({ page }) => {

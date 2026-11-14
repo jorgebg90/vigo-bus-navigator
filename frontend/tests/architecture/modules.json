@@ -390,7 +390,15 @@
     "responsibility": "inbound-adapter"
   },
   {
-    "path": "frontend/src/ui/search/stop-search.ts",
+    "path": "frontend/src/ui/search/unified-search.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/search/search-session.ts",
+    "responsibility": "inbound-adapter"
+  },
+  {
+    "path": "frontend/src/ui/content-state.ts",
     "responsibility": "inbound-adapter"
   },
   {

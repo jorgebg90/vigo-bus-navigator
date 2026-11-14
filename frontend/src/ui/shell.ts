@@ -1,5 +1,5 @@
-import { translateCurrent } from '../i18n';
-import { setIconButton } from './icons';
+import { onLanguageChange, translateCurrent } from '../i18n';
+import { createIcon, setIconButton } from './icons';
 import { createSheet, type SheetController, type SheetLayout } from './panel/sheet';
 
 export type Destination = 'map' | 'search' | 'journeys' | 'lines' | 'saved';
@@ -58,6 +58,11 @@ export function createShell(container: HTMLElement): ShellController {
   let activeSheet: SheetController | undefined;
   let destroyed = false;
   const destinationListeners = new Set<(destination: Destination) => void>();
+  const updateNavigationSpace = () => {
+    const height = window.innerWidth < 600 ? nav.getBoundingClientRect().height : 0;
+    shell.style.setProperty('--nav-h', `${height}px`);
+  };
+  const navigationResize = new ResizeObserver(updateNavigationSpace);
 
   const renderDestination = (next: Destination, focus: boolean) => {
     destination = next;
@@ -72,8 +77,12 @@ export function createShell(container: HTMLElement): ShellController {
       if (button.dataset.destination === next) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
     }
-    if (focus) heading.focus();
     for (const listener of destinationListeners) listener(next);
+    if (focus) {
+      const target = main.querySelector<HTMLElement>('h1, input[type="search"]') ?? main;
+      if (target.tagName !== 'INPUT') target.tabIndex = -1;
+      target.focus();
+    }
   };
 
   const navIcons = { map: 'map', search: 'search', journeys: 'journey', lines: 'lines', saved: 'saved' } as const;
@@ -81,11 +90,31 @@ export function createShell(container: HTMLElement): ShellController {
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.destination = key;
-    setIconButton(button, navIcons[key], translateCurrent(destinationKeys[key]));
+    const label = document.createElement('span');
+    label.className = 'nav-label';
+    label.textContent = translateCurrent(destinationKeys[key]);
+    button.setAttribute('aria-label', label.textContent);
+    button.append(createIcon(navIcons[key]), label);
     // Re-selecting an open overlay toggles it off and returns to the map.
     button.addEventListener('click', () => controller.navigate(key !== 'map' && key === destination ? 'map' : key));
     nav.append(button);
   }
+
+  const refreshLabels = () => {
+    brand.textContent = translateCurrent('appTitle');
+    for (const button of Array.from(nav.querySelectorAll<HTMLButtonElement>('[data-destination]'))) {
+      const text = translateCurrent(destinationKeys[button.dataset.destination as Destination]);
+      button.setAttribute('aria-label', text);
+      const label = button.querySelector('.nav-label');
+      if (label) label.textContent = text;
+    }
+    const heading = main.querySelector('h1');
+    if (heading) {
+      heading.textContent = translateCurrent(destinationKeys[destination]);
+      document.title = `${heading.textContent} | ${translateCurrent('appTitle')}`;
+    }
+  };
+  const stopLanguageListener = onLanguageChange(refreshLabels);
 
   const clearPanel = (restoreFocus: boolean) => {
     if (!panelOpen) return;
@@ -180,6 +209,9 @@ export function createShell(container: HTMLElement): ShellController {
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      stopLanguageListener();
+      navigationResize.disconnect();
+      window.removeEventListener('resize', updateNavigationSpace);
       clearPanel(false);
       window.removeEventListener('popstate', onPopState);
       document.removeEventListener('keydown', onKeyDown);
@@ -191,6 +223,9 @@ export function createShell(container: HTMLElement): ShellController {
 
   shell.append(header, nav, main, panel, base);
   container.replaceChildren(shell);
+  navigationResize.observe(nav);
+  updateNavigationSpace();
+  window.addEventListener('resize', updateNavigationSpace);
   history.replaceState({ destination }, '', location.href);
   window.addEventListener('popstate', onPopState);
   document.addEventListener('keydown', onKeyDown);

@@ -56,3 +56,32 @@ test('line loading and route feedback remain visible with reduced motion', async
   await expect(page.locator('.map-base [data-engine="maplibre-clustered-geojson"]'))
     .toHaveAttribute('data-route-line', 'A');
 });
+
+test('labeled navigation and unified search stay keyboard-operable with reduced motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await expect(page.locator('.map-container')).toBeVisible();
+  const searchButton = page.locator('.primary-nav [data-destination="search"]');
+  await searchButton.focus();
+  await searchButton.press('Enter');
+  const search = page.getByRole('searchbox', { name: /Search stops|Buscar paradas/ });
+  await expect(search).toBeFocused();
+  await search.fill('Aeroporto de Peinador');
+  await page.getByRole('button', { name: 'Aeroporto de Peinador', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('aside[aria-label="Details"] h2')).toBeFocused();
+  const moving = await page.locator('.primary-nav, .context-panel, .destination-view').evaluateAll((elements) =>
+    elements.some((element) => {
+      const style = getComputedStyle(element);
+      return [style.animationDuration, style.transitionDuration].some((duration) =>
+        duration.split(',').some((value) => {
+          const trimmed = value.trim();
+          const milliseconds = Number.parseFloat(trimmed) * (trimmed.endsWith('ms') ? 1 : 1000);
+          return milliseconds > 0.01;
+        }));
+    }));
+  expect(moving).toBe(false);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.context-panel')).toBeHidden();
+  await expect(page.getByRole('main').getByRole('heading').first()).toBeFocused();
+});

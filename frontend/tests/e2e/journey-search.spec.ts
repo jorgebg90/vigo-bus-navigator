@@ -131,6 +131,96 @@ test('plans municipal itineraries, selects alternatives and stops, and does not 
   await expect(page.locator('.map-container')).toHaveAttribute('data-journey-route', '');
 });
 
+test('hands search stops and addresses to the planner without submitting and restores search context', async ({ page }) => {
+  await useMunicipalProfile(page);
+  await installPlannerFixture(page);
+  await page.goto('/');
+  for (const destination of ['map', 'lines', 'saved', 'journeys']) {
+    await page.locator(`.primary-nav [data-destination="${destination}"]`).click();
+    await page.locator('.primary-nav [data-destination="search"]').click();
+    await expect(page.getByRole('main')).toHaveAttribute('data-destination', 'search');
+    await expect(page.locator('[data-result-kind]')).toHaveCount(0);
+  }
+  expect(await page.evaluate(() => window.__autocompleteRequests?.length)).toBe(0);
+  const search = page.getByRole('searchbox', { name: /Search stops|Buscar paradas/ });
+  await search.fill('Aeroporto de Peinador');
+  const stop = page.locator('[data-stop-row]').first();
+  await stop.locator('[data-stop-origin]').focus();
+  await stop.locator('[data-stop-origin]').press('Enter');
+  await expect(page.locator('[data-journey-address="origin"]')).toHaveValue('Aeroporto de Peinador');
+  await expect(page.locator('[data-journey-option-select]')).toHaveCount(0);
+  await expect(page.getByRole('main').getByRole('heading').first()).toBeFocused();
+  await page.locator('.primary-nav [data-destination="search"]').click();
+  await expect(search).toHaveValue('Aeroporto de Peinador');
+  await search.fill('Av. de Madrid');
+  await page.locator('[data-address-row] [data-address-destination]').click();
+  await expect(page.locator('[data-journey-address="origin"]')).toHaveValue('Aeroporto de Peinador');
+  await expect(page.locator('[data-journey-address="destination"]')).toHaveValue('Av. de Madrid, Vigo');
+  await expect(page.locator('[data-journey-submit]')).toBeEnabled();
+  expect(await page.evaluate(() => window.__otpRequests?.length)).toBe(0);
+  expect(page.url()).not.toMatch(/Madrid|Peinador|query|origin|destination/);
+  const stored = await page.evaluate(() => [...Object.values(localStorage), ...Object.values(sessionStorage)].join(' '));
+  expect(stored).not.toMatch(/Madrid|Peinador/);
+});
+
+test('hands a selected line route stop to the planner without losing the other endpoint', async ({ page }) => {
+  await useMunicipalProfile(page);
+  await installPlannerFixture(page);
+  await page.goto('/');
+  await page.locator('.primary-nav [data-destination="journeys"]').click();
+  await page.locator('[data-journey-address="destination"]').fill('Av. de Madrid');
+  await page.getByRole('option', { name: /Av\. de Madrid/ }).click();
+  await page.locator('.primary-nav [data-destination="lines"]').click();
+  await page.getByRole('searchbox', { name: /Search lines|Buscar líneas|Buscar liñas/ }).fill('A');
+  await page.getByRole('button', { name: 'A Synthetic line A', exact: true }).click();
+  const stop = page.locator('[data-route-stop]').first();
+  await expect(stop).toBeVisible();
+  const stopName = await stop.locator('.stop-open').innerText();
+  await stop.getByRole('button', { name: /Use as origin|Usar como origen|Usar como orixe/, exact: true }).click();
+  await expect(page.locator('[data-journey-address="origin"]')).toHaveValue(stopName);
+  await expect(page.locator('[data-journey-address="destination"]')).toHaveValue('Av. de Madrid, Vigo');
+  expect(await page.evaluate(() => window.__otpRequests?.length)).toBe(0);
+});
+
+test('unified address search exposes error, retry, offline and local empty states', async ({ page }) => {
+  await installPlannerFixture(page);
+  await page.addInitScript(() => {
+    const originalFetch = window.fetch.bind(window);
+    let failNext = true;
+    window.fetch = async (input, init) => {
+      const raw = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (new URL(raw, location.href).origin === 'https://planificador-rutas-api.vigo.org' && failNext) {
+        failNext = false;
+        return new Response('{}', { status: 503 });
+      }
+      return originalFetch(input, init);
+    };
+  });
+  await page.goto('/');
+  await page.locator('.primary-nav [data-destination="search"]').click();
+  const search = page.getByRole('searchbox', { name: /Search stops|Buscar paradas/ });
+  await page.locator('[data-search-category="addresses"]').click();
+  await search.fill('Av. de Madrid');
+  await expect(page.locator('[data-address-results] [data-content-state="error"]')).toBeVisible();
+  await page.locator('[data-address-results] button').click();
+  await expect(page.locator('[data-address-row]')).toHaveCount(1);
+  const violations = await new AxeBuilder({ page }).include('.destination-view')
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(violations.violations).toEqual([]);
+  await page.context().setOffline(true);
+  await search.fill('Urzaiz');
+  await expect(page.locator('[data-address-results] [data-content-state="offline"]')).toBeVisible();
+  await page.locator('[data-search-category="stops"]').click();
+  await search.fill('no-matching-local-stop');
+  await expect(page.locator('[data-content-state="empty"]')).toBeVisible();
+  await page.locator('[data-clear-search]').click();
+  await expect(search).toHaveValue('');
+  await page.context().setOffline(false);
+  await page.locator('[data-search-category="addresses"]').click();
+  await search.fill('Av. de Madrid');
+  await expect(page.locator('[data-address-row]')).toHaveCount(1);
+});
+
 test('discards a late itinerary after editing the requested departure', async ({ page }) => {
   await useMunicipalProfile(page);
   await installPlannerFixture(page, undefined, true);
