@@ -14,7 +14,9 @@ test('splits mobile stop search between the map and scrollable results', async (
   expect(searchBox).not.toBeNull();
   expect(mapBox).not.toBeNull();
   expect(mapBox!.y + mapBox!.height).toBeLessThanOrEqual(searchBox!.y);
-  expect(searchBox!.y + searchBox!.height).toBeCloseTo(844, 0);
+  const navBox = await page.locator('.primary-nav').boundingBox();
+  expect(navBox).not.toBeNull();
+  expect(searchBox!.y + searchBox!.height).toBeCloseTo(navBox!.y, 0);
   expect(searchBox!.height).toBeLessThanOrEqual(844 * 0.45);
 });
 

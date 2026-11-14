@@ -1,5 +1,6 @@
 import type { Line } from '../../domain/types';
 import { translateCurrent } from '../../i18n';
+import { renderContentState } from '../content-state';
 import { createLineBadge } from '../line-badge';
 
 export function renderLinesList(
@@ -29,6 +30,15 @@ export function renderLinesList(
     const query = input.value.trim().toLocaleLowerCase();
     const matches = lines.filter((line) => `${line.code} ${line.name}`.toLocaleLowerCase().includes(query));
     list.replaceChildren();
+    if (matches.length === 0) {
+      const empty = document.createElement('li');
+      renderContentState(empty, 'empty', {
+        message: translateCurrent('searchNoResults', { query: input.value.trim() }),
+        action: { label: translateCurrent('clearSearch'), onActivate: () => { input.value = ''; render(); input.focus(); } }
+      });
+      list.append(empty);
+      return;
+    }
     for (const line of matches) {
       const item = document.createElement('li');
       item.dataset.lineRow = line.id;

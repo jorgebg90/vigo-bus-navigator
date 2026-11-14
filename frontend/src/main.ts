@@ -9,7 +9,8 @@ import { searchAddressSuggestions } from './application/search-address-suggestio
 import { renderLineFrequency } from './ui/line/frequency-view';
 import { renderLineLoading } from './ui/line/line-loading-view';
 import { renderLinesList } from './ui/line/lines-list';
-import { renderStopSearch } from './ui/search/stop-search';
+import { renderUnifiedSearch } from './ui/search/unified-search';
+import { createSearchSession } from './ui/search/search-session';
 import { renderJourneySearch } from './ui/search/journey-search-view';
 import { MunicipalScheduleRepository } from './infrastructure/schedule/municipal-schedule-repository';
 import { SystemClock } from './infrastructure/system/clock';
@@ -86,6 +87,8 @@ let mapCleanup: (() => void) | undefined;
 let unsubscribeSelection: (() => void) | undefined;
 let panelCloseListener: (() => void) | undefined;
 let currentDestination: Destination = 'map';
+const searchSession = createSearchSession();
+let cancelSearchRequests: (() => void) | undefined;
 let activePanelStopId: string | undefined;
 let activePanelContent: HTMLElement | undefined;
 let activeMap: StopMapPort | undefined;
@@ -138,6 +141,7 @@ shell.onDestinationChange((destination) => {
     if (journeyOutcome?.status === 'loading') journeyOutcome = null;
   }
   currentDestination = destination;
+  if (destination !== 'search') cancelSearchRequests?.();
   if (destination !== 'lines') {
     lineViewRequests.invalidate();
     selectedLineRoute = null;
@@ -347,6 +351,21 @@ async function bootstrap(): Promise<void> {
     arrivalsContent.dataset.stopArrivals = 'true';
     const servingLinesContent = document.createElement('section');
     servingLinesContent.dataset.stopServingLines = 'true';
+    if (stop.lat !== null && stop.lon !== null) {
+      const point = { latitude: stop.lat, longitude: stop.lon };
+      const actions = document.createElement('div');
+      actions.className = 'result-actions';
+      for (const endpoint of ['origin', 'destination'] as const) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'result-action';
+        button.dataset.stopPanelEndpoint = endpoint;
+        button.textContent = translateCurrent(endpoint === 'origin' ? 'useAsOrigin' : 'useAsDestination');
+        button.addEventListener('click', () => handOffJourneyEndpoint(endpoint, point, stop.name, stop.id));
+        actions.append(button);
+      }
+      content.append(actions);
+    }
     content.append(arrivalsContent, servingLinesContent);
     activePanelStopId = stop.id;
     activePanelContent = arrivalsContent;
@@ -504,15 +523,39 @@ async function bootstrap(): Promise<void> {
       return;
     }
     if (currentDestination === 'search') {
-      renderStopSearch(view, {
+      cancelSearchRequests?.();
+      cancelSearchRequests = renderUnifiedSearch(view, {
+        session: searchSession,
         stops,
+        lines,
         discoveryProvenance,
         favoriteStopIds: loadUserFavorites(storage).filter((favorite) => favorite.type === 'stop').map((favorite) => favorite.targetId),
-        onSelect: showStopOnMap,
+        isOffline: () => navigator.onLine === false,
+        addressSearch: (query, signal) => searchAddressSuggestions(addressGeocoder, query, {
+          isCancelled: () => signal.aborted,
+          onCancelled: (listener) => {
+            signal.addEventListener('abort', listener, { once: true });
+            return () => signal.removeEventListener('abort', listener);
+          }
+        }),
+        onStopSelect: showStopOnMap,
+        onLineSelect: (line) => { void showLine(line); },
         onFavoriteToggle: (stopId) => {
           toggleFavoriteForTarget(storage, { type: 'stop', targetId: stopId });
           notifyStorageFailure();
           refreshFavorites();
+        },
+        onStopEndpoint: (endpoint, stop) => {
+          if (stop.lat === null || stop.lon === null) return;
+          handOffJourneyEndpoint(endpoint, { latitude: stop.lat, longitude: stop.lon }, stop.name, stop.id);
+        },
+        onAddressEndpoint: (endpoint, suggestion) => {
+          if (!isWithinMapCoverage({ ...suggestion.point, accuracyMeters: 0 })) {
+            journeyNotice = 'point-outside';
+            shell.navigate('journeys');
+            return;
+          }
+          handOffJourneyEndpoint(endpoint, suggestion.point, suggestion.label, null);
         }
       });
       return;
@@ -623,6 +666,22 @@ async function bootstrap(): Promise<void> {
     renderLinesList(view, lines, (line) => { void showLine(line); }, {
       unavailable: lineCatalogUnavailable
     });
+  }
+
+  function handOffJourneyEndpoint(endpoint: 'origin' | 'destination', point: JourneyPoint, label: string, stopId: string | null): void {
+    clearJourneySearch();
+    if (endpoint === 'origin') {
+      journeyOrigin = point;
+      journeyOriginLabel = label;
+      journeyOriginStopId = stopId;
+    } else {
+      journeyDestination = point;
+      journeyDestinationLabel = label;
+      journeyDestinationStopId = stopId;
+    }
+    journeyOutcome = null;
+    journeyNotice = null;
+    shell.navigate('journeys');
   }
 
   async function runJourneySearch(departureLocal: string): Promise<void> {
@@ -765,6 +824,12 @@ async function bootstrap(): Promise<void> {
       onClose: () => shell.navigate('map'),
       onDayTypeChange: (dayType) => { void showLine(line, dayType); },
       onStopSelect: showStopOnMap,
+      onStopEndpoint: (endpoint, stopId) => {
+        const stop = stops.find((candidate) => candidate.id === stopId);
+        if (stop && stop.lat !== null && stop.lon !== null) {
+          handOffJourneyEndpoint(endpoint, { latitude: stop.lat, longitude: stop.lon }, stop.name, stop.id);
+        }
+      },
       onSelectLine: (relatedLine) => { void showLine(relatedLine); },
       onStopFavoriteToggle: (stopId) => {
         toggleFavoriteForTarget(storage, { type: 'stop', targetId: stopId });

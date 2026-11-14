@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 const viewports = [
   { width: 320, height: 700 },
+  { width: 390, height: 844 },
   { width: 768, height: 1024 },
   { width: 1024, height: 768 },
   { width: 1280, height: 900 }
@@ -42,4 +43,33 @@ test('map shell reflows without overflow and keeps navigation, settings, map con
     clientWidth: document.documentElement.clientWidth
   }));
   expect(reflow.scrollWidth).toBeLessThanOrEqual(reflow.clientWidth);
+});
+
+test('primary navigation is a labeled bottom bar on phones and a labeled rail on larger screens', async ({ page }) => {
+  await page.goto('/');
+  for (const viewport of [...viewports, { width: 600, height: 800 }]) {
+    await page.setViewportSize(viewport);
+    const nav = await page.evaluate(() => {
+      const bar = document.querySelector<HTMLElement>('.primary-nav')!.getBoundingClientRect();
+      const buttons = [...document.querySelectorAll<HTMLElement>('.primary-nav [data-destination]')];
+      return {
+        bar: { x: bar.x, y: bar.y, width: bar.width, height: bar.height },
+        labels: buttons.map((button) => button.querySelector('.nav-label')?.textContent?.trim() ?? ''),
+        visible: buttons.every((button) => {
+          const box = button.getBoundingClientRect();
+          return box.right <= innerWidth && box.bottom <= innerHeight && box.width >= 44 && box.height >= 44;
+        })
+      };
+    });
+    expect(nav.labels.every(Boolean)).toBe(true);
+    expect(nav.labels).toHaveLength(5);
+    expect(nav.visible).toBe(true);
+    if (viewport.width < 600) {
+      expect(nav.bar.y + nav.bar.height).toBeCloseTo(viewport.height, 0);
+      expect(nav.bar.width).toBeCloseTo(viewport.width, 0);
+    } else {
+      expect(nav.bar.x).toBeLessThan(24);
+      expect(nav.bar.height).toBeLessThan(viewport.height);
+    }
+  }
 });

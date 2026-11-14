@@ -57,18 +57,31 @@ describe('app shell', () => {
     expect(root.querySelector('[data-destination="map"]')?.hasAttribute('aria-current')).toBe(false);
   });
 
-  it('keeps navigation in source order as icon-only buttons with accessible names', () => {
+  it('keeps navigation in source order as labeled icon buttons with accessible names', () => {
     const root = document.createElement('div');
     document.body.append(root);
     mount(root);
     const labels = [...root.querySelectorAll('nav[aria-label="Main"] [data-destination]')];
     expect(labels.map((node) => node.getAttribute('data-destination'))).toEqual(['map', 'search', 'journeys', 'lines', 'saved']);
-    expect(labels.every((node) => node.getAttribute('aria-label') && !node.textContent?.trim() && node.querySelector('svg'))).toBe(true);
+    expect(labels.every((node) => node.getAttribute('aria-label') && node.textContent?.trim() === node.getAttribute('aria-label') && node.querySelector('svg'))).toBe(true);
     const css = readFileSync(resolve(import.meta.dirname, '../../src/ui/styles.css'), 'utf8');
     const navigationRules = [...css.matchAll(/[^{}]*\.primary-nav[^{}]*\{[^{}]*\}/g)]
       .map(([rule]) => rule);
     expect(navigationRules.length).toBeGreaterThan(0);
     expect(navigationRules.join('\n')).not.toContain('text-overflow: ellipsis');
+  });
+
+  it('refreshes labels, heading and title when the language changes', () => {
+    const root = document.createElement('div');
+    document.body.append(root);
+    const shell = mount(root);
+    shell.navigate('lines');
+    setDocumentLanguage('es');
+    const lines = root.querySelector('[data-destination="lines"]')!;
+    expect(lines.textContent).toBe(lines.getAttribute('aria-label'));
+    expect(lines.textContent).not.toBe('Lines');
+    expect(root.querySelector('main h1')?.textContent).toBe(lines.textContent);
+    expect(document.title).toContain(lines.textContent!);
   });
 
   it('toggles an open overlay destination back to the map', () => {

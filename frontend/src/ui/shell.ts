@@ -1,5 +1,5 @@
-import { translateCurrent } from '../i18n';
-import { setIconButton } from './icons';
+import { onLanguageChange, translateCurrent } from '../i18n';
+import { createIcon, setIconButton } from './icons';
 import { createSheet, type SheetController, type SheetLayout } from './panel/sheet';
 
 export type Destination = 'map' | 'search' | 'journeys' | 'lines' | 'saved';
@@ -81,11 +81,31 @@ export function createShell(container: HTMLElement): ShellController {
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.destination = key;
-    setIconButton(button, navIcons[key], translateCurrent(destinationKeys[key]));
+    const label = document.createElement('span');
+    label.className = 'nav-label';
+    label.textContent = translateCurrent(destinationKeys[key]);
+    button.setAttribute('aria-label', label.textContent);
+    button.append(createIcon(navIcons[key]), label);
     // Re-selecting an open overlay toggles it off and returns to the map.
     button.addEventListener('click', () => controller.navigate(key !== 'map' && key === destination ? 'map' : key));
     nav.append(button);
   }
+
+  const refreshLabels = () => {
+    brand.textContent = translateCurrent('appTitle');
+    for (const button of Array.from(nav.querySelectorAll<HTMLButtonElement>('[data-destination]'))) {
+      const text = translateCurrent(destinationKeys[button.dataset.destination as Destination]);
+      button.setAttribute('aria-label', text);
+      const label = button.querySelector('.nav-label');
+      if (label) label.textContent = text;
+    }
+    const heading = main.querySelector('h1');
+    if (heading) {
+      heading.textContent = translateCurrent(destinationKeys[destination]);
+      document.title = `${heading.textContent} | ${translateCurrent('appTitle')}`;
+    }
+  };
+  const stopLanguageListener = onLanguageChange(refreshLabels);
 
   const clearPanel = (restoreFocus: boolean) => {
     if (!panelOpen) return;
@@ -180,6 +200,7 @@ export function createShell(container: HTMLElement): ShellController {
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      stopLanguageListener();
       clearPanel(false);
       window.removeEventListener('popstate', onPopState);
       document.removeEventListener('keydown', onKeyDown);
